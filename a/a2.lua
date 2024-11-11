@@ -1,7 +1,7 @@
-repeat task.wait() until game:IsLoaded()
 if queue_on_teleport then
     queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/a/a2.lua"))()')
 end
+repeat task.wait() until game:IsLoaded()
 if game.PlaceId == 12886143095 or game.PlaceId == 18583778121 then
     local args = {
         [1] = "GetGlobalData"
