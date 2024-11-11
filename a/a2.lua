@@ -19,7 +19,7 @@ if game.PlaceId == 12886143095 or game.PlaceId == 18583778121 then
 
     local args = {
         [1] = "Play",
-        [2] = 0,
+        [2] = 5,
         [3] = "True"
     }
     game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("InfiniteCastleManager"):FireServer(unpack(args))
