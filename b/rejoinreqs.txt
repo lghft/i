@@ -7,7 +7,7 @@ pip install crypto
 pip install pycryptodome
 
 
-cd /sdcard/download
+cd /storage/emulated/0/Download
 
 
 --start
