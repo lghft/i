@@ -1,0 +1,14 @@
+echo "Installing dependencies..." && pkg update && pkg upgrade -y && pkg install python -y && pip install requests aiohttp colorama psutil
+
+
+pip install crypto
+
+
+pip install pycryptodome
+
+
+cd /sdcard/download
+
+
+--start
+python freerejoin.py
