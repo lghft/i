@@ -1,0 +1,59 @@
+--Made by SploeCyber
+print("[SkipConfig] Waiting for GameBar...")
+repeat 
+    wait(2.5)
+until game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui") 
+    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("Interface") 
+    and game:GetService("Players").LocalPlayer.PlayerGui.Interface:FindFirstChild("GameInfoBar")
+print("[SkipConfig] GameBar Found")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local LocalGui = Players.LocalPlayer.PlayerGui.Interface.GameInfoBar
+
+local waveText = LocalGui.Wave.WaveText
+local timeText = LocalGui.TimeLeft.TimeLeftText
+
+local function extractWaveNumber(waveString)
+    return tonumber(waveString:match("%d+"))
+end
+
+local function extractTimeInSeconds(timeString)
+    local minutes, seconds = timeString:match("(%d+):(%d+)")
+    
+    if minutes and seconds then
+        return tonumber(minutes) * 60 + tonumber(seconds)
+    else
+        return 0
+    end
+end
+
+local function skip(waveToSkip, timeToSkip)
+
+    while true do
+        wait(.25)
+        local Wave = extractWaveNumber(waveText.Text)
+        local Time = extractTimeInSeconds(timeText.Text)
+
+        if Wave == waveToSkip and (Time == timeToSkip or Time < timeToSkip) then
+            game:GetService("ReplicatedStorage").Remotes.SkipWaveVoteCast:FireServer(true)
+            print("[SkipConfig] Skipped!")
+            break
+        end
+    end
+end
+
+local sortedConfig = {}
+for waveName, timeToSkip in pairs(_G.WaveConfig) do
+    local waveNumber = tonumber(waveName:match("%d+"))
+    sortedConfig[waveNumber] = timeToSkip
+end
+
+for waveNumber, timeToSkip in pairs(sortedConfig) do
+    if timeToSkip ~= 0 then
+        skip(waveNumber, timeToSkip)
+        print("[SkipConfig] Wave " .. waveNumber .. "| " .. timeToSkip .. " sec.")
+    else
+        print("[SkipConfig] Wave " .. waveNumber .. " ignored!")
+    end
+    wait(.05)
+end
