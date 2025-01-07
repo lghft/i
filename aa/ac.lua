@@ -1,0 +1,52 @@
+getgenv().FocusWave = 20 -- Priority limit wave
+getgenv().PriorityCards = { -- Priority tags when wave = FocusWave
+    "- Cooldown I",
+    "+ Attack I",
+    "+ Range I",
+    "+ Random Effects I",
+    "- Cooldown II",
+    "+ Attack II",
+    "+ Range II",
+    "+ Random Effects II",
+    "- Cooldown III",
+    "+ Range III",
+    "+ Attack III",
+    "+ Random Effects III"
+}
+getgenv().Cards = { -- All cards after FocusWave wave ends
+    "+ Enemy Speed II",
+    "+ Enemy Health III",
+    "+ Random Curses II", 
+    "+ Explosive Deaths III",
+    "+ Explosive Deaths I",
+    "+ Explosive Deaths II",
+    "+ Random Curses I", 
+    "+ Enemy Shield III",
+    "+ Enemy Regen III",
+    "+ Enemy Shield II",
+    "+ Enemy Speed I",
+    "+ Enemy Shield I",
+    "+ Enemy Health II",
+    "+ Enemy Health I",
+    "+ Enemy Regen II",
+    "+ Enemy Regen I",
+    "+ Boss Damage I",
+    "+ Boss Damage II",
+    "+ Boss Damage III",
+    "+ Yen I",
+    "+ Yen II",
+    "+ Yen III",
+    "- Cooldown I",
+    "+ Attack I",
+    "+ Range I",
+    "- Cooldown II",
+    "+ Attack II",
+    "+ Range II",
+    "+ Range III",
+    "- Cooldown III",
+    "+ Attack III",
+    "+ Double Attack",
+    "+ New Path"
+}
+-- Priority from bottom to top in all items
+loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/aa/that1acScript.lua"))()
