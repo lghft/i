@@ -5,7 +5,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/ma
 loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/dex/b.lua", true))()
 
 -- Dex with CloneRef Support (made as global)
-getgenv().Bypassed_Dex = game:GetObjects("rbxassetid://16736338955")[1]
+getgenv().Bypassed_Dex = game:GetObjects("rbxassetid://9352453730")[1]
 
 local charset = {}
 for i = 48,  57 do table.insert(charset, string.char(i)) end
