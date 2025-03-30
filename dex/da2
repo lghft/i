@@ -2135,7 +2135,7 @@ local EmbeddedModules = {
 			end
 
 			Explorer.Init = function()
-				Explorer.ClassIcons = Lib.IconMap.newLinear("rbxasset://textures/ClassImages.PNG", 16, 16)
+				Explorer.ClassIcons = Lib.IconMap.newLinear("rbxasset://77712772903579", 16, 16)
 				Explorer.MiscIcons = Main.MiscIcons
 
 				clipboard = {}
