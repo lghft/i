@@ -1,4 +1,4 @@
-repeat wait() until game:IsLoaded() print("loaded")
+repeat wait(5) until game:IsLoaded() print("loaded")
 local me = game.Players.LocalPlayer
 local unitM = me.PlayerGui.MainGui.MainFrames.UnitManager
 local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActivateTowerAbility
@@ -94,7 +94,9 @@ until #krumiT == 1
 
 --kurumi
 remote4:FireServer("1")
-
+me.PlayerGui.MainGui.UpgradePathSelection.Visible = false
+me.PlayerGui.MainGui.HUD.Visible = true
+me.PlayerGui.MainGui.MainFrames.Visible = true
 if #krumiT == 1 then
     print("1 krumi")
     remote2:FireServer(krumiT[1].Name, 2)
@@ -104,6 +106,9 @@ if #krumiT == 1 then
 
     autoupgrade(krumiT[1])
     print("auto upgrade")
+    me.PlayerGui.MainGui.UpgradePathSelection.Visible = false
+    me.PlayerGui.MainGui.HUD.Visible = true
+    me.PlayerGui.MainGui.MainFrames.Visible = true
 end
 
 remote5:FireServer(krumiT[1].Name, "Strong")
@@ -127,31 +132,109 @@ warn("Kurumi MAXED")
 
 -- place gojos
 print("Placing GOJOS?")
-wait(1)
+wait(1.5)
 remote3:FireServer(tostring(game.Players.LocalPlayer.UserId .. ":" .. "227596"), Vector3.new(-24.677661895751953, 221.0968017578125, -302.59112548828125), 0)
-wait(1)
+print("g")
+wait(1.5)
 remote3:FireServer(tostring(game.Players.LocalPlayer.UserId .. ":" .. "227588"), Vector3.new(-24.90053939819336, 221.0968017578125, -298.7460021972656), 0)
-wait(1)
+print("g")
+wait(1.5)
 remote3:FireServer(tostring(game.Players.LocalPlayer.UserId .. ":" .. "157368"), Vector3.new(-24.754215240478516, 221.0968017578125, -294.8587646484375), 0)
-wait(1)
+print("g")
+wait(1.5)
 remote3:FireServer(tostring(game.Players.LocalPlayer.UserId .. ":" .. "225295"), Vector3.new(-24.981365203857422, 221.0968017578125, -291.3843994140625), 0)
+print("g")
 --gojo ability
 print("finished placing Gojos")
-wait(2)
+wait(1.5)
+remote3:FireServer(tostring(game.Players.LocalPlayer.UserId .. ":" .. "227596"), Vector3.new(-24.677661895751953, 221.0968017578125, -302.59112548828125), 0)
+print("g")
+wait(1.5)
+remote3:FireServer(tostring(game.Players.LocalPlayer.UserId .. ":" .. "227588"), Vector3.new(-24.90053939819336, 221.0968017578125, -298.7460021972656), 0)
+print("g")
+wait(1.5)
+remote3:FireServer(tostring(game.Players.LocalPlayer.UserId .. ":" .. "157368"), Vector3.new(-24.754215240478516, 221.0968017578125, -294.8587646484375), 0)
+print("g")
+wait(1.5)
+remote3:FireServer(tostring(game.Players.LocalPlayer.UserId .. ":" .. "225295"), Vector3.new(-24.981365203857422, 221.0968017578125, -291.3843994140625), 0)
+print("g")
+wait(1)
+wait(1)
 for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
     for i,v in pairs(v:GetChildren()) do
         if v.Name == "gojo-collar" then
             table.insert(shinyG, v.Parent)
-            print(v.Parent)
+            --print(v.Parent)
+            wait()
         end
     end
 end
+
+for i,v in pairs(shinyG) do
+    print(v)
+end
+
 print("added To shinyG Table")
 if #shinyG == 4 then
-    for i,v in pairs(shinyG) do
-        autoupgrade(shinyG[i])
-    end
+    wait(1)
+    autoupgrade(shinyG[1])
+    wait(1)
+    autoupgrade(shinyG[2])
+    wait(1)
+    autoupgrade(shinyG[3])
+    wait(1)
 end
+
+repeat
+    wait()
+    local found = false
+    for _, slot in ipairs(unitM.Frame.ScrollingFrame:GetChildren()) do
+        if slot.Name:find(shinyG[3].Name) and slot:FindFirstChild("FilledSlot") then
+            local levelText = slot.FilledSlot.Portrait.UnitDisplay.UnitLevel.Text
+            if levelText == "Upgrade 6/6" then
+                found = true
+                print(slot)
+                print(levelText)
+                break
+            end
+        end
+    end
+until found -- inside UnitManager
+
+repeat
+    wait()
+    local found = false
+    for _, slot in ipairs(unitM.Frame.ScrollingFrame:GetChildren()) do
+        if slot.Name:find(shinyG[2].Name) and slot:FindFirstChild("FilledSlot") then
+            local levelText = slot.FilledSlot.Portrait.UnitDisplay.UnitLevel.Text
+            if levelText == "Upgrade 6/6" then
+                found = true
+                print(slot)
+                print(levelText)
+                break
+            end
+        end
+    end
+until found -- inside UnitManager
+
+repeat
+    wait()
+    local found = false
+    for _, slot in ipairs(unitM.Frame.ScrollingFrame:GetChildren()) do
+        if slot.Name:find(shinyG[1].Name) and slot:FindFirstChild("FilledSlot") then
+            local levelText = slot.FilledSlot.Portrait.UnitDisplay.UnitLevel.Text
+            if levelText == "Upgrade 6/6" then
+                found = true
+                print(slot)
+                print(levelText)
+                break
+            end
+        end
+    end
+until found -- inside UnitManager
+
+
+autoupgrade(shinyG[4])
 
 repeat
     wait()
@@ -169,9 +252,8 @@ repeat
     end
 until found -- inside UnitManager
 
-print("Auto Gojo ABILITY")
 if #shinyG == 4 then
-    remote:FireServer(shinyG[1].Name)
+remote:FireServer(shinyG[1].Name)
     wait(7)
     remote:FireServer(shinyG[2].Name)
     wait(7)
@@ -179,21 +261,29 @@ if #shinyG == 4 then
     wait(7)
     remote:FireServer(shinyG[4].Name)
     wait(7)
-    spawn(function()
-        while true do
-            remote:FireServer(shinyG[1].Name)
-            remote:FireServer(shinyG[2].Name)
-            remote:FireServer(shinyG[3].Name)
-            remote:FireServer(shinyG[4].Name)
-            wait()
-        end
-   end)()
 end
+spawn(function()
+    while true do
+        remote:FireServer(shinyG[1].Name)
+        remote:FireServer(shinyG[2].Name)
+        remote:FireServer(shinyG[3].Name)
+        remote:FireServer(shinyG[4].Name)
+        wait()
+        me.PlayerGui.BossGui.Enabled = false
+        me.PlayerGui.MainGui.MainFrames.Wave.Visible = true
+        me.PlayerGui.MainGui.UpgradePathSelection.Visible = false
+        me.PlayerGui.MainGui.HUD.Visible = true
+    end
+end)
+
+repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.BossGui.Enabled == true
+me.PlayerGui.BossGui.Enabled = false
+me.PlayerGui.MainGui.MainFrames.Wave.Visible = true
 
 print("Auto KrumI ABILITY?")
-repeat wait() until me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text == "Wave 28/30"
+repeat wait() until me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text == "Wave 27/30"
 print(me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text)
-coroutine.wrap(function()
+spawn(function()
 	while true do
         remote:FireServer(krumiT[1].Name)
         wait()
@@ -204,7 +294,3 @@ end)
 BorosShoulderGuard
 HeadAccessories
 ]]
-repeat wait() until	game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true
-	if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
-		game:Shutdown()
-	end
