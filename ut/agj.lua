@@ -276,10 +276,6 @@ spawn(function()
     end
 end)
 
-repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.BossGui.Enabled == true
-me.PlayerGui.BossGui.Enabled = false
-me.PlayerGui.MainGui.MainFrames.Wave.Visible = true
-
 print("Auto KrumI ABILITY?")
 repeat wait() until me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text == "Wave 27/30"
 print(me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text)
