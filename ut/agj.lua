@@ -273,6 +273,7 @@ spawn(function()
         me.PlayerGui.MainGui.MainFrames.Wave.Visible = true
         me.PlayerGui.MainGui.UpgradePathSelection.Visible = false
         me.PlayerGui.MainGui.HUD.Visible = true
+	me.PlayerGui.MainGui.MainFrames.Visible = true
     end
 end)
 
