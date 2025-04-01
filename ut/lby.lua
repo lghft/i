@@ -16,6 +16,9 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
         local myServB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerButton.MyServerButton 
         firesignal(myServB.Activated)
         wait(1)
+        local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
+        firesignal(genServ.Activated)
+        wait(1)
         local jlservB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.Join
         firesignal(jlservB.Activated)
         wait(1)
