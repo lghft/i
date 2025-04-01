@@ -274,6 +274,7 @@ spawn(function()
         me.PlayerGui.MainGui.UpgradePathSelection.Visible = false
         me.PlayerGui.MainGui.HUD.Visible = true
 	me.PlayerGui.MainGui.MainFrames.Visible = true
+	me.Character.HumanoidRootPart.PlayerOverheadGui.Enabled = false
     end
 end)
 
