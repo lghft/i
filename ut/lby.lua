@@ -27,5 +27,6 @@ spawn(function()
                 wait(1)
             end
         end
+        wait()
     end
 end)
