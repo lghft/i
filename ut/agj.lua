@@ -302,7 +302,7 @@ repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChi
 		for i,v in pairs(v:GetChildren()) do
 		   if v.Name =="Eye" then
 			table.insert(borosT, v)
-                	print(v)
+                	warn(v)
 		   end
 		end
             end
