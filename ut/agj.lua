@@ -10,6 +10,7 @@ local remote5 = game:GetService("ReplicatedStorage"):WaitForChild("Modules"):Wai
 local shinyG = {}
 local krumiT = {}
 local itaT = {}
+local borosT = {}
 local count = 0
 
 function kurumiAbilityUsed()
@@ -292,3 +293,18 @@ end)
 BorosShoulderGuard
 HeadAccessories
 ]]
+repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChildren()) do
+        for i,v in pairs(v:GetChildren()) do
+            if v.Name == "HeadAccessories" then
+		for i,v in pairs(v:GetChildren()) do
+		   if v.Name =="Eye" then
+			table.insert(borosT, v.Parent)
+                	print(v.Parent)
+		   end
+		end
+            end
+        end
+    end
+    wait()
+until #borosT == 2
+remote4:FireServer("1.5")
