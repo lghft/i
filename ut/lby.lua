@@ -9,7 +9,6 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
     if tele then
         char:MoveTo(tele.Position)
     end
-else
 end
 spawn(function())
 while true do
