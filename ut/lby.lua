@@ -11,19 +11,15 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
     if tele then
         char:MoveTo(tele.Position)
     end
-end
-
-spawn(function()
-    while true do
-        if plrAmount > 1 and game.Workspace.Lobby then
-            if ptyFind.Visible == true then
-                local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
-                firesignal(genServ.Activated)
-                wait()
-                local jlservB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.Join
-                firesignal(jlservB.Activated)
-            end
+elseif plrAmount > 1 and game.Players.LocalPlayer and not game.Workspace.Lobby then
+    game:Shutdown
+elseif plrAmount > 1 and game.Workspace.Lobby then
+        if ptyFind.Visible == true then
+            local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
+            firesignal(genServ.Activated)
+            wait(1)
+            local jlservB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.Join
+            firesignal(jlservB.Activated)
         end
-        wait()
     end
-end)
+end
