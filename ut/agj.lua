@@ -293,6 +293,9 @@ end)
 BorosShoulderGuard
 HeadAccessories
 ]]
+
+repeat wait() until me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text == "Wave 30/30"
+
 repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChildren()) do
         for i,v in pairs(v:GetChildren()) do
             if v.Name == "HeadAccessories" then
