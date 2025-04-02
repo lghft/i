@@ -286,7 +286,7 @@ spawn(function()
 	while true do
         remote:FireServer(krumiT[1].Name)
         wait()
-        print(me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text)
+        --print(me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text)
 	end
 end)
 --[[
