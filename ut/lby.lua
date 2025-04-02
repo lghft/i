@@ -12,7 +12,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
         char:MoveTo(tele.Position)
     end
 elseif plrAmount > 1 and game.Players.LocalPlayer and not game.Workspace.Lobby then
-    game:Shutdown
+    game:Shutdown()
 elseif plrAmount > 1 and game.Workspace.Lobby then
         if ptyFind.Visible == true then
             local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
