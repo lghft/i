@@ -299,7 +299,7 @@ repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChi
 		for i,v in pairs(v:GetChildren()) do
 		   if v.Name =="Eye" then
 			table.insert(borosT, v.Parent)
-                	print(v.Parent)
+                	print(v)
 		   end
 		end
             end
@@ -309,3 +309,6 @@ repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChi
 until #borosT == 3
 print(borosT)
 remote4:FireServer("1.5")
+for i,v in pairs(borosT) do
+	print(v)
+end
