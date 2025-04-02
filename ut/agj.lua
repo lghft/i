@@ -295,7 +295,7 @@ HeadAccessories
 ]]
 
 repeat wait() until me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text == "Wave 30/30"
-wait(4)
+repeat wait() until me.PlayerGui.MainGui.MainFrames.Wave.Time.Text == "00:00"
 for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChildren()) do
         for i,v in pairs(v:GetChildren()) do
             if v.Name == "HeadAccessories" then
@@ -308,9 +308,12 @@ for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChildren()
             end
         end
     end
-wait(1)
+wait(10)
 print(borosT)
-if #borosT == 2 then
+if #borosT == 1 then
+for k in pairs (borosT) do
+    borosT[k] = nil
+end
 for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChildren()) do
         for i,v in pairs(v:GetChildren()) do
             if v.Name == "HeadAccessories" then
@@ -323,7 +326,7 @@ for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChildren()
             end
         end
     end
-   if #borosT >= 3 then
+   if #borosT >= 2 then
       remote4:FireServer("1.5")
    end 
 end
