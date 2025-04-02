@@ -301,7 +301,7 @@ repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChi
             if v.Name == "HeadAccessories" then
 		for i,v in pairs(v:GetChildren()) do
 		   if v.Name =="Eye" then
-			table.insert(borosT, v.Parent)
+			table.insert(borosT, v)
                 	print(v)
 		   end
 		end
