@@ -309,7 +309,7 @@ repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChi
         end
     end
     wait()
-until #borosT == 3 or 2
+until #borosT == 4
 print(borosT)
 remote4:FireServer("1.5")
 for i,v in pairs(borosT) do
