@@ -279,7 +279,7 @@ spawn(function()
 end)
 
 print("Auto KrumI ABILITY?")
-repeat wait() until me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text == "Wave 25/30"
+repeat wait() until me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text == "Wave 23/30"
 print(me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text)
 spawn(function()
 	while true do
