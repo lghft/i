@@ -1,4 +1,5 @@
 repeat wait(5) until game:IsLoaded()
+print("Lby Loaded1")
 local char = game.Players.LocalPlayer.Character
 local Players = game:GetService('Players')
 local plrAmount = #Players:GetPlayers()
