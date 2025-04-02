@@ -308,7 +308,7 @@ for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChildren()
             end
         end
     end
-wait(10)
+wait(55)
 print(borosT)
 if #borosT == 1 then
 for k in pairs (borosT) do
@@ -326,7 +326,7 @@ for _,v in pairs(game:GetService("Workspace").EntityModels.Enemies:GetChildren()
             end
         end
     end
-   if #borosT >= 2 then
+   if #borosT == 2 or 3 then
       remote4:FireServer("1.5")
    end 
 end
