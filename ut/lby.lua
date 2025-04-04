@@ -31,6 +31,21 @@ function clickButton(ClickOnPart)
     print("Clicked: ", ClickOnPart)
 end
 
+function autoclosesmtn()
+    local timeText = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.Time
+	timeText:GetPropertyChangedSignal("Text"):Connect(function()
+    for _, v in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+
+        if v.Name == "open/close detector" then
+            if v.Parent.MainFrame.Visible == true then
+                print(v)
+                v.Parent.MainFrame.Visible = false
+            end
+        end
+    end
+end)
+end
+
 
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
     print("=1")
@@ -43,6 +58,14 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
         repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.Visible == true
         local hard = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.HardcoreButton
         firesignal(hard.Activated)
+
+        local args = {
+            [1] = "DungeonHardcore"
+        }
+        
+        game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerSelectedGamemode"):FireServer(unpack(args))
+
+        
         wait(1)
         local strt = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.StartButton
         firesignal(strt.Activated)
@@ -52,8 +75,10 @@ elseif plrAmount > 1 and game.Players.LocalPlayer and not game.Workspace.Lobby t
 elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
     if ptyFind.Visible == true then
+        autoclosesmtn()
         --repeat 
-        --firesignal(ptyFind.Activated)
+        firesignal(ptyFind.Activated)
+        clickButton(pt)
         local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
         clickButton(genServ)
         firesignal(genServ.Activated)
