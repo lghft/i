@@ -56,14 +56,6 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
         repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.Visible == true
         local hard = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.HardcoreButton
         firesignal(hard.Activated)
-
-        local args = {
-            [1] = "DungeonHardcore"
-        }
-        
-        game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerSelectedGamemode"):FireServer(unpack(args))
-
-        
         wait(1)
         local strt = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.StartButton
         firesignal(strt.Activated)
@@ -75,11 +67,10 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
     if ptyFind.Visible == true then
         autoclosesmtn()
-        --repeat
-        clickButton(ptyFind)
+        repeat
         wait(1)
         local myServB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerButton.MyServerButton
-        clickButton(myServB)
+        firesignal(myServB.Activated)
         wait(1)
         local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
         clickButton(genServ)
@@ -89,6 +80,6 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
          clickButton(jlservB)
         firesignal(jlservB.Activated)
         wait()
-        --until plrAmount == 1
+        until plrAmount == 1
     end
 end
