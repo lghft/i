@@ -1,8 +1,8 @@
 print("lby?")
 repeat wait(5) until game:IsLoaded()
 print("Lby Loaded1")
-local dun = true
-local eve = false
+local dun = false
+local eve = true
 local char = game.Players.LocalPlayer.Character
 local Players = game:GetService('Players')
 local plrAmount = #Players:GetPlayers()
@@ -65,11 +65,13 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
     if ptyFind.Visible == true then
         autoclosesmtn()
-        repeat
+        --repeat
         wait(1)
+        --[[
         local myServB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerButton.MyServerButton
         firesignal(myServB.Activated)
         wait(1)
+        ]]
         local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
         clickButton(genServ)
         firesignal(genServ.Activated)
@@ -78,6 +80,6 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
          clickButton(jlservB)
         firesignal(jlservB.Activated)
         wait()
-        until plrAmount == 1
+        --until plrAmount == 1
     end
 end
