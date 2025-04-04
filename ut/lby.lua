@@ -76,9 +76,7 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
     if ptyFind.Visible == true then
         autoclosesmtn()
-        --repeat 
-        firesignal(ptyFind.Activated)
-        clickButton(pt)
+        repeat 
         local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
         clickButton(genServ)
         firesignal(genServ.Activated)
@@ -87,6 +85,6 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
          clickButton(jlservB)
         firesignal(jlservB.Activated)
         wait()
-        --until plrAmount == 1
+        until plrAmount == 1
     end
 end
