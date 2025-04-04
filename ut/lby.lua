@@ -10,6 +10,28 @@ local tele = workspace.Lobby.EventTeleporters:GetChildren()[2]["Cylinder.119"].V
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter2.Part
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
 
+
+function clickButton(ClickOnPart)
+    local vim = game:GetService("VirtualInputManager")
+    local inset1, inset2 = game:GetService('GuiService'):GetGuiInset()
+    local insetOffset = inset1 - inset2
+    -- Replace "button location here" with the actual GUI object (e.g., a TextButton)
+    local part = ClickOnPart
+    -- Calculate the center of the GUI element
+    local topLeft = part.AbsolutePosition + insetOffset
+    local center = topLeft + (part.AbsoluteSize / 2)
+    -- Adjust the click position if needed
+    local X = center.X + 15
+    local Y = center.Y
+    -- Simulate a mouse click
+    vim:SendMouseButtonEvent(X, Y, 0, true, game, 0) -- Mouse down
+    task.wait(0.1) -- Small delay to simulate a real click
+    vim:SendMouseButtonEvent(X, Y, 0, false, game, 0) -- Mouse up
+    task.wait(1)
+    print("Clicked: ", ClickOnPart)
+end
+
+
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
     print("=1")
     if tele and eve == true then
@@ -31,12 +53,13 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
     if ptyFind.Visible == true then
         --repeat 
-        firesignal(ptyFind.Activated)
+        --firesignal(ptyFind.Activated)
         local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
-        
+        clickButton(genServ)
         firesignal(genServ.Activated)
         wait(1)
         local jlservB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.Join
+         clickButton(jlservB)
         firesignal(jlservB.Activated)
         wait()
         --until plrAmount == 1
