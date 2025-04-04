@@ -50,6 +50,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
         char:MoveTo(tele.Position)
     elseif dtele and dun == true then
         print("=1 dun")
+        autoclosesmtn()
         char.PrimaryPart.CFrame = CFrame.new(-17.5384903, 10.3119678, 3940.68262, -0.766061664, 0, 0.642767608, 0, 1, 0, -0.642767608, 0, -0.766061664)
         --char:MoveTo()
         repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.Visible == true
