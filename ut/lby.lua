@@ -10,6 +10,12 @@ local tele = workspace.Lobby.EventTeleporters:GetChildren()[2]["Cylinder.119"].V
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter2.Part
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
 
+
+function getRoot(char)
+	local rootPart = char:FindFirstChild('HumanoidRootPart') or char:FindFirstChild('Torso') or char:FindFirstChild('UpperTorso')
+	return rootPart
+end
+
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
     if tele and eve == true then
         char:MoveTo(tele.Position)
