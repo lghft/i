@@ -66,6 +66,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
         wait(1)
         local strt = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.StartButton
         firesignal(strt.Activated)
+        clickButton(strt)
     end
 elseif plrAmount > 1 and game.Players.LocalPlayer and not game.Workspace.Lobby then
     game:Shutdown()
@@ -73,7 +74,12 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
     if ptyFind.Visible == true then
         autoclosesmtn()
-        repeat 
+        repeat
+        clickButton(ptyFind)
+        wait(1)
+        local myServB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerButton.MyServerButton
+        clickButton(myServB)
+        wait(1)
         local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
         clickButton(genServ)
         firesignal(genServ.Activated)
