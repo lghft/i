@@ -31,7 +31,7 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
     if ptyFind.Visible == true then
         --repeat 
-        firesignal(ptyFind)
+        firesignal(ptyFind.Activated)
         local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
         firesignal(genServ.Activated)
         wait(1)
