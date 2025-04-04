@@ -18,7 +18,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
         repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.Visible == true
         local hard = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.HardcoreButton
         firesignal(hard.Activated)
-        wait(0.5)
+        wait(1)
         local strt = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.StartButton
         firesignal(strt.Activated)
     end
@@ -28,7 +28,7 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
     if ptyFind.Visible == true then
         local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
         firesignal(genServ.Activated)
-        wait(0.5)
+        wait(1)
         local jlservB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.Join
         firesignal(jlservB.Activated)
     end
