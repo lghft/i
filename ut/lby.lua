@@ -61,8 +61,6 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
         firesignal(strt.Activated)
         clickButton(strt)
     end
-elseif plrAmount > 1 and game.Players.LocalPlayer and not game.Workspace.Lobby then
-    game:Shutdown()
 elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
     if ptyFind.Visible == true then
