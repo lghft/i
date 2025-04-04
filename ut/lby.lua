@@ -30,13 +30,13 @@ elseif plrAmount > 1 and game.Players.LocalPlayer and not game.Workspace.Lobby t
 elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
     if ptyFind.Visible == true then
-        repeat 
+        --repeat 
         local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
         firesignal(genServ.Activated)
         wait(1)
         local jlservB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.Join
         firesignal(jlservB.Activated)
         wait()
-        until plrAmount == 1
+        --until plrAmount == 1
     end
 end
