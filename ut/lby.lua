@@ -32,8 +32,6 @@ function clickButton(ClickOnPart)
 end
 
 function autoclosesmtn()
-    local timeText = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.Time
-	timeText:GetPropertyChangedSignal("Text"):Connect(function()
     for _, v in ipairs(game:GetService("CoreGui"):GetDescendants()) do
 
         if v.Name == "open/close detector" then
@@ -43,7 +41,6 @@ function autoclosesmtn()
             end
         end
     end
-end)
 end
 
 
