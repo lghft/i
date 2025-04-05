@@ -141,6 +141,7 @@ function match()
     end
 	repeat wait() until wave.Text == "Wave 20/20" 
 	if wave.Text == "Wave 20/20" then
+		print("20/20")
 	    auto = false
             for k in pairs (itaT) do
                 itaT[k] = nil
