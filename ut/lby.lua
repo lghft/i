@@ -84,8 +84,5 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
         --until plrAmount == 1
     end
 end
-
-spawn(function()
-    print("cw")
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
-end)
+print("cw")
+loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
