@@ -1,6 +1,7 @@
 local itaT = {}
 local starT = {}
 local auto = true
+local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
 
 function spawnRageDrago() --2557
 	local args = {
@@ -11,61 +12,11 @@ function spawnRageDrago() --2557
 	game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
 end
 
-function spawnBlueDrago()
-	local args = {
-		[1] = tostring(game.Players.LocalPlayer.UserId .. ":" .. "12900"),
-		[2] = Vector3.new(-961.4971923828125, 10.068592071533203, 876.1779174804688)
-	}
-	
-	game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
-	
-end
-
-function spawnGreenDrago()
-	local args = {
-		[1] = tostring(game.Players.LocalPlayer.UserId .. ":" .. "48456"),
-		[2] = Vector3.new(-961.4971923828125, 10.068592071533203, 876.1779174804688)
-	}
-	
-	game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
-	
-end
-
-function spawnGoldDrago()
-	local args = {
-		[1] = tostring(game.Players.LocalPlayer.UserId .. ":" .. "66955"),
-		[2] = Vector3.new(-991.3324584960938, 8.822690963745117, 883.49072265625)
-	}
-	
-	game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
-	
-end
 function autoRage()
    while auto == true do
 	spawnRageDrago()
 	wait(1)
    end
-end
-
-function autoBlueDrago()
-	local timeText = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.Time
-	timeText:GetPropertyChangedSignal("Text"):Connect(function()
-		spawnBlueDrago()
-	end)
-end
-
-function autoGreenDrago()
-	local timeText = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.Time
-	timeText:GetPropertyChangedSignal("Text"):Connect(function()
-		spawnGreenDrago()
-	end)
-end
-
-function autoGoldDrago()
-	local timeText = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.Time
-	timeText:GetPropertyChangedSignal("Text"):Connect(function()
-		spawnGoldDrago()
-	end)
 end
 
 function useAbility(towerIndex)
@@ -137,31 +88,13 @@ function startMatch()
 end
 
 local wave = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.WaveIndex
---repeat wait() until game:IsLoaded()
---[[
-plrkck()
-wait()
-wait(4)
-startMatch()
-
-	repeat wait() until wave.Text == "Wave 1/20" 
-	if wave.Text == "Wave 1/20" then
-        sjwpath()
-        autoclosesmtn()
-        autoAbility(4)
-        autoAbility(3)
-    end
-]]
 function match()
+    auto = true
     print("drago script")
     repeat wait() until wave.Text == "Wave 12/20" 
-        local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActivateTowerAbility
-        local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
-        local remote3 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower")
         if wave.Text == "Wave 12/20" then
-        --game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
-        auto = true
-        wait()
+            print("12/20")
+            wait()
             autoRage()
             repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
                     for i,v in pairs(v:GetChildren()) do
@@ -216,6 +149,7 @@ function match()
             end
             
             print("GameEnd")
+            wait()
             match()
         end
     end
