@@ -42,6 +42,7 @@ function autoclosesmtn()
 end
 
 if plrAmount == 1 then
+    print("plr 1")
     loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()0
     wait(1)
     loadstring(game:HttpGet("https://raw.githubusercontent.com/couldntBeT/Main/refs/heads/main/Main.lua"))()
