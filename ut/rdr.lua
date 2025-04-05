@@ -2,6 +2,7 @@ local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActi
 local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
 local remote3 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower")
 local itaT = {}
+local auto = true
 
 function spawnRageDrago() --2557
 	local args = {
@@ -42,10 +43,9 @@ function spawnGoldDrago()
 	
 end
 function autoRage()
-	local timeText = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.Time
-	timeText:GetPropertyChangedSignal("Text"):Connect(function()
-		spawnRageDrago()
-	end)
+   while auto == true do
+	spawnRageDrago()
+   end
 end
 
 function autoBlueDrago()
@@ -168,7 +168,8 @@ repeat wait() until wave.Text == "Wave 12/20"
 	}
 	
 	game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerSetTowerTargetMode"):FireServer(unpack(args))
-		
+	auto = true
+	wait()
         autoRage()
         autoGreenDrago()
 	    repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
@@ -194,11 +195,12 @@ repeat wait() until wave.Text == "Wave 12/20"
 	   remote2:FireServer(itaT[1].Name)
        end
     end
-repeat wait() until	game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true
-if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
-	--game:Shutdown()
-	print("GameEnd")
-	match()
-end
+	repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true
+	if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
+		--game:Shutdown()
+		auto = false
+		print("GameEnd")
+		match()
+	end
 end
 match()
