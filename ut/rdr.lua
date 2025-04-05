@@ -154,72 +154,73 @@ startMatch()
     end
 ]]
 function match()
-print("drago script")
-repeat wait() until wave.Text == "Wave 12/20" 
-	local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActivateTowerAbility
-	local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
-	local remote3 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower")
-	print(wave12)
-	if wave.Text == "Wave 12/20" then
-	--game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
-	auto = true
-	wait()
-        autoRage()
+    print("drago script")
+    repeat wait() until wave.Text == "Wave 12/20" 
+        local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActivateTowerAbility
+        local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
+        local remote3 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower")
+        print(wave12)
+        if wave.Text == "Wave 12/20" then
+        --game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
+        auto = true
+        wait()
+            autoRage()
 
-		 repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
-	            for i,v in pairs(v:GetChildren()) do
-	                if v.Name == "Head" then
-                        for i,v in pairs(v:GetChildren()) do
-                            if v.Name == "starrk" then
-                                table.insert(starT, v.Parent)
-                                --print(v.Parent)
+            repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
+                    for i,v in pairs(v:GetChildren()) do
+                        if v.Name == "Head" then
+                            for i,v in pairs(v:GetChildren()) do
+                                if v.Name == "starrk" then
+                                    table.insert(starT, v.Parent)
+                                    --print(v.Parent)
+                                end
                             end
                         end
-	                end
-	            end
-	        end
-	        wait()
-	    until #starT == 1
+                    end
+                end
+                wait()
+            until #starT == 1
 
-		local args = {
-		    [1] = tostring(starT[1].Name),
-		    [2] = "Strong"
-		}
-		
-		game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerSetTowerTargetMode"):FireServer(unpack(args))
-	
-	    repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
-	            for i,v in pairs(v:GetChildren()) do
-	                if v.Name == "Hair" then
-	                    table.insert(itaT, v.Parent)
-	                    --print(v.Parent)
-	                end
-	            end
-	        end
-	        wait()
-	    until #itaT == 1
+            local args = {
+                [1] = tostring(starT[1].Name),
+                [2] = "Strong"
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerSetTowerTargetMode"):FireServer(unpack(args))
+        
+            repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
+                    for i,v in pairs(v:GetChildren()) do
+                        if v.Name == "Hair" then
+                            table.insert(itaT, v.Parent)
+                            --print(v.Parent)
+                        end
+                    end
+                end
+                wait()
+            until #itaT == 1
 
-	local args = {
-	    [1] = tostring(itaT[1].Name)
-	}
-	
-	game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerToggleAutoAbility"):FireServer(unpack(args))
-	wait(1)
-	remote2:FireServer(itaT[1].Name)
-	wait(1)
-	repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true
-	if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
-		--game:Shutdown()
-		auto = false
-		for k in pairs (itaT) do
-		    itaT[k] = nil
-		end
-		for k in pairs (starT) do
-		    starT[k] = nil
-		end
-		
-		print("GameEnd")
-		match()
-	end
+        local args = {
+            [1] = tostring(itaT[1].Name)
+        }
+        
+        game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerToggleAutoAbility"):FireServer(unpack(args))
+        wait(1)
+        remote2:FireServer(itaT[1].Name)
+        wait(1)
+        repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true
+        if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
+            --game:Shutdown()
+            auto = false
+            for k in pairs (itaT) do
+                itaT[k] = nil
+            end
+            for k in pairs (starT) do
+                starT[k] = nil
+            end
+            
+            print("GameEnd")
+            match()
+        end
+    end
 end
 match()
