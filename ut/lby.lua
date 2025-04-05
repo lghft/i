@@ -1,6 +1,8 @@
 print("lby?")
 repeat wait(5) until game:IsLoaded()
 print("Lby Loaded1")
+local plr = game.Players.LocalPlayer
+plr.CharacterAdded:Wait()
 local dun = false
 local eve = false
 local story = true
@@ -41,10 +43,6 @@ function autoclosesmtn()
             end
         end
     end
-end
-
-function autoAb()
-    
 end
 
 coroutine.wrap(function()
@@ -103,11 +101,9 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
         wait(1)
         ]]
         local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
-        clickButton(genServ)
         firesignal(genServ.Activated)
         wait(1)
         local jlservB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.Join
-         clickButton(jlservB)
         firesignal(jlservB.Activated)
         wait()
         --until plrAmount == 1
