@@ -204,13 +204,9 @@ repeat wait() until wave.Text == "Wave 12/20"
 	}
 	
 	game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerToggleAutoAbility"):FireServer(unpack(args))
-
-		
-       while true do
-  	   wait(0.9)
-	   remote2:FireServer(itaT[1].Name)
-       end
-    end
+	wait(1)
+	remote2:FireServer(itaT[1].Name)
+	wait(1)
 	repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true
 	if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
 		--game:Shutdown()
