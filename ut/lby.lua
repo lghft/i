@@ -49,7 +49,7 @@ function autoAb()
     
 end
 
-spawn(function()
+coroutine.wrap(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
 
 
