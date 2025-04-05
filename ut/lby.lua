@@ -61,7 +61,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
         local strt = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.StartButton
         firesignal(strt.Activated)
         clickButton(strt)
-    elseif story == true then
+    elseif story == true and plrAmount == 1 then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/couldntBeT/Main/refs/heads/main/Main.lua"))()
     end
 elseif plrAmount > 1 and game.Workspace.Lobby then
