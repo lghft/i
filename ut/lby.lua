@@ -10,7 +10,8 @@ local plrAmount = #Players:GetPlayers()
 local tele = workspace.Lobby.EventTeleporters:GetChildren()[2]["Cylinder.119"].VFX.hitbox
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter2.Part
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
-
+local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActivateTowerAbility
+local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
 
 function clickButton(ClickOnPart)
     local vim = game:GetService("VirtualInputManager")
@@ -44,8 +45,31 @@ function autoclosesmtn()
     end
 end
 
+function autoAb()
+    
+end
+
 spawn(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
+
+
+    local itaT = {}
+    repeat wait() until me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text == "Wave 1/30"
+    repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
+            for i,v in pairs(v:GetChildren()) do
+                if v.Name == "Hair" then
+                    table.insert(itaT, v.Parent)
+                    --print(v.Parent)
+                end
+            end
+        end
+        wait()
+    until #itaT == 1
+    while true do
+        remote:FireServer(itaT[1].Name)
+        wait(0.9)
+        remote2:FireServer(itaT[1].Name)
+    end
 end)
 
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
