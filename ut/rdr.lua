@@ -158,13 +158,11 @@ function match()
         local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActivateTowerAbility
         local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
         local remote3 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower")
-        print(wave12)
         if wave.Text == "Wave 12/20" then
         --game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
         auto = true
         wait()
             autoRage()
-
             repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
                     for i,v in pairs(v:GetChildren()) do
                         if v.Name == "Head" then
