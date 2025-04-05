@@ -1,4 +1,7 @@
+local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActivateTowerAbility
+local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
 local remote3 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower")
+local itaT = {}
 
 function spawnRageDrago() --2557
 	local args = {
@@ -160,6 +163,21 @@ repeat wait() until wave.Text == "Wave 12/20"
 	--game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
         autoRage()
         autoGreenDrago()
+	    repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
+	            for i,v in pairs(v:GetChildren()) do
+	                if v.Name == "Hair" then
+	                    table.insert(itaT, v.Parent)
+	                    --print(v.Parent)
+	                end
+	            end
+	        end
+	        wait()
+	    until #itaT == 1
+       while true do
+	   remote:FireServer(itaT[1].Name)
+  	   wait(0.9)
+	   remote2:FireServer(itaT[1].Name)
+       end
     end
 repeat wait() until	game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true
 if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
