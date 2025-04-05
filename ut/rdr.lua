@@ -152,7 +152,7 @@ startMatch()
     end
 ]]
 function match()
-
+print("drago script")
 repeat wait() until wave.Text == "Wave 12/20" 
 	print(wave12)
 	if wave.Text == "Wave 12/20" then
