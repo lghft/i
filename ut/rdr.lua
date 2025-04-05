@@ -136,7 +136,7 @@ end
 
 local wave = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.WaveIndex
 
-repeat wait() until game:IsLoaded()
+--repeat wait() until game:IsLoaded()
 --[[
 plrkck()
 wait()
@@ -152,6 +152,7 @@ startMatch()
     end
 ]]
 repeat wait() until wave.Text == "Wave 12/20" 
+	print(wave12)
 	if wave.Text == "Wave 12/20" then
 	autoclosesmtn()
 	--game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
