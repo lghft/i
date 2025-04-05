@@ -12,6 +12,8 @@ local plrAmount = #Players:GetPlayers()
 local tele = workspace.Lobby.EventTeleporters:GetChildren()[2]["Cylinder.119"].VFX.hitbox
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter2.Part
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
+local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActivateTowerAbility
+local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
 
 function clickButton(ClickOnPart)
     local vim = game:GetService("VirtualInputManager")
@@ -45,7 +47,7 @@ function autoclosesmtn()
     end
 end
 
-coroutine.wrap(function()
+spawn(function()
     print("cw")
     loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
 
@@ -62,8 +64,6 @@ coroutine.wrap(function()
         wait()
     until #itaT == 1
     while true do
-        local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActivateTowerAbility
-        local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
         remote:FireServer(itaT[1].Name)
         wait(0.9)
         remote2:FireServer(itaT[1].Name)
