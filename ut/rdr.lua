@@ -137,6 +137,7 @@ end
 local wave = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.WaveIndex
 
 repeat wait() until game:IsLoaded()
+autoclosesmtn()
 --[[
 plrkck()
 wait()
