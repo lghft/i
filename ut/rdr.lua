@@ -96,6 +96,7 @@ function match()
             print("12/20")
             wait()
             autoRage()
+	    print("Starkk")
             repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
                     for i,v in pairs(v:GetChildren()) do
                         if v.Name == "Head" then
@@ -117,7 +118,7 @@ function match()
             }
             
             game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerSetTowerTargetMode"):FireServer(unpack(args))
-        
+        print("ita")
             repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
                     for i,v in pairs(v:GetChildren()) do
                         if v.Name == "Hair" then
@@ -137,21 +138,23 @@ function match()
         wait(1)
         remote2:FireServer(itaT[1].Name)
         wait(1)
-        repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true
-        if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
-            --game:Shutdown()
-            auto = false
+    end
+	repeat wait() until wave.Text == "Wave 20/20" 
+	if wave.Text == "Wave 20/20" then
+	    auto = false
             for k in pairs (itaT) do
                 itaT[k] = nil
             end
             for k in pairs (starT) do
                 starT[k] = nil
             end
-            
+	end
+	 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true
+        if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
+            --game:Shutdown()
             print("GameEnd")
             wait()
             match()
         end
-    end
 end
 match()
