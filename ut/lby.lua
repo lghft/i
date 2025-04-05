@@ -43,7 +43,7 @@ end
 
 if plrAmount == 1 then
     print("plr 1")
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()0
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
 end
 
 
