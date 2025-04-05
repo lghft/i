@@ -54,7 +54,7 @@ spawn(function()
 
 
     local itaT = {}
-    repeat wait() until me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text == "Wave 1/30"
+    repeat wait() until me.PlayerGui.MainGui.MainFrames.Wave.WaveIndex.Text == "Wave 1/20"
     repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
             for i,v in pairs(v:GetChildren()) do
                 if v.Name == "Hair" then
