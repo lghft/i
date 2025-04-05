@@ -152,9 +152,9 @@ startMatch()
         autoAbility(3)
     end
 ]]
-repeat wait() until wave.Text == "Wave 11/20" 
-	if wave.Text == "Wave 11/20" then
-		game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
+repeat wait() until wave.Text == "Wave 12/20" 
+	if wave.Text == "Wave 12/20" then
+	--game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
         autoRage()
         autoGreenDrago()
     end
