@@ -181,8 +181,15 @@ repeat wait() until wave.Text == "Wave 12/20"
 	        end
 	        wait()
 	    until #itaT == 1
+
+	local args = {
+	    [1] = tostring(itaT[1].Name)
+	}
+	
+	game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerToggleAutoAbility"):FireServer(unpack(args))
+
+		
        while true do
-	   remote:FireServer(itaT[1].Name)
   	   wait(0.9)
 	   remote2:FireServer(itaT[1].Name)
        end
