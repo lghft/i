@@ -1,8 +1,6 @@
 print("lby?")
 repeat wait(5) until game:IsLoaded()
 print("Lby Loaded1")
-local plr = game.Players.LocalPlayer
-plr.CharacterAdded:Wait()
 local dun = false
 local eve = false
 local story = true
@@ -35,7 +33,6 @@ end
 
 function autoclosesmtn()
     for _, v in ipairs(game:GetService("CoreGui"):GetDescendants()) do
-
         if v.Name == "open/close detector" then
             if v.Parent.MainFrame.Visible == true then
                 print(v)
