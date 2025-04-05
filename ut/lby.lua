@@ -45,11 +45,6 @@ function autoclosesmtn()
     end
 end
 
-spawn(function()
-    print("cw")
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
-end)
-
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
     print("=1")
     if tele and eve == true then
@@ -89,3 +84,8 @@ elseif plrAmount > 1 and game.Workspace.Lobby then
         --until plrAmount == 1
     end
 end
+
+spawn(function()
+    print("cw")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
+end)
