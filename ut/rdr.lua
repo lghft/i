@@ -97,7 +97,7 @@ function match()
 	end)
 		
 	    print("Starkk")
-		--[[
+
             repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
                     for i,v in pairs(v:GetChildren()) do
                         if v.Name == "Head" then
@@ -119,7 +119,6 @@ function match()
             }
             
             game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerSetTowerTargetMode"):FireServer(unpack(args))
-		]]
         print("ita")
             repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
                     for i,v in pairs(v:GetChildren()) do
