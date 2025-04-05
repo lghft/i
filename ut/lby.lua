@@ -3,7 +3,6 @@ repeat wait(5) until game:IsLoaded()
 print("Lby Loaded1")
 local dun = false
 local eve = false
-local story = true
 local char = game.Players.LocalPlayer.Character
 local Players = game:GetService('Players')
 local plrAmount = #Players:GetPlayers()
@@ -43,7 +42,9 @@ function autoclosesmtn()
 end
 
 if plrAmount == 1 then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()0
+    wait(1)
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/couldntBeT/Main/refs/heads/main/Main.lua"))()
 end
 
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
@@ -62,8 +63,6 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
         local strt = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.StartButton
         firesignal(strt.Activated)
         clickButton(strt)
-    elseif story == true and plrAmount == 1 then
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/couldntBeT/Main/refs/heads/main/Main.lua"))()
     end
 elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
