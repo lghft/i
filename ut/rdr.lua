@@ -161,6 +161,14 @@ repeat wait() until wave.Text == "Wave 12/20"
 	if wave.Text == "Wave 12/20" then
 	autoclosesmtn()
 	--game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
+
+	local args = {
+	    [1] = "1319",
+	    [2] = "Strong"
+	}
+	
+	game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerSetTowerTargetMode"):FireServer(unpack(args))
+		
         autoRage()
         autoGreenDrago()
 	    repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
