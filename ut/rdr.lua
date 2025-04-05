@@ -46,6 +46,7 @@ end
 function autoRage()
    while auto == true do
 	spawnRageDrago()
+	wait(1)
    end
 end
 
