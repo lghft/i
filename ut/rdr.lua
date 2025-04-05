@@ -137,7 +137,6 @@ end
 local wave = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.WaveIndex
 
 repeat wait() until game:IsLoaded()
-autoclosesmtn()
 --[[
 plrkck()
 wait()
@@ -154,6 +153,7 @@ startMatch()
 ]]
 repeat wait() until wave.Text == "Wave 12/20" 
 	if wave.Text == "Wave 12/20" then
+	autoclosesmtn()
 	--game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
         autoRage()
         autoGreenDrago()
