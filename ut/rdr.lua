@@ -13,13 +13,6 @@ function spawnRageDrago() --2557
 	game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
 end
 
-function autoRage()
-   while auto == true do
-	spawnRageDrago()
-	wait(1)
-   end
-end
-
 function useAbility(towerIndex)
 	local towers = game.Workspace.EntityModels.Towers:GetChildren()
 	local args = {
@@ -95,7 +88,14 @@ function match()
         if wave.Text == "Wave 12/20" then
             print("12/20")
             wait()
-            autoRage()
+
+	spawn(function()
+		while auto == true do
+			spawnRageDrago()
+			wait(1)
+		end
+	end)
+		
 	    print("Starkk")
 		--[[
             repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
