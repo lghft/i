@@ -44,6 +44,7 @@ end
 
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
     print("=1")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
     if tele and eve == true then
         char:MoveTo(tele.Position)
     elseif dtele and dun == true then
