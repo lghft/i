@@ -140,7 +140,7 @@ function startMatch()
 end
 
 local wave = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.WaveIndex
-
+autoclosesmtn()
 --repeat wait() until game:IsLoaded()
 --[[
 plrkck()
@@ -161,7 +161,6 @@ print("drago script")
 repeat wait() until wave.Text == "Wave 12/20" 
 	print(wave12)
 	if wave.Text == "Wave 12/20" then
-	autoclosesmtn()
 	--game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
 	auto = true
 	wait()
