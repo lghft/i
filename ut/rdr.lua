@@ -218,6 +218,9 @@ repeat wait() until wave.Text == "Wave 12/20"
 		for k in pairs (itaT) do
 		    itaT[k] = nil
 		end
+		for k in pairs (starT) do
+		    starT[k] = nil
+		end
 		
 		print("GameEnd")
 		match()
