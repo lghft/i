@@ -46,6 +46,11 @@ if plrAmount == 1 then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
 end
 
+wait()
+if plrAmount == 1 then
+    print("plr pt2")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/couldntBeT/Main/refs/heads/main/Main.lua"))()
+end
 
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
     print("=1")
