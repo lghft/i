@@ -2,6 +2,7 @@ local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActi
 local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
 local remote3 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower")
 local itaT = {}
+local starT = {}
 local auto = true
 
 function spawnRageDrago() --2557
@@ -161,17 +162,32 @@ repeat wait() until wave.Text == "Wave 12/20"
 	if wave.Text == "Wave 12/20" then
 	autoclosesmtn()
 	--game.Players.LocalPlayer.PlayerGui.MainGui.UpgradePathSelection.Frame.Visible = false
-
-	local args = {
-	    [1] = "1319",
-	    [2] = "Strong"
-	}
-	
-	game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerSetTowerTargetMode"):FireServer(unpack(args))
 	auto = true
 	wait()
         autoRage()
-        autoGreenDrago()
+
+		 repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
+	            for i,v in pairs(v:GetChildren()) do
+	                if v.Name == "Head" then
+                        for i,v in pairs(v:GetChildren()) do
+                            if v.Name == "starrk" then
+                                table.insert(starT, v.Parent)
+                                --print(v.Parent)
+                            end
+                        end
+	                end
+	            end
+	        end
+	        wait()
+	    until #starT == 1
+
+		local args = {
+		    [1] = tostring(starT[1].Name),
+		    [2] = "Strong"
+		}
+		
+		game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerSetTowerTargetMode"):FireServer(unpack(args))
+	
 	    repeat for _,v in pairs(game:GetService("Workspace").EntityModels.Towers:GetChildren()) do
 	            for i,v in pairs(v:GetChildren()) do
 	                if v.Name == "Hair" then
