@@ -1,4 +1,4 @@
-repeat wait(4) until game:IsLoaded()
+repeat wait(4) until game:IsLoaded() print("DRAG LOAD")
 local itaT = {}
 local starT = {}
 local auto = true
