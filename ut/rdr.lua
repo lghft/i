@@ -1,4 +1,3 @@
-repeat wait() until game:Isloaded()
 local itaT = {}
 local starT = {}
 local auto = true
