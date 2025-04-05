@@ -151,6 +151,8 @@ startMatch()
         autoAbility(3)
     end
 ]]
+function match()
+
 repeat wait() until wave.Text == "Wave 12/20" 
 	print(wave12)
 	if wave.Text == "Wave 12/20" then
@@ -159,9 +161,10 @@ repeat wait() until wave.Text == "Wave 12/20"
         autoRage()
         autoGreenDrago()
     end
-	--[[
-	repeat wait() until	game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true
-	if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
-		game:Shutdown()
-	end
-	]]
+repeat wait() until	game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true
+if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
+	--game:Shutdown()
+	match()
+end
+
+end
