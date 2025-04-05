@@ -44,6 +44,9 @@ function autoclosesmtn()
     end
 end
 
+spawn(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
+end)
 
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
     print("=1")
@@ -63,7 +66,6 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby then
         clickButton(strt)
     elseif story == true then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/couldntBeT/Main/refs/heads/main/Main.lua"))()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/ut/rdr.lua"))()
     end
 elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
