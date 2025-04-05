@@ -199,6 +199,10 @@ repeat wait() until wave.Text == "Wave 12/20"
 	if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then
 		--game:Shutdown()
 		auto = false
+		for k in pairs (itaT) do
+		    itaT[k] = nil
+		end
+		
 		print("GameEnd")
 		match()
 	end
