@@ -140,7 +140,6 @@ function startMatch()
 end
 
 local wave = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.WaveIndex
-autoclosesmtn()
 --repeat wait() until game:IsLoaded()
 --[[
 plrkck()
