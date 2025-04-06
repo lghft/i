@@ -84,6 +84,13 @@ function match()
     local wave = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.WaveIndex
     auto = true
     print("drago script")
+
+   repeat wait() until wave.Text == "Wave 1/20" 
+	if wave.Text == "Wave 1/20" then
+	autoclosesmtn()
+	   print("Wave 1/20")
+	   sjwpath()
+	end
     repeat wait() until wave.Text == "Wave 12/20" 
         if wave.Text == "Wave 12/20" then
             print("12/20")
