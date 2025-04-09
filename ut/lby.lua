@@ -31,9 +31,13 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         wait()
         char.PrimaryPart.CFrame = CFrame.new(-269, 34, -135)
         wait()
+        repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.MapSelection.Visible == true
+        local mapS = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.MapSelection.MapList.ScrollingFrame.LasNoches
+        firesignal(mapS.Activated)
+        wait(0.5)
         local hrdB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.MapSelection.SelectedMap.Buttons.HardButton
         firesignal(hrdB.Activated)
-        wait(0.7)
+        wait(0.55)
         local strtB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.MapSelection.SelectedMap.Buttons.StartButton
         firesignal(strtB.Activated)
         wait()
