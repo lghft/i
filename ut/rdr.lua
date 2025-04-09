@@ -87,7 +87,7 @@ function match()
 
    repeat wait() until wave.Text == "Wave 1/20" 
 	if wave.Text == "Wave 1/20" then
-	autoclosesmtn()
+	--autoclosesmtn()
 	   print("Wave 1/20")
 	   --sjwpath()
 	end
