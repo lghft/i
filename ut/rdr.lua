@@ -110,8 +110,8 @@ function match()
                         if v.Name == "Head" then
                             for i,v in pairs(v:GetChildren()) do
                                 if v.Name == "starrk" then
-                                    table.insert(starT, v.Parent)
-                                    --print(v.Parent)
+                                    table.insert(starT, v.Parent.Parent)
+                                    print(v.Parent.Parent)
                                 end
                             end
                         end
