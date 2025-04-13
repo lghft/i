@@ -46,19 +46,21 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
 elseif plrAmount > 1 and game.Workspace.Lobby then
     print(">1")
     if ptyFind.Visible == true then
-        --repeat
         wait(1)
         --[[
         local myServB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerButton.MyServerButton
         firesignal(myServB.Activated)
         wait(1)
         ]]
+        spawn(function()
+        while true do
         local genServ = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.GenerateNewServerButton
         firesignal(genServ.Activated)
         wait(1)
         local jlservB = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.PartyFinder.Main.MyServerPanel.Main.Content.LastSavedServer.Panel.Join
         firesignal(jlservB.Activated)
         wait()
-        --until plrAmount == 1
+        end
+        end)
     end
 end
