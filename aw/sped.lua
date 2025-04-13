@@ -8,6 +8,7 @@ game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("x2Even
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.InterFace.Enabled == false
     if game:GetService("Players").LocalPlayer.PlayerGui.InterFace.Enabled == false then
         print("3x prolly")
+        repeat wait() untilgame:GetService("Players").LocalPlayer.PlayerGui.InterFace.Enabled == true
         spd()
     end
 end
