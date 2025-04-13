@@ -1,4 +1,4 @@
-repeat wait() until game:IsLoaded()
+repeat wait(4) until game:IsLoaded()
 local args = {
     [1] = "x2"
 }
