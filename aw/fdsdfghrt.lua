@@ -1,5 +1,7 @@
 function a()
 
+wait(4)
+
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.InterFace.Day.Text == "[Esper City] [Master] Wave 1/13"
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.InterFace.Skip.Visible == true
 game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SkipEvent"):FireServer()
