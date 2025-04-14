@@ -5,7 +5,7 @@ wait(4)
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.InterFace.Day.Text == "[Esper City] [Master] Wave 1/13"
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.InterFace.Skip.Visible == true
 game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SkipEvent"):FireServer()
-
+print("1")
 
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.InterFace.Day.Text == "[Esper City] [Master] Wave 7/13"
 spawn(function()
@@ -14,11 +14,11 @@ game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SkipEv
 wait(1)
 end
 end)
-
+print("au")
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.InterFace.Day.Text == "[Esper City] [Master] Wave 13/13"
 
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.Announce.BossList.Boss_Info.Visible == true
-
+print(bss)
 wait(10)
 local args = {
     [1] = "Enuma Elish",
