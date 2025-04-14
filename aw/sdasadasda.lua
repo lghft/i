@@ -48,5 +48,4 @@ repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.InterFace.E
 b()
 end
 
-end
 b()
