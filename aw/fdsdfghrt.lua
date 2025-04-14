@@ -20,7 +20,7 @@ repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.InterFace.D
 
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.Announce.BossList.Boss_Info.Visible == true
 print(bss)
-wait(10)
+wait(6)
 local args = {
     [1] = "Enuma Elish",
     [2] = workspace:WaitForChild("Units"):WaitForChild("King of Heroes")
