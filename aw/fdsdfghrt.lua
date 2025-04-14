@@ -28,6 +28,4 @@ game:GetService("ReplicatedStorage"):WaitForChild("Remote"):Wikitorial("UnitAbil
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.InterFace.Equip.val.Cash_Value.val.Text == "4950 $"
 a()
 end
-
-end
 a()
