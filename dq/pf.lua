@@ -10,7 +10,7 @@ local humanoid = character:WaitForChild("Humanoid")
 -- ====== CONFIGURATION ======
 local ATTACK_RANGE = 30 -- Stops moving when within this distance (studs)
 local REFRESH_RATE = 1 -- How often to check for new targets (seconds)
-local STUCK_THRESHOLD = 5 -- Time in seconds before considering stuck
+local STUCK_THRESHOLD = 10 -- Time in seconds before considering stuck (increased to 10)
 local MAX_WAYPOINT_TIME = 10 -- Maximum time to spend on a single waypoint
 local RECALCULATE_ATTEMPTS = 3 -- How many times to try recalculating path when stuck
 local LONG_PATH_THRESHOLD = 100 -- Considered a long path
@@ -18,7 +18,7 @@ local WAYPOINT_SKIP_DISTANCE = 5 -- How many waypoints to skip when stuck
 local CONSECUTIVE_STUCK_LIMIT = 3 -- How many stuck checks before taking action
 local STUCK_MOVE_THRESHOLD = 1.5 -- Distance to consider as not moving (studs)
 local INPUT_RESET_DELAY = 0.2 -- Time to wait after clearing player input
-local MOVEMENT_CHECK_INTERVAL = 0.5 -- How often to check for movement (seconds)
+local STUCK_CHECK_INTERVAL = 10 -- Check for stuck conditions every 10 seconds
 
 -- ====== DEBUG GUI SETUP ======
 local screenGui = Instance.new("ScreenGui")
@@ -64,29 +64,9 @@ textStroke.Parent = content
 
 -- ====== MOVEMENT TRACKING ======
 local lastPosition = character:GetPivot().Position
-local lastMovementTime = os.clock()
-local isCurrentlyMoving = false
+local lastMovementCheck = os.clock()
 local currentWaypointIndex = 0
 local lastWaypointChangeTime = os.clock()
-
-local function trackMovement()
-    RunService.Heartbeat:Connect(function()
-        local currentPosition = character:GetPivot().Position
-        local distanceMoved = (currentPosition - lastPosition).Magnitude
-        
-        if distanceMoved > STUCK_MOVE_THRESHOLD then
-            lastMovementTime = os.clock()
-            isCurrentlyMoving = true
-        else
-            isCurrentlyMoving = false
-        end
-        
-        lastPosition = currentPosition
-    end)
-end
-
--- Start tracking movement
-trackMovement()
 
 -- ====== INPUT CONTROL ======
 local function clearPlayerInput()
@@ -104,14 +84,14 @@ end
 -- ====== PATHFINDING FUNCTIONS ======
 local function updateDebugInfo(info)
     content.Text = string.format(
-        "STATUS: %s\n\nTARGET: %s\n\nDISTANCE: %.1f/%.1f\n\nPATH: %s\n\nMOVEMENT: %s\n\nWAYPOINT: %d\n\nUPDATED: %s",
+        "STATUS: %s\n\nTARGET: %s\n\nDISTANCE: %.1f/%.1f\n\nPATH: %s\n\nWAYPOINT: %d\n\nLAST CHECK: %s\n\nUPDATED: %s",
         info.status or "WAITING",
         info.targetName or "NONE",
         info.distance or 0,
         ATTACK_RANGE,
         info.pathStatus or "READY",
-        isCurrentlyMoving and "MOVING" or "STUCK",
         currentWaypointIndex,
+        os.date("%X", lastMovementCheck),
         os.date("%X")
     )
 end
@@ -150,32 +130,26 @@ local function findClosestAliveEnemy()
     return closestEnemy, closestDistance
 end
 
-local function checkStuckCondition(currentWaypoint, stuckStartTime, consecutiveStuckChecks)
+local function checkStuckCondition()
     local currentTime = os.clock()
     local currentPosition = character:GetPivot().Position
     local distanceMoved = (currentPosition - lastPosition).Magnitude
     
+    -- Update last check time
+    lastMovementCheck = currentTime
+    
     -- Check if we're not moving
     if distanceMoved < STUCK_MOVE_THRESHOLD then
-        consecutiveStuckChecks = consecutiveStuckChecks + 1
-        
-        if not stuckStartTime then
-            stuckStartTime = currentTime
-        elseif (currentTime - stuckStartTime) >= STUCK_THRESHOLD then
-            return true, stuckStartTime, consecutiveStuckChecks
+        -- Check if we've been stuck for the threshold time
+        if (currentTime - lastWaypointChangeTime) >= STUCK_THRESHOLD then
+            return true
         end
     else
-        -- Reset if we're moving
-        stuckStartTime = nil
-        consecutiveStuckChecks = 0
+        -- Update position if we're moving
+        lastPosition = currentPosition
     end
     
-    -- Check if we're on the same waypoint for too long
-    if currentWaypoint and (currentTime - lastWaypointChangeTime) > MAX_WAYPOINT_TIME then
-        return true, stuckStartTime, consecutiveStuckChecks
-    end
-    
-    return false, stuckStartTime, consecutiveStuckChecks
+    return false
 end
 
 local function moveToTarget(target, recalculateAttempts)
@@ -239,8 +213,7 @@ local function moveToTarget(target, recalculateAttempts)
     
     if path.Status == Enum.PathStatus.Success then
         local waypoints = path:GetWaypoints()
-        local stuckStartTime = nil
-        local consecutiveStuckChecks = 0
+        local stuckCheckTimer = os.clock()
         
         for i, waypoint in ipairs(waypoints) do
             if stopMoving then break end
@@ -248,8 +221,8 @@ local function moveToTarget(target, recalculateAttempts)
             currentWaypointIndex = i
             lastWaypointChangeTime = os.clock()
             
-            -- Skip waypoints if we're far along in a long path and stuck
-            if #waypoints > LONG_PATH_THRESHOLD and i > 50 and consecutiveStuckChecks > CONSECUTIVE_STUCK_LIMIT then
+            -- Skip waypoints if we're far along in a long path
+            if #waypoints > LONG_PATH_THRESHOLD and i > 50 then
                 local skipAmount = math.min(WAYPOINT_SKIP_DISTANCE, #waypoints - i)
                 updateDebugInfo({
                     status = "LONG PATH - SKIPPING",
@@ -258,7 +231,6 @@ local function moveToTarget(target, recalculateAttempts)
                     pathStatus = string.format("SKIPPING %d WAYPOINTS (%d/%d)", skipAmount, i, #waypoints)
                 })
                 i = i + skipAmount - 1 -- -1 because loop will increment
-                consecutiveStuckChecks = 0
                 continue
             end
 
@@ -294,24 +266,11 @@ local function moveToTarget(target, recalculateAttempts)
             local startTime = os.clock()
             
             while not humanoid.MoveToFinished:Wait(0.1) do
-                -- Check if we're stuck
-                local isStuck, newStuckTime, newChecks = checkStuckCondition(waypoint, stuckStartTime, consecutiveStuckChecks)
-                stuckStartTime = newStuckTime
-                consecutiveStuckChecks = newChecks
-                
-                if isStuck then
-                    -- Try more aggressive recovery for long paths
-                    if #waypoints > LONG_PATH_THRESHOLD then
-                        clearPlayerInput()
-                        humanoid.Jump = true
-                        task.wait(0.1)
-                        humanoid.Jump = true  -- Double jump
-                        task.wait(0.3)
-                        humanoid:MoveTo(waypoint.Position)
-                    end
+                -- Check for stuck condition every 10 seconds
+                if os.clock() - stuckCheckTimer >= STUCK_CHECK_INTERVAL then
+                    stuckCheckTimer = os.clock()
                     
-                    -- If still stuck after recovery attempts
-                    if (character:GetPivot().Position - lastPosition).Magnitude < STUCK_MOVE_THRESHOLD then
+                    if checkStuckCondition() then
                         updateDebugInfo({
                             status = "STUCK - RECALCULATING",
                             targetName = target.Name,
