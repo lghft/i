@@ -31,16 +31,26 @@ if #plrs == 1 then
             local chainLightning = safeWaitForChild(backpack, "Chain Lightning", 10)
             local abilityEvent = safeWaitForChild(chainLightning, "abilityEvent", 10)
             
-            local args = {"80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"}
+            local args1 = {"80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"}
             
-            abilityEvent:FireServer(unpack(args))
-            abilityEvent:FireServer(unpack(args))
-            abilityEvent:FireServer(unpack(args))
-            abilityEvent:FireServer(unpack(args))
-            abilityEvent:FireServer(unpack(args))
-            abilityEvent:FireServer(unpack(args))
-            abilityEvent:FireServer(unpack(args))
-            abilityEvent:FireServer(unpack(args))
+            abilityEvent:FireServer(unpack(args1))
+            abilityEvent:FireServer(unpack(args1))
+            abilityEvent:FireServer(unpack(args1))
+            abilityEvent:FireServer(unpack(args1))
+            abilityEvent:FireServer(unpack(args1))
+            abilityEvent:FireServer(unpack(args1))
+            abilityEvent:FireServer(unpack(args1))
+            abilityEvent:FireServer(unpack(args1))
+            local args = {
+                {
+                    {
+                        ["\003"] = "vote",
+                        vote = true
+                    },
+                    "/"
+                }
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
             -- Handle retry button
             local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Retry
             firesignal(rplyBut.Activated)
