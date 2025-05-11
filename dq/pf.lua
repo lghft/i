@@ -1,72 +1,84 @@
+-- ====== SERVICES ======
 local Players = game:GetService("Players")
 local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
 
+-- ====== CONFIGURATION ======
+local Config = {
+    ATTACK_RANGE = 30,
+    REFRESH_RATE = 1,
+    STUCK_CHECK_INTERVAL = 60,
+    STUCK_DISTANCE_THRESHOLD = 5,
+    PREDICTION_FRAMES = 10,
+    TELEPORT_DELAY = 0.1
+}
+
+-- ====== PLAYER INITIALIZATION ======
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
--- ====== CONFIGURATION ======
-local ATTACK_RANGE = 30 -- Stops moving when within this distance (studs)
-local REFRESH_RATE = 1 -- How often to check for new targets (seconds)
-local STUCK_CHECK_INTERVAL = 10 -- Check if stuck every 60 seconds
-local STUCK_DISTANCE_THRESHOLD = 5 -- If moved less than this distance in STUCK_CHECK_INTERVAL seconds, consider stuck
+-- ====== MINIMAL STATS GUI ======
+local statsGui = Instance.new("ScreenGui")
+statsGui.Name = "PathfinderStats"
+statsGui.Parent = player.PlayerGui
 
--- ====== DEBUG GUI SETUP ======
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "PathfindingDebug"
-screenGui.Parent = player.PlayerGui
+local statsFrame = Instance.new("Frame")
+statsFrame.Size = UDim2.new(0.25, 0, 0.15, 0)
+statsFrame.Position = UDim2.new(0.73, 0, 0.8, 0)
+statsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+statsFrame.BackgroundTransparency = 0.7
+statsFrame.BorderSizePixel = 0
+statsFrame.Parent = statsGui
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0.25, 0, 0.35, 0)
-frame.Position = UDim2.new(0.73, 0, 0.6, 0)
-frame.BackgroundTransparency = 0.7
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-frame.Parent = screenGui
+local statsText = Instance.new("TextLabel")
+statsText.Name = "StatsText"
+statsText.Text = "Initializing pathfinder..."
+statsText.Size = UDim2.new(1, -10, 1, -10)
+statsText.Position = UDim2.new(0, 5, 0, 5)
+statsText.BackgroundTransparency = 1
+statsText.TextColor3 = Color3.fromRGB(200, 255, 200)
+statsText.Font = Enum.Font.Code
+statsText.TextSize = 14
+statsText.TextXAlignment = Enum.TextXAlignment.Left
+statsText.TextYAlignment = Enum.TextYAlignment.Top
+statsText.TextWrapped = true
+statsText.Parent = statsFrame
 
-local title = Instance.new("TextLabel")
-title.Text = "PATHFINDING STATS"
-title.Size = UDim2.new(1, 0, 0.15, 0)
-title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.SciFi
-title.TextSize = 22
-title.TextScaled = false
-title.Parent = frame
-
-local content = Instance.new("TextLabel")
-content.Name = "Content"
-content.Text = "Initializing..."
-content.Size = UDim2.new(1, -10, 0.85, -10)
-content.Position = UDim2.new(0, 5, 0.15, 5)
-content.BackgroundTransparency = 1
-content.TextColor3 = Color3.fromRGB(200, 255, 200)
-content.Font = Enum.Font.Code
-content.TextSize = 18
-content.TextXAlignment = Enum.TextXAlignment.Left
-content.TextYAlignment = Enum.TextYAlignment.Top
-content.TextWrapped = true
-content.Parent = frame
-
-local textStroke = Instance.new("UIStroke")
-textStroke.Thickness = 1.5
-textStroke.Color = Color3.fromRGB(0, 0, 0)
-textStroke.Parent = content
-
--- ====== PATHFINDING FUNCTIONS ======
-local function updateDebugInfo(info)
-    content.Text = string.format(
-        "STATUS: %s\n\nTARGET: %s\n\nDISTANCE: %.1f/%.1f\n\nPATH: %s\n\nUPDATED: %s",
-        info.status or "WAITING",
+local function UpdateStats(info)
+    statsText.Text = string.format(
+        "TARGET: %s\nDISTANCE: %.1f\nWAYPOINT: %d/%d\nSTATUS: %s\nPREDICTION: %s",
         info.targetName or "NONE",
         info.distance or 0,
-        ATTACK_RANGE,
-        info.pathStatus or "READY",
-        os.date("%X")
+        info.currentWaypoint or 0,
+        info.totalWaypoints or 0,
+        info.status or "IDLE",
+        info.prediction or "OFF"
     )
 end
 
+-- ====== ENEMY PREDICTION SYSTEM ======
+local Prediction = {
+    History = {},
+    SampleRate = 0.1
+}
+
+function PredictPosition(enemy, frames)
+    if not Prediction.History[enemy] then return enemy:GetPivot().Position end
+    
+    local velocity = Vector3.new()
+    local samples = math.min(#Prediction.History[enemy], 5)
+    
+    for i = 1, samples-1 do
+        local delta = Prediction.History[enemy][i] - Prediction.History[enemy][i+1]
+        velocity = velocity + (delta / Prediction.SampleRate)
+    end
+    velocity = velocity / samples
+    
+    return enemy:GetPivot().Position + (velocity * frames * Prediction.SampleRate)
+end
+
+-- ====== PATHFINDING FUNCTIONS ======
 local function isEnemyAlive(enemy)
     if not enemy:FindFirstChild("HumanoidRootPart") then return false end
     local enemyHumanoid = enemy:FindFirstChild("Humanoid")
@@ -92,38 +104,28 @@ local function findClosestAliveEnemy()
         end
     end
     
-    updateDebugInfo({
-        status = closestEnemy and "TARGET FOUND" or "NO TARGETS",
+    UpdateStats({
         targetName = closestEnemy and closestEnemy.Name or "NONE",
-        distance = closestDistance ~= math.huge and closestDistance or 0
+        distance = closestDistance ~= math.huge and closestDistance or 0,
+        status = closestEnemy and "TARGET FOUND" or "NO TARGETS",
+        prediction = Config.PREDICTION_FRAMES > 0 and "ON" or "OFF"
     })
     
     return closestEnemy, closestDistance
 end
 
-local function moveToTarget(target)
-    if not target or not target:FindFirstChild("HumanoidRootPart") then return end
+local function SafeTeleport(position)
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
     
-    local stopMoving = false
-    local _, currentDistance = findClosestAliveEnemy()
-    
-    -- Stop if already in attack range
-    if currentDistance <= ATTACK_RANGE then
-        updateDebugInfo({
-            status = "IN RANGE",
-            targetName = target.Name,
-            distance = currentDistance,
-            pathStatus = "READY TO ATTACK"
-        })
-        return
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        humanoidRootPart.CFrame = CFrame.new(position)
+        return true
     end
-    
-    updateDebugInfo({
-        status = "CALCULATING PATH",
-        targetName = target.Name,
-        distance = currentDistance
-    })
-    
+    return false
+end
+
+local function ComputePath(target)
     local path = PathfindingService:CreatePath({
         AgentRadius = 2,
         AgentHeight = 5,
@@ -131,97 +133,75 @@ local function moveToTarget(target)
         WaypointSpacing = 2
     })
     
-    local deathCheckConnection
-    if target:FindFirstChild("Humanoid") then
-        deathCheckConnection = target.Humanoid.Died:Connect(function()
-            stopMoving = true
-        end)
-    end
+    local targetPos = Config.PREDICTION_FRAMES > 0 and PredictPosition(target, Config.PREDICTION_FRAMES) or target:GetPivot().Position
+    path:ComputeAsync(character:GetPivot().Position, targetPos)
     
-    local success, errorMessage = pcall(function()
-        path:ComputeAsync(character:GetPivot().Position, target:GetPivot().Position)
-    end)
+    return path
+end
+
+local function EnhancedMoveToTarget(target)
+    if not target or not target:FindFirstChild("HumanoidRootPart") then return end
     
-    if not success then
-        warn("Path error:", errorMessage)
-        if deathCheckConnection then deathCheckConnection:Disconnect() end
+    local path = ComputePath(target)
+    if not path or path.Status ~= Enum.PathStatus.Success then
+        UpdateStats({
+            status = "PATH FAILED: "..tostring(path and path.Status or "NO PATH"),
+            targetName = target.Name
+        })
         return
     end
+
+    local waypoints = path:GetWaypoints()
+    local lastPosition = character:GetPivot().Position
+    local lastMovementCheck = os.clock()
     
-    if path.Status == Enum.PathStatus.Success then
-        local waypoints = path:GetWaypoints()
-        local lastPosition = character:GetPivot().Position
-        local lastMovementCheck = os.clock()
-        local isStuck = false
+    for i, waypoint in ipairs(waypoints) do
+        -- Update stats
+        UpdateStats({
+            targetName = target.Name,
+            distance = (target:GetPivot().Position - character:GetPivot().Position).Magnitude,
+            currentWaypoint = i,
+            totalWaypoints = #waypoints,
+            status = "MOVING"
+        })
         
-        for i, waypoint in ipairs(waypoints) do
-            if stopMoving then break end
-            
-            -- Check if stuck (not moving enough)
-            if os.clock() - lastMovementCheck >= STUCK_CHECK_INTERVAL then
-                local currentPosition = character:GetPivot().Position
-                local distanceMoved = (currentPosition - lastPosition).Magnitude
-                
-                if distanceMoved < STUCK_DISTANCE_THRESHOLD then
-                    updateDebugInfo({
-                        status = "STUCK - RECALCULATING",
-                        targetName = target.Name,
-                        distance = currentDistance,
-                        pathStatus = "RECALCULATING PATH"
-                    })
-                    isStuck = true
-                    print("Stuck!")
-                    break
-                end
-                
-                lastPosition = currentPosition
-                lastMovementCheck = os.clock()
+        -- Check if stuck
+        if os.clock() - lastMovementCheck >= Config.STUCK_CHECK_INTERVAL then
+            local currentPosition = character:GetPivot().Position
+            if (currentPosition - lastPosition).Magnitude < Config.STUCK_DISTANCE_THRESHOLD then
+                UpdateStats({status = "STUCK - RECALCULATING"})
+                return
             end
-            
-            -- Check distance every step
-            local _, currentDistance = findClosestAliveEnemy()
-            if currentDistance <= ATTACK_RANGE then
-                updateDebugInfo({
-                    status = "IN RANGE",
-                    targetName = target.Name,
-                    distance = currentDistance,
-                    pathStatus = "ATTACKING"
-                })
-                break
+            lastPosition = currentPosition
+            lastMovementCheck = os.clock()
+        end
+        
+        -- Check attack range
+        if (target:GetPivot().Position - character:GetPivot().Position).Magnitude <= Config.ATTACK_RANGE then
+            UpdateStats({status = "IN ATTACK RANGE"})
+            break
+        end
+        
+        -- Teleport to waypoint
+        if waypoint.Action == Enum.PathWaypointAction.Jump then
+            SafeTeleport(waypoint.Position + Vector3.new(0, 5, 0))
+        else
+            SafeTeleport(waypoint.Position)
+        end
+        
+        -- Update prediction history
+        if Config.PREDICTION_FRAMES > 0 then
+            if not Prediction.History[target] then
+                Prediction.History[target] = {}
             end
-            
-            updateDebugInfo({
-                status = "MOVING",
-                targetName = target.Name,
-                distance = currentDistance,
-                pathStatus = string.format("%s (%d/%d)", path.Status.Name, i, #waypoints)
-            })
-            
-            if waypoint.Action == Enum.PathWaypointAction.Jump then
-                humanoid.Jump = true
-            end
-            
-            humanoid:MoveTo(waypoint.Position)
-            
-            local startTime = os.clock()
-            while not humanoid.MoveToFinished:Wait(0.1) do
-                if os.clock() - startTime > 5 or not isEnemyAlive(target) then
-                    stopMoving = true
-                    break
-                end
+            table.insert(Prediction.History[target], 1, target:GetPivot().Position)
+            if #Prediction.History[target] > 10 then
+                table.remove(Prediction.History[target])
             end
         end
         
-        -- If stuck, break out of current path and let main loop recalculate
-        if isStuck then
-            if deathCheckConnection then deathCheckConnection:Disconnect() end
-            return
-        end
-    else
-        warn("Path failed:", path.Status)
+        task.wait(Config.TELEPORT_DELAY)
     end
-    
-    if deathCheckConnection then deathCheckConnection:Disconnect() end
 end
 
 -- ====== MAIN LOOP ======
@@ -231,24 +211,23 @@ if #plrs == 1 then
         local enemy, distance = findClosestAliveEnemy()
         
         if enemy then
-            if distance > ATTACK_RANGE then
-                moveToTarget(enemy)
+            if distance > Config.ATTACK_RANGE then
+                EnhancedMoveToTarget(enemy)
             else
-                updateDebugInfo({
-                    status = "IN RANGE",
+                UpdateStats({
+                    status = "IN ATTACK RANGE",
                     targetName = enemy.Name,
-                    distance = distance,
-                    pathStatus = "READY TO ATTACK"
+                    distance = distance
                 })
             end
         else
-            updateDebugInfo({
+            UpdateStats({
                 status = "SEARCHING",
                 targetName = "NONE",
                 distance = 0
             })
         end
         
-        wait(REFRESH_RATE)
+        task.wait(Config.REFRESH_RATE)
     end
 end
