@@ -192,7 +192,7 @@ local function moveToTarget(target)
     if deathCheckConnection then deathCheckConnection:Disconnect() end
 end
 -- ====== pf ======
-loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/dq/pf.lua")
+loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/dq/ws.lua")
 
 -- ====== MAIN LOOP ======
 while true do
