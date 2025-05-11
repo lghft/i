@@ -193,6 +193,9 @@ local function moveToTarget(target)
 end
 
 -- ====== MAIN LOOP ======
+
+local plrs = game.Players:GetChildren()
+if #plrs == 1 then
 while true do
     local enemy, distance = findClosestAliveEnemy()
     
@@ -216,4 +219,5 @@ while true do
     end
     
     wait(REFRESH_RATE)
+end
 end
