@@ -7,8 +7,8 @@ local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
 -- ====== CONFIGURATION ======
-local ATTACK_RANGE = 15 -- Stops moving when within this distance (studs)
-local REFRESH_RATE = 0.5 -- How often to check for new targets (seconds)
+local ATTACK_RANGE = 30 -- Stops moving when within this distance (studs)
+local REFRESH_RATE = 1 -- How often to check for new targets (seconds)
 
 -- ====== DEBUG GUI SETUP ======
 local screenGui = Instance.new("ScreenGui")
@@ -126,7 +126,7 @@ local function moveToTarget(target)
         AgentRadius = 2,
         AgentHeight = 5,
         AgentCanJump = true,
-        WaypointSpacing = 4
+        WaypointSpacing = 2
     })
     
     local deathCheckConnection
