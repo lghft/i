@@ -10,6 +10,8 @@ local humanoid = character:WaitForChild("Humanoid")
 local ATTACK_RANGE = 30 -- Stops moving when within this distance (studs)
 local REFRESH_RATE = 1 -- How often to check for new targets (seconds)
 local STUCK_THRESHOLD = 5 -- Time in seconds before considering stuck
+local MAX_WAYPOINT_TIME = 10 -- Maximum time to spend on a single waypoint
+local RECALCULATE_ATTEMPTS = 3 -- How many times to try recalculating path when stuck
 
 -- ====== DEBUG GUI SETUP ======
 local screenGui = Instance.new("ScreenGui")
@@ -100,8 +102,9 @@ local function findClosestAliveEnemy()
     return closestEnemy, closestDistance
 end
 
-local function moveToTarget(target)
-    if not target or not target:FindFirstChild("HumanoidRootPart") then return end
+local function moveToTarget(target, recalculateAttempts)
+    if not target or not target:FindFirstChild("HumanoidRootPart") then return false end
+    recalculateAttempts = recalculateAttempts or 0
     
     local stopMoving = false
     local _, currentDistance = findClosestAliveEnemy()
@@ -114,7 +117,7 @@ local function moveToTarget(target)
             distance = currentDistance,
             pathStatus = "READY TO ATTACK"
         })
-        return
+        return true
     end
     
     updateDebugInfo({
@@ -144,7 +147,7 @@ local function moveToTarget(target)
     if not success then
         warn("Path error:", errorMessage)
         if deathCheckConnection then deathCheckConnection:Disconnect() end
-        return
+        return false
     end
     
     if path.Status == Enum.PathStatus.Success then
@@ -164,7 +167,8 @@ local function moveToTarget(target)
                     distance = currentDistance,
                     pathStatus = "ATTACKING"
                 })
-                break
+                if deathCheckConnection then deathCheckConnection:Disconnect() end
+                return true
             end
             
             updateDebugInfo({
@@ -203,7 +207,7 @@ local function moveToTarget(target)
                                 status = "STUCK - RECOVERING",
                                 targetName = target.Name,
                                 distance = currentDistance,
-                                pathStatus = "JUMPING TO RECOVER"
+                                pathStatus = string.format("JUMPING (%d/%d)", i, #waypoints)
                             })
                             
                             -- Try jumping to unstick
@@ -217,10 +221,22 @@ local function moveToTarget(target)
                                     status = "STUCK - RECALCULATING",
                                     targetName = target.Name,
                                     distance = currentDistance,
-                                    pathStatus = "PATH RECALCULATION"
+                                    pathStatus = string.format("PATH RECALCULATION (attempt %d/%d)", recalculateAttempts + 1, RECALCULATE_ATTEMPTS)
                                 })
-                                stuckStartTime = nil
-                                break -- Exit this waypoint to recalculate path
+                                
+                                if recalculateAttempts < RECALCULATE_ATTEMPTS then
+                                    if deathCheckConnection then deathCheckConnection:Disconnect() end
+                                    return moveToTarget(target, recalculateAttempts + 1)
+                                else
+                                    updateDebugInfo({
+                                        status = "GIVING UP - TOO MANY ATTEMPTS",
+                                        targetName = target.Name,
+                                        distance = currentDistance,
+                                        pathStatus = "FAILED"
+                                    })
+                                    if deathCheckConnection then deathCheckConnection:Disconnect() end
+                                    return false
+                                end
                             else
                                 stuckStartTime = nil -- Reset if we moved
                             end
@@ -231,7 +247,19 @@ local function moveToTarget(target)
                     end
                 end
                 
-                if os.clock() - startTime > 5 or not isEnemyAlive(target) then
+                -- Timeout for this waypoint
+                if os.clock() - startTime > MAX_WAYPOINT_TIME then
+                    updateDebugInfo({
+                        status = "WAYPOINT TIMEOUT",
+                        targetName = target.Name,
+                        distance = currentDistance,
+                        pathStatus = string.format("TIMEOUT (%d/%d)", i, #waypoints)
+                    })
+                    stopMoving = true
+                    break
+                end
+                
+                if not isEnemyAlive(target) then
                     stopMoving = true
                     break
                 end
@@ -239,37 +267,47 @@ local function moveToTarget(target)
         end
     else
         warn("Path failed:", path.Status)
-    end
-    
-    if deathCheckConnection then deathCheckConnection:Disconnect() end
-end
-
--- ====== MAIN LOOP ======
-
-local plrs = game.Players:GetChildren()
-if #plrs == 1 then
-while true do
-    local enemy, distance = findClosestAliveEnemy()
-    
-    if enemy then
-        if distance > ATTACK_RANGE then
-            moveToTarget(enemy)
-        else
-            updateDebugInfo({
-                status = "IN RANGE",
-                targetName = enemy.Name,
-                distance = distance,
-                pathStatus = "READY TO ATTACK"
-            })
-        end
-    else
         updateDebugInfo({
-            status = "SEARCHING",
-            targetName = "NONE",
-            distance = 0
+            status = "PATH FAILED",
+            targetName = target.Name,
+            distance = currentDistance,
+            pathStatus = path.Status.Name
         })
     end
     
-    wait(REFRESH_RATE)
+    if deathCheckConnection then deathCheckConnection:Disconnect() end
+    return false
 end
+
+-- ====== MAIN LOOP ======
+local plrs = game.Players:GetChildren()
+if #plrs == 1 then
+    while true do
+        local enemy, distance = findClosestAliveEnemy()
+        
+        if enemy then
+            if distance > ATTACK_RANGE then
+                local success = moveToTarget(enemy)
+                if not success then
+                    -- Wait a bit before trying again after failure
+                    wait(1)
+                end
+            else
+                updateDebugInfo({
+                    status = "IN RANGE",
+                    targetName = enemy.Name,
+                    distance = distance,
+                    pathStatus = "READY TO ATTACK"
+                })
+            end
+        else
+            updateDebugInfo({
+                status = "SEARCHING",
+                targetName = "NONE",
+                distance = 0
+            })
+        end
+        
+        wait(REFRESH_RATE)
+    end
 end
