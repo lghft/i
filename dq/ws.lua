@@ -1,57 +1,66 @@
 repeat wait(6) until game:IsLoaded()
 
+local function safeWaitForChild(parent, childName, timeout)
+    timeout = timeout or 10 -- default 10 second timeout
+    local startTime = os.time()
+    local child
+    
+    while not child and os.time() - startTime < timeout do
+        child = parent:FindFirstChild(childName)
+        if not child then
+            wait(1)
+        end
+    end
+    
+    if not child then
+        error("Timed out waiting for child: " .. childName)
+    end
+    
+    return child
+end
+
 local plrs = game.Players:GetChildren()
 if #plrs == 1 then
-wait(4)
+    wait(4)
     print("LOADED?")
+    
     getgenv().active = true
     while getgenv().active == true do
-    --[[
-    local args = {
-        "405BF493-86B1-4B2D-A281-2BBFF16F6F13"
-    }
-    game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Explosive Mine"):WaitForChild("spellEvent"):FireServer(unpack(args))
-    ]]
-
-    local args = {
-        "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
-    }
-    game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
-
-    local args = {
-        "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
-    }
-    game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
-
-    local args = {
-        "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
-    }
-    game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
-
-    local args = {
-        "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
-    }
-    game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
-    local args = {
-        "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
-    }
-    game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
-    local args = {
-        "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
-    }
-    game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
-    local args = {
-        "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
-    }
-    game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
-    local args = {
-        "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
-    }
-    game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
-    local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Retry
-    firesignal(rplyBut.Activated)
-    game:GetService("ReplicatedStorage"):WaitForChild("remotes"):WaitForChild("changeStartValue"):FireServer()
-    wait()
-    game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').WalkSpeed = 33
+        local success, err = pcall(function()
+            local backpack = game:GetService("Players").LocalPlayer:WaitForChild("Backpack", 10)
+            local chainLightning = safeWaitForChild(backpack, "Chain Lightning", 10)
+            local abilityEvent = safeWaitForChild(chainLightning, "abilityEvent", 10)
+            
+            local args = {"80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"}
+            
+            -- Fire the event multiple times
+            for i = 1, 8 do
+                abilityEvent:FireServer(unpack(args))
+                wait(0.1) -- Small delay between fires
+            end
+            
+            -- Handle retry button
+            local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Retry
+            if rplyBut then
+                firesignal(rplyBut.Activated)
+            end
+            
+            -- Change start value
+            local changeStartValue = game:GetService("ReplicatedStorage"):WaitForChild("remotes", 10):WaitForChild("changeStartValue", 10)
+            changeStartValue:FireServer()
+            
+            -- Set walk speed
+            local humanoid = game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid')
+            if humanoid then
+                humanoid.WalkSpeed = 33
+            end
+        end)
+        
+        if not success then
+            warn("Error in loop: " .. tostring(err))
+            wait(5) -- Wait longer if there was an error
+        else
+            wait() -- Normal wait if everything succeeded
+        end
     end
 end
