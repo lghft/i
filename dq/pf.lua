@@ -9,6 +9,8 @@ local humanoid = character:WaitForChild("Humanoid")
 -- ====== CONFIGURATION ======
 local ATTACK_RANGE = 30 -- Stops moving when within this distance (studs)
 local REFRESH_RATE = 1 -- How often to check for new targets (seconds)
+local STUCK_CHECK_INTERVAL = 60 -- Check if stuck every 60 seconds
+local STUCK_DISTANCE_THRESHOLD = 5 -- If moved less than this distance in STUCK_CHECK_INTERVAL seconds, consider stuck
 
 -- ====== DEBUG GUI SETUP ======
 local screenGui = Instance.new("ScreenGui")
@@ -148,9 +150,32 @@ local function moveToTarget(target)
     
     if path.Status == Enum.PathStatus.Success then
         local waypoints = path:GetWaypoints()
+        local lastPosition = character:GetPivot().Position
+        local lastMovementCheck = os.clock()
+        local isStuck = false
         
         for i, waypoint in ipairs(waypoints) do
             if stopMoving then break end
+            
+            -- Check if stuck (not moving enough)
+            if os.clock() - lastMovementCheck >= STUCK_CHECK_INTERVAL then
+                local currentPosition = character:GetPivot().Position
+                local distanceMoved = (currentPosition - lastPosition).Magnitude
+                
+                if distanceMoved < STUCK_DISTANCE_THRESHOLD then
+                    updateDebugInfo({
+                        status = "STUCK - RECALCULATING",
+                        targetName = target.Name,
+                        distance = currentDistance,
+                        pathStatus = "RECALCULATING PATH"
+                    })
+                    isStuck = true
+                    break
+                end
+                
+                lastPosition = currentPosition
+                lastMovementCheck = os.clock()
+            end
             
             -- Check distance every step
             local _, currentDistance = findClosestAliveEnemy()
@@ -185,6 +210,12 @@ local function moveToTarget(target)
                 end
             end
         end
+        
+        -- If stuck, break out of current path and let main loop recalculate
+        if isStuck then
+            if deathCheckConnection then deathCheckConnection:Disconnect() end
+            return
+        end
     else
         warn("Path failed:", path.Status)
     end
@@ -193,31 +224,30 @@ local function moveToTarget(target)
 end
 
 -- ====== MAIN LOOP ======
-
 local plrs = game.Players:GetChildren()
 if #plrs == 1 then
-while true do
-    local enemy, distance = findClosestAliveEnemy()
-    
-    if enemy then
-        if distance > ATTACK_RANGE then
-            moveToTarget(enemy)
+    while true do
+        local enemy, distance = findClosestAliveEnemy()
+        
+        if enemy then
+            if distance > ATTACK_RANGE then
+                moveToTarget(enemy)
+            else
+                updateDebugInfo({
+                    status = "IN RANGE",
+                    targetName = enemy.Name,
+                    distance = distance,
+                    pathStatus = "READY TO ATTACK"
+                })
+            end
         else
             updateDebugInfo({
-                status = "IN RANGE",
-                targetName = enemy.Name,
-                distance = distance,
-                pathStatus = "READY TO ATTACK"
+                status = "SEARCHING",
+                targetName = "NONE",
+                distance = 0
             })
         end
-    else
-        updateDebugInfo({
-            status = "SEARCHING",
-            targetName = "NONE",
-            distance = 0
-        })
+        
+        wait(REFRESH_RATE)
     end
-    
-    wait(REFRESH_RATE)
-end
 end
