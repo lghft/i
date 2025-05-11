@@ -36,14 +36,12 @@ if #plrs == 1 then
             -- Fire the event multiple times
             for i = 1, 8 do
                 abilityEvent:FireServer(unpack(args))
-                wait(0.1) -- Small delay between fires
+                wait() -- Small delay between fires
             end
             
             -- Handle retry button
             local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Retry
-            if rplyBut then
-                firesignal(rplyBut.Activated)
-            end
+            firesignal(rplyBut.Activated)
             
             -- Change start value
             local changeStartValue = game:GetService("ReplicatedStorage"):WaitForChild("remotes", 10):WaitForChild("changeStartValue", 10)
