@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 -- ====== CONFIGURATION ======
 local Config = {
     ATTACK_RANGE = 30,
-    REFRESH_RATE = 0.1,
+    REFRESH_RATE = 1,
     STUCK_CHECK_INTERVAL = 60,
     STUCK_DISTANCE_THRESHOLD = 5,
     PREDICTION_FRAMES = 10,
@@ -17,6 +17,16 @@ local Config = {
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
+
+-- Check player count before proceeding
+local function checkPlayerCount()
+    return #Players:GetPlayers() <= 1
+end
+
+if not checkPlayerCount() then
+    warn("Script disabled - More than 1 player in game")
+    return
+end
 
 -- ====== MINIMAL STATS GUI ======
 local statsGui = Instance.new("ScreenGui")
@@ -156,6 +166,12 @@ local function EnhancedMoveToTarget(target)
     local lastMovementCheck = os.clock()
     
     for i, waypoint in ipairs(waypoints) do
+        -- Check player count before each move
+        if not checkPlayerCount() then
+            UpdateStats({status = "DISABLED - MULTIPLAYER DETECTED"})
+            return
+        end
+        
         -- Update stats
         UpdateStats({
             targetName = target.Name,
@@ -205,29 +221,29 @@ local function EnhancedMoveToTarget(target)
 end
 
 -- ====== MAIN LOOP ======
-local plrs = game.Players:GetChildren()
-if #plrs == 1 then
-    while true do
-        local enemy, distance = findClosestAliveEnemy()
-        
-        if enemy then
-            if distance > Config.ATTACK_RANGE then
-                EnhancedMoveToTarget(enemy)
-            else
-                UpdateStats({
-                    status = "IN ATTACK RANGE",
-                    targetName = enemy.Name,
-                    distance = distance
-                })
-            end
+while checkPlayerCount() do
+    local enemy, distance = findClosestAliveEnemy()
+    
+    if enemy then
+        if distance > Config.ATTACK_RANGE then
+            EnhancedMoveToTarget(enemy)
         else
             UpdateStats({
-                status = "SEARCHING",
-                targetName = "NONE",
-                distance = 0
+                status = "IN ATTACK RANGE",
+                targetName = enemy.Name,
+                distance = distance
             })
         end
-        
-        task.wait(Config.REFRESH_RATE)
+    else
+        UpdateStats({
+            status = "SEARCHING",
+            targetName = "NONE",
+            distance = 0
+        })
     end
+    
+    task.wait(Config.REFRESH_RATE)
 end
+
+-- If we exit the loop due to player count
+UpdateStats({status = "DISABLED - MULTIPLAYER DETECTED"})
