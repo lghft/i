@@ -234,7 +234,7 @@ local function moveToTarget(target)
             end
         end
         
-        attempts += 1
+        attempts = attempts + 1
         task.wait(0.5)
     end
     
