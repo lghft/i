@@ -33,11 +33,7 @@ if #plrs == 1 then
             
             local args = {"80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"}
             
-            -- Fire the event multiple times
-            for i = 1, 8 do
-                abilityEvent:FireServer(unpack(args))
-                wait() -- Small delay between fires
-            end
+            abilityEvent:FireServer(unpack(args))
             
             -- Handle retry button
             local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Retry
