@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 -- ====== CONFIGURATION ======
 local Config = {
     ATTACK_RANGE = 30,
-    REFRESH_RATE = 0.1,
+    REFRESH_RATE = 0,
     STUCK_CHECK_INTERVAL = 60,
     STUCK_DISTANCE_THRESHOLD = 5,
     PREDICTION_FRAMES = 10,
