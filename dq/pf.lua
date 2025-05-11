@@ -9,6 +9,7 @@ local humanoid = character:WaitForChild("Humanoid")
 -- ====== CONFIGURATION ======
 local ATTACK_RANGE = 30 -- Stops moving when within this distance (studs)
 local REFRESH_RATE = 1 -- How often to check for new targets (seconds)
+local STUCK_THRESHOLD = 15 -- Time in seconds before considering stuck
 
 -- ====== DEBUG GUI SETUP ======
 local screenGui = Instance.new("ScreenGui")
@@ -148,6 +149,8 @@ local function moveToTarget(target)
     
     if path.Status == Enum.PathStatus.Success then
         local waypoints = path:GetWaypoints()
+        local lastWaypointPosition = nil
+        local stuckStartTime = nil
         
         for i, waypoint in ipairs(waypoints) do
             if stopMoving then break end
@@ -178,7 +181,56 @@ local function moveToTarget(target)
             humanoid:MoveTo(waypoint.Position)
             
             local startTime = os.clock()
+            local lastPosition = character:GetPivot().Position
+            local stuckCheckInterval = 0.5 -- Check for stuck every 0.5 seconds
+            local lastCheckTime = os.clock()
+            
             while not humanoid.MoveToFinished:Wait(0.1) do
+                local currentTime = os.clock()
+                
+                -- Check if character is stuck (not moving for STUCK_THRESHOLD seconds)
+                if (currentTime - lastCheckTime) >= stuckCheckInterval then
+                    lastCheckTime = currentTime
+                    local currentPosition = character:GetPivot().Position
+                    local distanceMoved = (currentPosition - lastPosition).Magnitude
+                    
+                    if distanceMoved < 1 then -- If moved less than 1 stud
+                        if not stuckStartTime then
+                            stuckStartTime = currentTime
+                        elseif (currentTime - stuckStartTime) >= STUCK_THRESHOLD then
+                            -- We're stuck, try to recover
+                            updateDebugInfo({
+                                status = "STUCK - RECOVERING",
+                                targetName = target.Name,
+                                distance = currentDistance,
+                                pathStatus = "JUMPING TO RECOVER"
+                            })
+                            
+                            -- Try jumping to unstick
+                            humanoid.Jump = true
+                            wait(0.2)
+                            humanoid:MoveTo(waypoint.Position)
+                            
+                            -- If still stuck after jumping, break and recalculate path
+                            if (character:GetPivot().Position - lastPosition).Magnitude < 1 then
+                                updateDebugInfo({
+                                    status = "STUCK - RECALCULATING",
+                                    targetName = target.Name,
+                                    distance = currentDistance,
+                                    pathStatus = "PATH RECALCULATION"
+                                })
+                                stuckStartTime = nil
+                                break -- Exit this waypoint to recalculate path
+                            else
+                                stuckStartTime = nil -- Reset if we moved
+                            end
+                        end
+                    else
+                        stuckStartTime = nil -- Reset if we moved
+                        lastPosition = currentPosition
+                    end
+                end
+                
                 if os.clock() - startTime > 5 or not isEnemyAlive(target) then
                     stopMoving = true
                     break
