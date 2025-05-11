@@ -48,6 +48,8 @@ wait(4)
         "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
     }
     game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
+    local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Retry
+    firesignal(rplyBut.Activated)
     game:GetService("ReplicatedStorage"):WaitForChild("remotes"):WaitForChild("changeStartValue"):FireServer()
     wait()
     game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').WalkSpeed = 33
