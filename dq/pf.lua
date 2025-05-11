@@ -9,7 +9,7 @@ local humanoid = character:WaitForChild("Humanoid")
 -- ====== CONFIGURATION ======
 local ATTACK_RANGE = 30 -- Stops moving when within this distance (studs)
 local REFRESH_RATE = 1 -- How often to check for new targets (seconds)
-local STUCK_THRESHOLD = 15 -- Time in seconds before considering stuck
+local STUCK_THRESHOLD = 5 -- Time in seconds before considering stuck
 
 -- ====== DEBUG GUI SETUP ======
 local screenGui = Instance.new("ScreenGui")
