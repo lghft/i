@@ -49,7 +49,7 @@ if #plrs == 1 then
             local changeStartValue = game:GetService("ReplicatedStorage"):WaitForChild("remotes", 10):WaitForChild("changeStartValue", 10)
             changeStartValue:FireServer()
 
-            local startMenu = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Main.MainCTAs.Start
+            local startMenu = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Main.StartButton
             firesignal(startMenu.Activated)
             -- Set walk speed
             local humanoid = game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid')
