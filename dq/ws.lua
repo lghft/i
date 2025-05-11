@@ -8,7 +8,7 @@ local function safeWaitForChild(parent, childName, timeout)
     while not child and os.time() - startTime < timeout do
         child = parent:FindFirstChild(childName)
         if not child then
-            wait(1)
+            wait()
         end
     end
     
