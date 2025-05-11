@@ -8,19 +8,17 @@ local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
 -- ====== CONFIGURATION ======
-local ATTACK_RANGE = 30
-local REFRESH_RATE = 1
-local STUCK_THRESHOLD = 5
-local MAX_WAYPOINT_TIME = 10
-local RECALCULATE_ATTEMPTS = 3
-local LONG_PATH_THRESHOLD = 100
-local WAYPOINT_SKIP_DISTANCE = 5
-local CONSECUTIVE_STUCK_LIMIT = 3
-local STUCK_MOVE_THRESHOLD = 1.5
-local INPUT_RESET_DELAY = 0.2
-local POSITION_CHECK_INTERVAL = 0.5
-local TELEPORT_DISTANCE_THRESHOLD = 50
-local DEBUG_MODE = true
+local ATTACK_RANGE = 30 -- Stops moving when within this distance (studs)
+local REFRESH_RATE = 1 -- How often to check for new targets (seconds)
+local STUCK_THRESHOLD = 5 -- Time in seconds before considering stuck
+local MAX_WAYPOINT_TIME = 10 -- Maximum time to spend on a single waypoint
+local RECALCULATE_ATTEMPTS = 3 -- How many times to try recalculating path when stuck
+local LONG_PATH_THRESHOLD = 100 -- Considered a long path
+local WAYPOINT_SKIP_DISTANCE = 5 -- How many waypoints to skip when stuck
+local CONSECUTIVE_STUCK_LIMIT = 3 -- How many stuck checks before taking action
+local STUCK_MOVE_THRESHOLD = 1.5 -- Distance to consider as not moving (studs)
+local INPUT_RESET_DELAY = 0.2 -- Time to wait after clearing player input
+local MOVEMENT_CHECK_INTERVAL = 0.5 -- How often to check for movement (seconds)
 
 -- ====== DEBUG GUI SETUP ======
 local screenGui = Instance.new("ScreenGui")
@@ -42,6 +40,7 @@ title.BackgroundTransparency = 1
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.SciFi
 title.TextSize = 22
+title.TextScaled = false
 title.Parent = frame
 
 local content = Instance.new("TextLabel")
@@ -63,34 +62,75 @@ textStroke.Thickness = 1.5
 textStroke.Color = Color3.fromRGB(0, 0, 0)
 textStroke.Parent = content
 
--- ====== CORE FUNCTIONS ======
+-- ====== MOVEMENT TRACKING ======
+local lastPosition = character:GetPivot().Position
+local lastMovementTime = os.clock()
+local isCurrentlyMoving = false
+local currentWaypointIndex = 0
+local lastWaypointChangeTime = os.clock()
+
+local function trackMovement()
+    RunService.Heartbeat:Connect(function()
+        local currentPosition = character:GetPivot().Position
+        local distanceMoved = (currentPosition - lastPosition).Magnitude
+        
+        if distanceMoved > STUCK_MOVE_THRESHOLD then
+            lastMovementTime = os.clock()
+            isCurrentlyMoving = true
+        else
+            isCurrentlyMoving = false
+        end
+        
+        lastPosition = currentPosition
+    end)
+end
+
+-- Start tracking movement
+trackMovement()
+
+-- ====== INPUT CONTROL ======
+local function clearPlayerInput()
+    -- Cancel all current movement input
+    humanoid:Move(Vector3.new(0, 0, 0))
+    
+    -- Disconnect any existing connections to prevent memory leaks
+    if humanoid.MoveToFinished then
+        humanoid.MoveToFinished:Disconnect()
+    end
+    
+    task.wait(INPUT_RESET_DELAY) -- Small delay to ensure input is cleared
+end
+
+-- ====== PATHFINDING FUNCTIONS ======
 local function updateDebugInfo(info)
-    if not DEBUG_MODE then return end
     content.Text = string.format(
-        "STATUS: %s\nTARGET: %s\nDISTANCE: %.1f/%.1f\nPATH: %s\nUPDATED: %s\n%s",
+        "STATUS: %s\n\nTARGET: %s\n\nDISTANCE: %.1f/%.1f\n\nPATH: %s\n\nMOVEMENT: %s\n\nWAYPOINT: %d\n\nUPDATED: %s",
         info.status or "WAITING",
         info.targetName or "NONE",
         info.distance or 0,
         ATTACK_RANGE,
         info.pathStatus or "READY",
-        os.date("%X"),
-        info.extra or ""
+        isCurrentlyMoving and "MOVING" or "STUCK",
+        currentWaypointIndex,
+        os.date("%X")
     )
 end
 
 local function isEnemyAlive(enemy)
-    if not enemy or not enemy:FindFirstChild("HumanoidRootPart") then return false end
+    if not enemy:FindFirstChild("HumanoidRootPart") then return false end
     local enemyHumanoid = enemy:FindFirstChild("Humanoid")
-    return enemyHumanoid and enemyHumanoid.Health > 0
+    if enemyHumanoid and enemyHumanoid.Health <= 0 then return false end
+    return true
 end
 
 local function findClosestAliveEnemy()
-    local closestEnemy, closestDistance = nil, math.huge
+    local closestEnemy = nil
+    local closestDistance = math.huge
     
-    for _, folder in pairs(workspace.dungeon:GetDescendants()) do
+    for _, folder in pairs(game.Workspace.dungeon:GetDescendants()) do
         if folder.Name == "enemyFolder" then
             for _, enemy in pairs(folder:GetChildren()) do
-                if isEnemyAlive(enemy) then
+                if enemy:IsA("Model") and isEnemyAlive(enemy) and enemy:FindFirstChild("HumanoidRootPart") then
                     local distance = (character:GetPivot().Position - enemy:GetPivot().Position).Magnitude
                     if distance < closestDistance then
                         closestDistance = distance
@@ -104,174 +144,261 @@ local function findClosestAliveEnemy()
     updateDebugInfo({
         status = closestEnemy and "TARGET FOUND" or "NO TARGETS",
         targetName = closestEnemy and closestEnemy.Name or "NONE",
-        distance = closestDistance
+        distance = closestDistance ~= math.huge and closestDistance or 0
     })
     
     return closestEnemy, closestDistance
 end
 
--- ====== MOVEMENT CONTROL ======
-local activePath = nil
-local lastValidPosition = character:GetPivot().Position
-
-local function clearPlayerInput()
-    humanoid:Move(Vector3.new(0, 0, 0))
-    task.wait(INPUT_RESET_DELAY)
-end
-
-local function cancelCurrentPath()
-    if activePath then
-        pcall(function() activePath:Destroy() end)
-        activePath = nil
-    end
-    humanoid:MoveTo(character:GetPivot().Position)
-end
-
-local function checkForTeleport()
-    local currentPos = character:GetPivot().Position
-    local distance = (currentPos - lastValidPosition).Magnitude
-    lastValidPosition = currentPos
-    return distance > TELEPORT_DISTANCE_THRESHOLD
-end
-
--- ====== PATH EXECUTION ======
-local function executeWaypoint(waypoint, target, pathIndex, totalWaypoints)
-    clearPlayerInput()
+local function checkStuckCondition(currentWaypoint, stuckStartTime, consecutiveStuckChecks)
+    local currentTime = os.clock()
+    local currentPosition = character:GetPivot().Position
+    local distanceMoved = (currentPosition - lastPosition).Magnitude
     
-    if waypoint.Action == Enum.PathWaypointAction.Jump then
-        humanoid.Jump = true
+    -- Check if we're not moving
+    if distanceMoved < STUCK_MOVE_THRESHOLD then
+        consecutiveStuckChecks = consecutiveStuckChecks + 1
+        
+        if not stuckStartTime then
+            stuckStartTime = currentTime
+        elseif (currentTime - stuckStartTime) >= STUCK_THRESHOLD then
+            return true, stuckStartTime, consecutiveStuckChecks
+        end
+    else
+        -- Reset if we're moving
+        stuckStartTime = nil
+        consecutiveStuckChecks = 0
     end
     
-    humanoid:MoveTo(waypoint.Position)
-    
-    local startTime = os.clock()
-    local lastPosition = character:GetPivot().Position
-    local stuckTime = nil
-    
-    while not humanoid.MoveToFinished:Wait(0.1) do
-        local currentTime = os.clock()
-        local currentPos = character:GetPivot().Position
-        
-        -- Check for teleport
-        if checkForTeleport() then
-            updateDebugInfo({status = "TELEPORT DETECTED", extra = "Recalculating path..."})
-            return false, "teleport"
-        end
-        
-        -- Stuck detection
-        if (currentPos - lastPosition).Magnitude < STUCK_MOVE_THRESHOLD then
-            stuckTime = stuckTime or currentTime
-            if currentTime - stuckTime > STUCK_THRESHOLD then
-                updateDebugInfo({status = "STUCK", extra = "Attempting recovery..."})
-                humanoid.Jump = true
-                task.wait(0.2)
-                humanoid:MoveTo(waypoint.Position)
-                stuckTime = nil
-            end
-        else
-            stuckTime = nil
-            lastPosition = currentPos
-        end
-        
-        -- Timeout check
-        if currentTime - startTime > MAX_WAYPOINT_TIME then
-            return false, "timeout"
-        end
-        
-        -- Target validity check
-        if not isEnemyAlive(target) then
-            return false, "target_dead"
-        end
+    -- Check if we're on the same waypoint for too long
+    if currentWaypoint and (currentTime - lastWaypointChangeTime) > MAX_WAYPOINT_TIME then
+        return true, stuckStartTime, consecutiveStuckChecks
     end
     
-    return true
+    return false, stuckStartTime, consecutiveStuckChecks
 end
 
-local function moveToTarget(target)
-    local attempts = 0
-    local success = false
+local function moveToTarget(target, recalculateAttempts)
+    if not target or not target:FindFirstChild("HumanoidRootPart") then return false end
+    recalculateAttempts = recalculateAttempts or 0
     
-    while attempts < RECALCULATE_ATTEMPTS and not success do
-        cancelCurrentPath()
-        
-        local path = PathfindingService:CreatePath({
-            AgentRadius = 2,
-            AgentHeight = 5,
-            AgentCanJump = true,
-            WaypointSpacing = 2
+    local stopMoving = false
+    local _, currentDistance = findClosestAliveEnemy()
+    
+    -- Skip if we've tried too many times
+    if recalculateAttempts >= RECALCULATE_ATTEMPTS then
+        updateDebugInfo({
+            status = "GIVING UP - TOO MANY ATTEMPTS",
+            targetName = target.Name,
+            distance = currentDistance,
+            pathStatus = "FAILED"
         })
-        
+        return false
+    end
+    
+    -- Stop if already in attack range
+    if currentDistance <= ATTACK_RANGE then
+        updateDebugInfo({
+            status = "IN RANGE",
+            targetName = target.Name,
+            distance = currentDistance,
+            pathStatus = "READY TO ATTACK"
+        })
+        return true
+    end
+    
+    updateDebugInfo({
+        status = "CALCULATING PATH",
+        targetName = target.Name,
+        distance = currentDistance
+    })
+    
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        WaypointSpacing = 2
+    })
+    
+    local deathCheckConnection
+    if target:FindFirstChild("Humanoid") then
+        deathCheckConnection = target.Humanoid.Died:Connect(function()
+            stopMoving = true
+        end)
+    end
+    
+    local success, errorMessage = pcall(function()
         path:ComputeAsync(character:GetPivot().Position, target:GetPivot().Position)
-        activePath = path
+    end)
+    
+    if not success then
+        warn("Path error:", errorMessage)
+        if deathCheckConnection then deathCheckConnection:Disconnect() end
+        return false
+    end
+    
+    if path.Status == Enum.PathStatus.Success then
+        local waypoints = path:GetWaypoints()
+        local stuckStartTime = nil
+        local consecutiveStuckChecks = 0
         
-        if path.Status == Enum.PathStatus.Success then
-            local waypoints = path:GetWaypoints()
+        for i, waypoint in ipairs(waypoints) do
+            if stopMoving then break end
+            
+            currentWaypointIndex = i
+            lastWaypointChangeTime = os.clock()
+            
+            -- Skip waypoints if we're far along in a long path and stuck
+            if #waypoints > LONG_PATH_THRESHOLD and i > 50 and consecutiveStuckChecks > CONSECUTIVE_STUCK_LIMIT then
+                local skipAmount = math.min(WAYPOINT_SKIP_DISTANCE, #waypoints - i)
+                updateDebugInfo({
+                    status = "LONG PATH - SKIPPING",
+                    targetName = target.Name,
+                    distance = currentDistance,
+                    pathStatus = string.format("SKIPPING %d WAYPOINTS (%d/%d)", skipAmount, i, #waypoints)
+                })
+                i = i + skipAmount - 1 -- -1 because loop will increment
+                consecutiveStuckChecks = 0
+                continue
+            end
+
+            -- Check distance every step
+            local _, currentDistance = findClosestAliveEnemy()
+            if currentDistance <= ATTACK_RANGE then
+                updateDebugInfo({
+                    status = "IN RANGE",
+                    targetName = target.Name,
+                    distance = currentDistance,
+                    pathStatus = "ATTACKING"
+                })
+                if deathCheckConnection then deathCheckConnection:Disconnect() end
+                return true
+            end
             
             updateDebugInfo({
-                status = "PATHFINDING",
-                pathStatus = string.format("Waypoints: %d", #waypoints)
+                status = "MOVING",
+                targetName = target.Name,
+                distance = currentDistance,
+                pathStatus = string.format("%s (%d/%d)", path.Status.Name, i, #waypoints)
             })
             
-            for i, waypoint in ipairs(waypoints) do
-                local result, reason = executeWaypoint(waypoint, target, i, #waypoints)
+            -- Clear any player input before moving
+            clearPlayerInput()
+            
+            if waypoint.Action == Enum.PathWaypointAction.Jump then
+                humanoid.Jump = true
+            end
+            
+            humanoid:MoveTo(waypoint.Position)
+            
+            local startTime = os.clock()
+            
+            while not humanoid.MoveToFinished:Wait(0.1) do
+                -- Check if we're stuck
+                local isStuck, newStuckTime, newChecks = checkStuckCondition(waypoint, stuckStartTime, consecutiveStuckChecks)
+                stuckStartTime = newStuckTime
+                consecutiveStuckChecks = newChecks
                 
-                if not result then
-                    if reason == "teleport" then
-                        attempts = 0 -- Reset attempts on teleport
-                        break
-                    elseif reason == "target_dead" then
-                        return false
+                if isStuck then
+                    -- Try more aggressive recovery for long paths
+                    if #waypoints > LONG_PATH_THRESHOLD then
+                        clearPlayerInput()
+                        humanoid.Jump = true
+                        task.wait(0.1)
+                        humanoid.Jump = true  -- Double jump
+                        task.wait(0.3)
+                        humanoid:MoveTo(waypoint.Position)
                     end
+                    
+                    -- If still stuck after recovery attempts
+                    if (character:GetPivot().Position - lastPosition).Magnitude < STUCK_MOVE_THRESHOLD then
+                        updateDebugInfo({
+                            status = "STUCK - RECALCULATING",
+                            targetName = target.Name,
+                            distance = currentDistance,
+                            pathStatus = string.format("PATH RECALCULATION (attempt %d/%d)", recalculateAttempts + 1, RECALCULATE_ATTEMPTS)
+                        })
+                        
+                        if deathCheckConnection then deathCheckConnection:Disconnect() end
+                        return moveToTarget(target, recalculateAttempts + 1)
+                    end
+                end
+
+                -- Timeout for this waypoint
+                if os.clock() - startTime > MAX_WAYPOINT_TIME then
+                    updateDebugInfo({
+                        status = "WAYPOINT TIMEOUT",
+                        targetName = target.Name,
+                        distance = currentDistance,
+                        pathStatus = string.format("TIMEOUT (%d/%d)", i, #waypoints)
+                    })
+                    stopMoving = true
                     break
                 end
                 
-                -- Check if we reached attack range
-                local distance = (character:GetPivot().Position - target:GetPivot().Position).Magnitude
-                if distance <= ATTACK_RANGE then
-                    updateDebugInfo({status = "IN RANGE"})
-                    return true
+                if not isEnemyAlive(target) then
+                    stopMoving = true
+                    break
                 end
             end
         end
-        
-        attempts = attempts + 1
-        task.wait(0.5)
+    else
+        warn("Path failed:", path.Status)
+        updateDebugInfo({
+            status = "PATH FAILED",
+            targetName = target.Name,
+            distance = currentDistance,
+            pathStatus = path.Status.Name
+        })
     end
     
+    if deathCheckConnection then deathCheckConnection:Disconnect() end
     return false
 end
 
--- ====== INPUT HANDLING ======
-local function handlePlayerInput()
-    UserInputService.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Keyboard then
-            cancelCurrentPath()
+-- ====== INPUT MONITORING ======
+local function monitorPlayerInput()
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and (input.KeyCode == Enum.KeyCode.W or input.KeyCode == Enum.KeyCode.A or 
+                                 input.KeyCode == Enum.KeyCode.S or input.KeyCode == Enum.KeyCode.D) then
+            -- Player pressed a movement key - clear any existing path movement
+            clearPlayerInput()
         end
     end)
 end
 
 -- ====== MAIN LOOP ======
-local function main()
-    handlePlayerInput()
+local plrs = game.Players:GetChildren()
+if #plrs == 1 then
+    -- Start monitoring player input
+    monitorPlayerInput()
     
     while true do
         local enemy, distance = findClosestAliveEnemy()
         
-        if enemy and distance > ATTACK_RANGE then
-            moveToTarget(enemy)
-        elseif enemy then
-            updateDebugInfo({status = "IN RANGE"})
+        if enemy then
+            if distance > ATTACK_RANGE then
+                local success = moveToTarget(enemy)
+                if not success then
+                    -- Wait a bit before trying again after failure
+                    task.wait(1)
+                end
+            else
+                updateDebugInfo({
+                    status = "IN RANGE",
+                    targetName = enemy.Name,
+                    distance = distance,
+                    pathStatus = "READY TO ATTACK"
+                })
+            end
         else
-            updateDebugInfo({status = "SEARCHING"})
+            updateDebugInfo({
+                status = "SEARCHING",
+                targetName = "NONE",
+                distance = 0
+            })
         end
         
         task.wait(REFRESH_RATE)
     end
-end
-
--- Start execution
-if #game.Players:GetPlayers() == 1 then
-    main()
-else
-    updateDebugInfo({status = "MULTIPLAYER - DISABLED"})
 end
