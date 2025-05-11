@@ -34,6 +34,7 @@ if #plrs == 1 then
             local args = {"80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"}
             
             abilityEvent:FireServer(unpack(args))
+            abilityEvent:FireServer(unpack(args))
             
             -- Handle retry button
             local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Retry
