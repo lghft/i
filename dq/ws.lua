@@ -31,6 +31,9 @@ if #plrs == 1 then
 
     spawn(function()
                 	while true do
+                local backpack = game:GetService("Players").LocalPlayer:WaitForChild("Backpack", 10)
+                local chainLightning = safeWaitForChild(backpack, "Chain Lightning", 10)
+                local abilityEvent = safeWaitForChild(chainLightning, "abilityEvent", 10)
                         abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
