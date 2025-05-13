@@ -79,11 +79,6 @@ if #plrs == 1 then
             end
         end)
         
-        if not success then
-            warn("Error in loop: " .. tostring(err))
-            wait(5) -- Wait longer if there was an error
-        else
-            wait() -- Normal wait if everything succeeded
-        end
+        wait()
     end
 end
