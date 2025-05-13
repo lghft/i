@@ -45,8 +45,6 @@ if #plrs == 1 then
                         abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
-                        abilityEvent:FireServer(unpack(args1))
-                        abilityEvent:FireServer(unpack(args1))
                         wait()
                 	end
                 end)
@@ -56,8 +54,6 @@ if #plrs == 1 then
                 local chainLightning = safeWaitForChild(backpack, "Chain Lightning", 10)
                 local abilityEvent = safeWaitForChild(chainLightning, "abilityEvent", 10)
                 local args1 = {"80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"}
-                        abilityEvent:FireServer(unpack(args1))
-                        abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
@@ -87,9 +83,7 @@ if #plrs == 1 then
                         abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
-                        abilityEvent:FireServer(unpack(args1))
-                        abilityEvent:FireServer(unpack(args1))
-                        wait()
+                        wait(0.1)
                 	end
                 end)
     getgenv().active = true
