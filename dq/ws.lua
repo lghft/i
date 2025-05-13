@@ -43,6 +43,21 @@ if #plrs == 1 then
                         abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
+                        wait()
+                	end
+                end)
+    spawn(function()
+                	while true do
+                local backpack = game:GetService("Players").LocalPlayer:WaitForChild("Backpack", 10)
+                local chainLightning = safeWaitForChild(backpack, "Chain Lightning", 10)
+                local abilityEvent = safeWaitForChild(chainLightning, "abilityEvent", 10)
+                local args1 = {"80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"}
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
                         abilityEvent:FireServer(unpack(args1))
                         wait()
