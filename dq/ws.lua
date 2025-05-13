@@ -60,6 +60,8 @@ if #plrs == 1 then
             abilityEvent:FireServer(unpack(args1))
             abilityEvent:FireServer(unpack(args1))
             abilityEvent:FireServer(unpack(args1))
+            abilityEvent:FireServer(unpack(args1))
+            abilityEvent:FireServer(unpack(args1))
             
             local startMenu = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Main.StartButton
             startMenu.Visible = true
