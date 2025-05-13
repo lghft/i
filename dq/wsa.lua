@@ -72,7 +72,6 @@ local function executeScript()
             game:GetService("ReplicatedStorage"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
             local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Retry
             firesignal(rplyBut.Activated)
-
             game:GetService("ReplicatedStorage"):WaitForChild("remotes"):WaitForChild("changeStartValue"):FireServer()
             wait()
             game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').WalkSpeed = 35
@@ -83,7 +82,6 @@ end
 -- Connect to character death event
 game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
     -- Wait for Humanoid to exist (ensures character is fully loaded)
-    character:WaitForChild("Humanoid")
     -- Execute the script twice on respawn
     loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/dq/pf.lua"))()
     executeScript()
