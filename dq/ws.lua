@@ -57,8 +57,12 @@ if #plrs == 1 then
             
             local startMenu = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Main.StartButton
             startMenu.Visible = true
+            local startMenu2 = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Mobile.StartButton
+            startMenu2.Visible = true
             local plrHud = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Main.PlayerStatus
             plrHud.Visible = false
+            local plrHud2 = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Mobile.PlayerStatus
+            plrHud2.Visible = false
             local plrTag = game.Players.LocalPlayer.Character.Head.playerNameplate
             plrTag.Enabled = false
             -- Change start value
