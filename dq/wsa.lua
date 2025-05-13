@@ -48,7 +48,18 @@ local function executeScript()
                 "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
             }
             game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
-
+            local args = {
+                "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
+            }
+            game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
+            local args = {
+                "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
+            }
+            game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
+            local args = {
+                "80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"
+            }
+            game:GetService("Players").LocalPlayer:WaitForChild("Backpack"):WaitForChild("Chain Lightning"):WaitForChild("abilityEvent"):FireServer(unpack(args))
             local args = {
                 {
                     {
@@ -76,7 +87,10 @@ game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
     -- Execute the script twice on respawn
     executeScript()
     executeScript() 
+    executeScript()
 end)
 
 -- Initial execution
 executeScript()
+executeScript() 
+executeScript() 
