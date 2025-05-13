@@ -15,24 +15,24 @@ if #plrs == 1 then
             while true do
                 local success, err = pcall(function()
                 	
-                            local function safeWaitForChild(parent, childName, timeout)
-                timeout = timeout or 10 -- default 10 second timeout
-                local startTime = os.time()
-                local child
-                
-                while not child and os.time() - startTime < timeout do
-                    child = parent:FindFirstChild(childName)
-                    if not child then
-                        wait()
+                    local function safeWaitForChild(parent, childName, timeout)
+                        timeout = timeout or 10 -- default 10 second timeout
+                        local startTime = os.time()
+                        local child
+                        
+                        while not child and os.time() - startTime < timeout do
+                            child = parent:FindFirstChild(childName)
+                            if not child then
+                                wait()
+                            end
+                        end
+                        
+                        if not child then
+                            error("Timed out waiting for child: " .. childName)
+                        end
+                        
+                        return child
                     end
-                end
-                
-                if not child then
-                    error("Timed out waiting for child: " .. childName)
-                end
-                
-                return child
-            end
 
                 
                 local backpack = game:GetService("Players").LocalPlayer:WaitForChild("Backpack", 10)
