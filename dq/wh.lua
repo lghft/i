@@ -22,7 +22,7 @@ local function getRewardImages()
                         if imageId then
                             table.insert(rewards, {
                                 name = child.Name,
-                                url = "https://www.roblox.com/asset-thumbnail/image?assetId="..imageId.."&width=420&height=420&format=png",
+                                url = "https://create.roblox.com/store/asset/"..imageId,
                                 id = imageId
                             })
                         end
