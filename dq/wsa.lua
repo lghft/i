@@ -69,11 +69,12 @@ end
 
 -- Connect to character death event
 game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
-    character:WaitForChild("Humanoid").Died:Connect(function()
-        -- Execute the script twice when player dies
-        executeScript()
-        executeScript()
-    end)
+    -- Wait for Humanoid to exist (ensures character is fully loaded)
+    character:WaitForChild("Humanoid")
+    
+    -- Execute the script twice on respawn
+    executeScript()
+    executeScript() 
 end)
 
 -- Initial execution
