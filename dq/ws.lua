@@ -49,17 +49,24 @@ if #plrs == 1 then
             -- Handle retry button
             local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Retry
             firesignal(rplyBut.Activated)
+
+            spawn(function()
+            	while true do
+                    abilityEvent:FireServer(unpack(args1))
+                    abilityEvent:FireServer(unpack(args1))
+                    abilityEvent:FireServer(unpack(args1))
+                    abilityEvent:FireServer(unpack(args1))
+                    abilityEvent:FireServer(unpack(args1))
+                    abilityEvent:FireServer(unpack(args1))
+                    abilityEvent:FireServer(unpack(args1))
+                    abilityEvent:FireServer(unpack(args1))
+                    abilityEvent:FireServer(unpack(args1))
+                    abilityEvent:FireServer(unpack(args1
+                    wait()
+            	end
+            end)
                 
-            abilityEvent:FireServer(unpack(args1))
-            abilityEvent:FireServer(unpack(args1))
-            abilityEvent:FireServer(unpack(args1))
-            abilityEvent:FireServer(unpack(args1))
-            abilityEvent:FireServer(unpack(args1))
-            abilityEvent:FireServer(unpack(args1))
-            abilityEvent:FireServer(unpack(args1))
-            abilityEvent:FireServer(unpack(args1))
-            abilityEvent:FireServer(unpack(args1))
-            abilityEvent:FireServer(unpack(args1))
+           
             
             local startMenu = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Main.StartButton
             startMenu.Visible = true
