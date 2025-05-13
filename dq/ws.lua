@@ -37,7 +37,7 @@ if #plrs == 1 then
             local chainLightning = safeWaitForChild(backpack, "Chain Lightning", 10)
             local abilityEvent = safeWaitForChild(chainLightning, "abilityEvent", 10)
             local args1 = {"80E25D5E-935D-44E3-8CAE-C0FEDE8E9F3F"}
-
+            --[[
             local args = {
                 {
                     {
@@ -51,7 +51,7 @@ if #plrs == 1 then
             -- Handle retry button
             local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Retry
             firesignal(rplyBut.Activated)
-                
+            ]]
             abilityEvent:FireServer(unpack(args1))
             abilityEvent:FireServer(unpack(args1))
             abilityEvent:FireServer(unpack(args1))
