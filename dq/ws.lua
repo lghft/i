@@ -1,11 +1,10 @@
-repeat wait(6) until game:IsLoaded()
 local plrHud = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Main.PlayerStatus
 plrHud.Visible = false
 local plrHud2 = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Mobile.PlayerStatus
 plrHud2.Visible = false
 local plrTag = game.Players.LocalPlayer.Character.Head.playerNameplate
 plrTag.Enabled = false
-
+repeat wait(6) until game:IsLoaded()
 
 local function safeWaitForChild(parent, childName, timeout)
     timeout = timeout or 10 -- default 10 second timeout
