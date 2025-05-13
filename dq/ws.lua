@@ -59,6 +59,8 @@ if #plrs == 1 then
             startMenu.Visible = true
             local plrHud = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Main.PlayerStatus
             plrHud.Visible = false
+            local plrTag = game.Players.LocalPlayer.Character.Head.playerNameplate
+            plrTag.Enabled = false
             -- Change start value
             local changeStartValue = game:GetService("ReplicatedStorage"):WaitForChild("remotes", 10):WaitForChild("changeStartValue", 10)
             changeStartValue:FireServer()
