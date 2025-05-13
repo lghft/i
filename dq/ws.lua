@@ -61,7 +61,7 @@ if #plrs == 1 then
                     abilityEvent:FireServer(unpack(args1))
                     abilityEvent:FireServer(unpack(args1))
                     abilityEvent:FireServer(unpack(args1))
-                    abilityEvent:FireServer(unpack(args1
+                    abilityEvent:FireServer(unpack(args1))
                     wait()
             	end
             end)
