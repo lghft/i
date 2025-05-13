@@ -28,6 +28,22 @@ local plrs = game.Players:GetChildren()
 if #plrs == 1 then
     wait(4)
     print("LOADED?")
+
+    spawn(function()
+                	while true do
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        abilityEvent:FireServer(unpack(args1))
+                        wait()
+                	end
+                end)
     
     getgenv().active = true
     while getgenv().active == true do
@@ -49,25 +65,6 @@ if #plrs == 1 then
             -- Handle retry button
             local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Retry
             firesignal(rplyBut.Activated)
-
-            spawn(function()
-            	while true do
-                    abilityEvent:FireServer(unpack(args1))
-                    abilityEvent:FireServer(unpack(args1))
-                    abilityEvent:FireServer(unpack(args1))
-                    abilityEvent:FireServer(unpack(args1))
-                    abilityEvent:FireServer(unpack(args1))
-                    abilityEvent:FireServer(unpack(args1))
-                    abilityEvent:FireServer(unpack(args1))
-                    abilityEvent:FireServer(unpack(args1))
-                    abilityEvent:FireServer(unpack(args1))
-                    abilityEvent:FireServer(unpack(args1))
-                    wait()
-            	end
-            end)
-                
-           
-            
             local startMenu = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Main.StartButton
             startMenu.Visible = true
             local startMenu2 = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Mobile.StartButton
