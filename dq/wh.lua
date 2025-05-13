@@ -7,7 +7,7 @@ local PlrXP = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Mobile.Player
 local gold = game:GetService("Players").LocalPlayer.PlayerGui.Topbar.Container.LeftFrame.Currency.gold.TextLabel.Text
 local goldGain = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Rewards.GoldGained.Amount.Label.Text
 local expGain = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Frame.Rewards.XPGained.Amount.Label.Text
-
+local winValue = "Victory"
 -- Function to get all reward images
 local function getRewardImages()
     local rewards = {}
@@ -50,6 +50,10 @@ if #rewardItems > 0 then
             rewardText = rewardText.." • "
         end
     end
+end
+
+if goldGain == "+0" then
+    winValue = "DEFEAT"
 end
 
 local folderName = "DQSetting"
@@ -112,7 +116,7 @@ local Embed = {
     ["fields"] = {
         {
             ["name"] = "**Player Stats**",
-            ["value"] = "**:bar_chart:: **".."[ " ..PlrLVL.. " ]".. " ("..PlrXP..") +" .. expGain .."\n<:coins:1217991784148373604>".. " :" .. gold .. "   +" .. goldGain,
+            ["value"] = "**:bar_chart:: **".."[ " ..PlrLVL.. " ]".. " ("..PlrXP..")  " .. expGain .."\n<:coins:1217991784148373604>".. " :" .. gold .. " " .. goldGain,
             ["inline"] = true
         },
         {
@@ -122,7 +126,7 @@ local Embed = {
         },
         {
             ["name"] = "Match Result",
-            ["value"] = "Victory", -- Change this as needed
+            ["value"] = winValue, -- Change this as needed
             ["inline"] = false
         },
     },
