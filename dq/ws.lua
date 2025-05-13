@@ -1,4 +1,11 @@
 repeat wait(6) until game:IsLoaded()
+local plrHud = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Main.PlayerStatus
+plrHud.Visible = false
+local plrHud2 = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Mobile.PlayerStatus
+plrHud2.Visible = false
+local plrTag = game.Players.LocalPlayer.Character.Head.playerNameplate
+plrTag.Enabled = false
+
 
 local function safeWaitForChild(parent, childName, timeout)
     timeout = timeout or 10 -- default 10 second timeout
@@ -59,17 +66,12 @@ if #plrs == 1 then
             startMenu.Visible = true
             local startMenu2 = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Mobile.StartButton
             startMenu2.Visible = true
-            local plrHud = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Main.PlayerStatus
-            plrHud.Visible = false
-            local plrHud2 = game:GetService("Players").LocalPlayer.PlayerGui.HUD.Mobile.PlayerStatus
-            plrHud2.Visible = false
-            local plrTag = game.Players.LocalPlayer.Character.Head.playerNameplate
-            plrTag.Enabled = false
             -- Change start value
             local changeStartValue = game:GetService("ReplicatedStorage"):WaitForChild("remotes", 10):WaitForChild("changeStartValue", 10)
             changeStartValue:FireServer()
             
             firesignal(startMenu.Activated)
+            firesignal(startMenu2.Activated)
             -- Set walk speed
             local humanoid = game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid')
             if humanoid then
