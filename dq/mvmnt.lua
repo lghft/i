@@ -1,5 +1,5 @@
 repeat wait(6) until game:IsLoaded()
-wait(10)
+wait(16)
 -- Macro Recorder/Player with Config Saving
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
