@@ -74,7 +74,7 @@ local function executeScript()
             firesignal(rplyBut.Activated)
             game:GetService("ReplicatedStorage"):WaitForChild("remotes"):WaitForChild("changeStartValue"):FireServer()
             wait()
-            game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').WalkSpeed = 35
+            game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').WalkSpeed = 30
         end
     end
 end
@@ -83,7 +83,6 @@ end
 game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
     -- Wait for Humanoid to exist (ensures character is fully loaded)
     -- Execute the script twice on respawn
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/dq/pf.lua"))()
     executeScript()
     executeScript() 
     executeScript()
