@@ -157,6 +157,54 @@ local function EnhancedMoveToGregg(gregg)
     return true
 end
 
+-- Enhanced Gregg Handling
+local function handleGregg()
+    local gregg = findGregg()
+    if gregg and isPlaying and not greggDetected then
+        -- Pause the macro
+        greggDetected = true
+        macroPaused = true
+        pauseTime = tick() - playbackStartTime
+        
+        if stopPlaying then
+            stopPlaying()
+        end
+        
+        -- Enhanced movement to Gregg with pathfinding
+        local success = EnhancedMoveToGregg(gregg)
+        
+        if success then
+            -- Wait until Gregg is defeated
+            local greggDefeated = false
+            greggConnection = gregg.Humanoid.Died:Connect(function()
+                greggDefeated = true
+            end)
+            
+            -- Check every second if Gregg is defeated
+            while not greggDefeated and isEnemyAlive(gregg) do
+                -- Update our position to follow Gregg if he moves
+                UpdatePredictionHistory(gregg)
+                local targetPos = PredictPosition(gregg, Prediction.PREDICTION_FRAMES)
+                SafeTeleport(targetPos)
+                wait(0.5)
+            end
+            
+            -- Clean up
+            if greggConnection then
+                greggConnection:Disconnect()
+                greggConnection = nil
+            end
+        end
+        
+        -- Resume macro
+        greggDetected = false
+        macroPaused = false
+        if config.manualPlayEnabled then
+            stopPlaying = startPlaying(true, pauseTime)
+        end
+    end
+end
+
 -- GUI Setup
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "MacroGui"
@@ -351,54 +399,6 @@ if not LocalPlayer.Character then
     LocalPlayer.CharacterAdded:Wait()
 end
 humanoid = LocalPlayer.Character:WaitForChild("Humanoid")
-
--- Enhanced Gregg Handling
-local function handleGregg()
-    local gregg = findGregg()
-    if gregg and isPlaying and not greggDetected then
-        -- Pause the macro
-        greggDetected = true
-        macroPaused = true
-        pauseTime = tick() - playbackStartTime
-        
-        if stopPlaying then
-            stopPlaying()
-        end
-        
-        -- Enhanced movement to Gregg with pathfinding
-        local success = EnhancedMoveToGregg(gregg)
-        
-        if success then
-            -- Wait until Gregg is defeated
-            local greggDefeated = false
-            greggConnection = gregg.Humanoid.Died:Connect(function()
-                greggDefeated = true
-            end)
-            
-            -- Check every second if Gregg is defeated
-            while not greggDefeated and isEnemyAlive(gregg) do
-                -- Update our position to follow Gregg if he moves
-                UpdatePredictionHistory(gregg)
-                local targetPos = PredictPosition(gregg, Prediction.PREDICTION_FRAMES)
-                SafeTeleport(targetPos)
-                wait(0.5)
-            end
-            
-            -- Clean up
-            if greggConnection then
-                greggConnection:Disconnect()
-                greggConnection = nil
-            end
-        end
-        
-        -- Resume macro
-        greggDetected = false
-        macroPaused = false
-        if config.manualPlayEnabled then
-            stopPlaying = startPlaying(true, pauseTime)
-        end
-    end
-end
 
 local function createMacroButton(macroName)
     local button = Instance.new("TextButton")
