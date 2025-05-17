@@ -1,6 +1,7 @@
 repeat wait(6) until game:IsLoaded()
 wait(16)
--- Macro Recorder/Player with Config Saving
+
+-- Macro Recorder/Player with Config Saving and Auto-Restart on Respawn
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
@@ -82,7 +83,7 @@ MainFrame.InputBegan:Connect(function(input)
             end
         end)
     end
-end
+end)
 
 MainFrame.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
@@ -228,7 +229,10 @@ local playbackIndex = 1
 local humanoid = nil
 local stopRecording = nil
 local stopPlaying = nil
-local shouldRestartPlayback = false -- New variable to track if we should restart playback
+local macroRestartPending = false
+local lastPlaybackTime = 0
+local respawnCount = 0
+local MAX_RESPAWN_ATTEMPTS = 3
 
 -- Wait for character
 if not LocalPlayer.Character then
@@ -383,7 +387,7 @@ local function startRecording()
     end
 end
 
-local function startPlaying(manualTrigger)
+local function startPlaying(manualTrigger, resumeTime)
     if isPlaying or isRecording then return end
     
     if not selectedMacro then
@@ -436,7 +440,7 @@ local function startPlaying(manualTrigger)
     end
     
     isPlaying = true
-    playbackStartTime = tick()
+    playbackStartTime = tick() - (resumeTime or 0)
     playbackIndex = 1
     PlayButton.Text = "⏹ STOP PLAY"
     PlayButton.BackgroundColor3 = Color3.fromRGB(40, 200, 40)
@@ -588,22 +592,50 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Character respawn handling
+-- Enhanced Character respawn handling
 LocalPlayer.CharacterAdded:Connect(function(character)
     humanoid = character:WaitForChild("Humanoid")
+    respawnCount = respawnCount + 1
     
     if isPlaying then
+        -- Save progress before stopping
+        if playbackStartTime > 0 then
+            lastPlaybackTime = tick() - playbackStartTime
+        end
         if stopPlaying then
             stopPlaying()
         end
-        
-        -- Wait a brief moment before restarting the playback
+        macroRestartPending = true
+    end
+    
+    -- Wait for character to be fully ready
+    local startWait = tick()
+    repeat
         wait(0.5)
-        if config.manualPlayEnabled and selectedMacro then
-            stopPlaying = startPlaying(true)
+        if not character:FindFirstChild("HumanoidRootPart") then
+            character:WaitForChild("HumanoidRootPart", 2)
         end
+    until character:FindFirstChild("HumanoidRootPart") or (tick() - startWait) > 5
+    
+    if macroRestartPending and respawnCount <= MAX_RESPAWN_ATTEMPTS then
+        macroRestartPending = false
+        print("Restarting macro after respawn... Attempt "..respawnCount)
+        stopPlaying = startPlaying(true, lastPlaybackTime)
+        lastPlaybackTime = 0
+    elseif respawnCount > MAX_RESPAWN_ATTEMPTS then
+        warn("Max respawn attempts reached. Stopping macro.")
+        macroRestartPending = false
+        lastPlaybackTime = 0
+        respawnCount = 0
     end
 end)
+
+-- Reset respawn counter when macro starts
+local originalStartPlaying = startPlaying
+startPlaying = function(manualTrigger, resumeTime)
+    respawnCount = 0
+    return originalStartPlaying(manualTrigger, resumeTime)
+end
 
 -- Auto-start manual play if enabled in config
 if config.manualPlayEnabled and selectedMacro then
