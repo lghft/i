@@ -1,4 +1,5 @@
---@diagnostic disable: undefined-global
+repeat wait(4) until game:IsLoaded()
+repeat wait(10) until local rplyBut = game:GetService("Players").LocalPlayer.PlayerGui.RetryVote.Enabled == true
 local plr = game.Players.LocalPlayer
 local OSTime = os.time()
 local Time = os.date('!*t', OSTime)
