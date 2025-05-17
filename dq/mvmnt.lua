@@ -457,6 +457,14 @@ local function startRecording()
     end
 end
 
+local function lerpVector3(a, b, alpha)
+    return Vector3.new(
+        a.X + (b.X - a.X) * alpha,
+        a.Y + (b.Y - a.Y) * alpha,
+        a.Z + (b.Z - a.Z) * alpha
+    )
+end
+
 local function startPlaying(manualTrigger, resumeTime)
     if isPlaying or isRecording then return end
     if not selectedMacro then return end
@@ -535,10 +543,19 @@ local function startPlaying(manualTrigger, resumeTime)
         
         if prevFrame and nextFrame then
             local alpha = (currentTime - prevFrame.time) / (nextFrame.time - prevFrame.time)
-            char.HumanoidRootPart.CFrame = CFrame.new(
-                prevFrame.position:Lerp(nextFrame.position, alpha)
+            local position = lerpVector3(
+                Vector3.new(prevFrame.position.x, prevFrame.position.y, prevFrame.position.z),
+                Vector3.new(nextFrame.position.x, nextFrame.position.y, nextFrame.position.z),
+                alpha
             )
-            char.Humanoid:Move(prevFrame.moveDirection:Lerp(nextFrame.moveDirection, alpha))
+            char.HumanoidRootPart.CFrame = CFrame.new(position)
+            
+            local moveDir = lerpVector3(
+                Vector3.new(prevFrame.moveDirection.x, prevFrame.moveDirection.y, prevFrame.moveDirection.z),
+                Vector3.new(nextFrame.moveDirection.x, nextFrame.moveDirection.y, nextFrame.moveDirection.z),
+                alpha
+            )
+            char.Humanoid:Move(moveDir)
         end
     end)
     
