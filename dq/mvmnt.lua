@@ -82,7 +82,7 @@ MainFrame.InputBegan:Connect(function(input)
             end
         end)
     end
-end)
+end
 
 MainFrame.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
@@ -228,6 +228,7 @@ local playbackIndex = 1
 local humanoid = nil
 local stopRecording = nil
 local stopPlaying = nil
+local shouldRestartPlayback = false -- New variable to track if we should restart playback
 
 -- Wait for character
 if not LocalPlayer.Character then
@@ -594,6 +595,12 @@ LocalPlayer.CharacterAdded:Connect(function(character)
     if isPlaying then
         if stopPlaying then
             stopPlaying()
+        end
+        
+        -- Wait a brief moment before restarting the playback
+        wait(0.5)
+        if config.manualPlayEnabled and selectedMacro then
+            stopPlaying = startPlaying(true)
         end
     end
 end)
