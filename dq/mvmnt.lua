@@ -1,12 +1,13 @@
 repeat wait(6) until game:IsLoaded()
 wait(16)
 
--- Macro Recorder/Player with Config Saving, Auto-Restart on Respawn, and Auto-Close UI
+-- Macro Recorder/Player with Config Saving and Gregg Enemy Handling
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local Workspace = game:GetService("Workspace")
 
 -- Custom trim function
 local function trim(s)
@@ -26,8 +27,7 @@ end
 local config = {
     manualPlayEnabled = false,
     selectedMacro = nil,
-    windowPosition = {x = 0.5, y = 0.5},
-    autoCloseUI = false -- New config option for auto-closing UI
+    windowPosition = {x = 0.5, y = 0.5}
 }
 
 local function loadConfig()
@@ -36,11 +36,8 @@ local function loadConfig()
             return HttpService:JSONDecode(readfile("MacroTesting/config.json"))
         end)
         if success then
-            for k, v in pairs(loaded) do
-                config[k] = v
-            end
+            config = loaded
             config.manualPlayEnabled = config.manualPlayEnabled or false
-            config.autoCloseUI = config.autoCloseUI or false -- Initialize if not present
         end
     end
 end
@@ -57,8 +54,8 @@ ScreenGui.Name = "MacroGui"
 ScreenGui.Parent = game.CoreGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 350, 0, 500) -- Increased height for new toggle
-MainFrame.Position = UDim2.new(config.windowPosition.x, -175, config.windowPosition.y, -250) -- Adjusted position
+MainFrame.Size = UDim2.new(0, 350, 0, 450)
+MainFrame.Position = UDim2.new(config.windowPosition.x, -175, config.windowPosition.y, -225)
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 MainFrame.BorderSizePixel = 0
@@ -201,49 +198,10 @@ CreateButton.Font = Enum.Font.GothamBold
 CreateButton.TextSize = 14
 CreateButton.Parent = NewMacroFrame
 
--- Auto-Close UI Toggle
-local AutoCloseFrame = Instance.new("Frame")
-AutoCloseFrame.Size = UDim2.new(1, -20, 0, 40)
-AutoCloseFrame.Position = UDim2.new(0, 10, 0, 435)
-AutoCloseFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-AutoCloseFrame.BorderSizePixel = 0
-AutoCloseFrame.Parent = MainFrame
-
-local AutoCloseLabel = Instance.new("TextLabel")
-AutoCloseLabel.Size = UDim2.new(0.7, 0, 1, 0)
-AutoCloseLabel.Text = "Auto-Close UI When Playing:"
-AutoCloseLabel.BackgroundTransparency = 1
-AutoCloseLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-AutoCloseLabel.Font = Enum.Font.Gotham
-AutoCloseLabel.TextSize = 14
-AutoCloseLabel.TextXAlignment = Enum.TextXAlignment.Left
-AutoCloseLabel.Parent = AutoCloseFrame
-
-local AutoClosePadding = Instance.new("UIPadding")
-AutoClosePadding.PaddingLeft = UDim.new(0, 10)
-AutoClosePadding.Parent = AutoCloseLabel
-
-local AutoCloseToggle = Instance.new("TextButton")
-AutoCloseToggle.Size = UDim2.new(0.25, 0, 0.7, 0)
-AutoCloseToggle.Position = UDim2.new(0.725, 0, 0.15, 0)
-AutoCloseToggle.Text = config.autoCloseUI and "✅ ON" or "❌ OFF"
-AutoCloseToggle.BackgroundColor3 = config.autoCloseUI and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(120, 40, 40)
-AutoCloseToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-AutoCloseToggle.Font = Enum.Font.GothamBold
-AutoCloseToggle.TextSize = 14
-AutoCloseToggle.Parent = AutoCloseFrame
-
-AutoCloseToggle.MouseButton1Click:Connect(function()
-    config.autoCloseUI = not config.autoCloseUI
-    AutoCloseToggle.Text = config.autoCloseUI and "✅ ON" or "❌ OFF"
-    AutoCloseToggle.BackgroundColor3 = config.autoCloseUI and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(120, 40, 40)
-    saveConfig()
-end)
-
 -- Action Buttons
 local RecordButton = Instance.new("TextButton")
 RecordButton.Size = UDim2.new(buttonWidth, 0, 0, 40)
-RecordButton.Position = UDim2.new(0.025, 0, 0, 485)
+RecordButton.Position = UDim2.new(0.025, 0, 0, 400)
 RecordButton.Text = "⏺ RECORD"
 RecordButton.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
 RecordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -253,7 +211,7 @@ RecordButton.Parent = MainFrame
 
 local PlayButton = Instance.new("TextButton")
 PlayButton.Size = UDim2.new(buttonWidth, 0, 0, 40)
-PlayButton.Position = UDim2.new(buttonSpacing, 0, 0, 485)
+PlayButton.Position = UDim2.new(buttonSpacing, 0, 0, 400)
 PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
 PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
 PlayButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -272,19 +230,12 @@ local playbackIndex = 1
 local humanoid = nil
 local stopRecording = nil
 local stopPlaying = nil
-local macroRestartPending = false
-local lastPlaybackTime = 0
-local respawnCount = 0
-local MAX_RESPAWN_ATTEMPTS = 3
-
--- Function to toggle UI visibility
-local function toggleUI(visible)
-    if config.autoCloseUI and not visible then
-        MainFrame.Visible = false
-    else
-        MainFrame.Visible = true
-    end
-end
+local greggDetected = false
+local greggCheckInterval = 2 -- Check for Gregg every 2 seconds
+local lastGreggCheck = 0
+local macroPaused = false
+local pauseTime = 0
+local greggConnection = nil
 
 -- Wait for character
 if not LocalPlayer.Character then
@@ -293,6 +244,60 @@ end
 humanoid = LocalPlayer.Character:WaitForChild("Humanoid")
 
 -- Functions
+local function findGregg()
+    -- Check if Gregg exists in the workspace
+    for _, child in pairs(Workspace:GetChildren()) do
+        if child.Name == "Gregg" and child:FindFirstChild("Humanoid") and child.Humanoid.Health > 0 then
+            return child
+        end
+    end
+    return nil
+end
+
+local function handleGregg()
+    local gregg = findGregg()
+    if gregg and isPlaying and not greggDetected then
+        -- Pause the macro
+        greggDetected = true
+        macroPaused = true
+        pauseTime = tick() - playbackStartTime
+        
+        if stopPlaying then
+            stopPlaying()
+        end
+        
+        -- Teleport to Gregg
+        local humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            humanoidRootPart.CFrame = gregg:GetPivot()
+        end
+        
+        -- Wait until Gregg is defeated
+        local greggDefeated = false
+        greggConnection = gregg.Humanoid.Died:Connect(function()
+            greggDefeated = true
+        end)
+        
+        -- Check every second if Gregg is defeated
+        while not greggDefeated and gregg:FindFirstChild("Humanoid") and gregg.Humanoid.Health > 0 do
+            wait(1)
+        end
+        
+        -- Clean up
+        if greggConnection then
+            greggConnection:Disconnect()
+            greggConnection = nil
+        end
+        
+        -- Resume macro
+        greggDetected = false
+        macroPaused = false
+        if config.manualPlayEnabled then
+            stopPlaying = startPlaying(true, pauseTime)
+        end
+    end
+end
+
 local function createMacroButton(macroName)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, -10, 0, 35)
@@ -404,7 +409,6 @@ local function startRecording()
     recordingStartTime = tick()
     RecordButton.Text = "⏹ STOP REC"
     RecordButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-    toggleUI(true) -- Ensure UI is visible when recording
     
     local connection
     
@@ -498,10 +502,6 @@ local function startPlaying(manualTrigger, resumeTime)
     PlayButton.Text = "⏹ STOP PLAY"
     PlayButton.BackgroundColor3 = Color3.fromRGB(40, 200, 40)
     
-    if config.autoCloseUI then
-        toggleUI(false) -- Hide UI when starting playback if auto-close is enabled
-    end
-    
     local character = LocalPlayer.Character
     if not character then
         warn("No character found")
@@ -528,6 +528,14 @@ local function startPlaying(manualTrigger, resumeTime)
             return
         end
         
+        -- Check for Gregg periodically
+        if tick() - lastGreggCheck > greggCheckInterval then
+            lastGreggCheck = tick()
+            coroutine.wrap(handleGregg)()
+        end
+        
+        if greggDetected then return end
+        
         local currentTime = tick() - playbackStartTime
         
         while playbackIndex <= #macroData and macroData[playbackIndex].time <= currentTime do
@@ -539,7 +547,6 @@ local function startPlaying(manualTrigger, resumeTime)
             connection:Disconnect()
             PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
             PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
-            toggleUI(true) -- Show UI when playback completes
             return
         end
         
@@ -574,7 +581,6 @@ local function startPlaying(manualTrigger, resumeTime)
         end
         PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
         PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
-        toggleUI(true) -- Show UI when stopping playback
     end
 end
 
@@ -632,7 +638,6 @@ PlayButton.MouseButton1Click:Connect(function()
         if stopPlaying then
             stopPlaying()
         end
-        toggleUI(true) -- Show UI when stopping playback
     else
         config.manualPlayEnabled = true
         saveConfig()
@@ -649,60 +654,23 @@ refreshMacroList()
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.Delete then
         ScreenGui:Destroy()
-    elseif input.KeyCode == Enum.KeyCode.F1 then
-        -- Toggle UI visibility with F1 key
-        toggleUI(not MainFrame.Visible)
     end
 end)
 
--- Enhanced Character respawn handling
+-- Character respawn handling
 LocalPlayer.CharacterAdded:Connect(function(character)
     humanoid = character:WaitForChild("Humanoid")
-    respawnCount = respawnCount + 1
     
     if isPlaying then
-        -- Save progress before stopping
-        if playbackStartTime > 0 then
-            lastPlaybackTime = tick() - playbackStartTime
-        end
         if stopPlaying then
             stopPlaying()
         end
-        macroRestartPending = true
-    end
-    
-    -- Wait for character to be fully ready
-    local startWait = tick()
-    repeat
-        wait(0.5)
-        if not character:FindFirstChild("HumanoidRootPart") then
-            character:WaitForChild("HumanoidRootPart", 2)
+        wait(1)
+        if config.manualPlayEnabled and not isPlaying and not isRecording then
+            stopPlaying = startPlaying(true)
         end
-    until character:FindFirstChild("HumanoidRootPart") or (tick() - startWait) > 5
-    
-    if macroRestartPending and respawnCount <= MAX_RESPAWN_ATTEMPTS then
-        macroRestartPending = false
-        print("Restarting macro after respawn... Attempt "..respawnCount)
-        stopPlaying = startPlaying(true, lastPlaybackTime)
-        lastPlaybackTime = 0
-    elseif respawnCount > MAX_RESPAWN_ATTEMPTS then
-        warn("Max respawn attempts reached. Stopping macro.")
-        macroRestartPending = false
-        lastPlaybackTime = 0
-        respawnCount = 0
-        toggleUI(true) -- Ensure UI is visible when stopping
     end
 end)
-
--- Reset respawn counter when macro starts
-local originalStartPlaying = startPlaying
-startPlaying = function(manualTrigger, resumeTime)
-    respawnCount = 0
-    return originalStartPlaying(manualTrigger, resumeTime)
-end
-
--- Initialize UI visibility
-toggleUI(true)
 
 -- Auto-start manual play if enabled in config
 if config.manualPlayEnabled and selectedMacro then
