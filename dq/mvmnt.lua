@@ -1,13 +1,14 @@
+-- Macro Recorder/Player with Enhanced Gregg Detection
 repeat wait(6) until game:IsLoaded()
 wait(16)
 
--- Macro Recorder/Player with Config Saving and Gregg Enemy Handling
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local Workspace = game:GetService("Workspace")
+local PathfindingService = game:GetService("PathfindingService")
 
 -- Custom trim function
 local function trim(s)
@@ -47,6 +48,114 @@ local function saveConfig()
 end
 
 loadConfig()
+
+-- Enemy Prediction System
+local Prediction = {
+    History = {},
+    SampleRate = 0.1,
+    PREDICTION_FRAMES = 10
+}
+
+local function PredictPosition(enemy, frames)
+    if not Prediction.History[enemy] then return enemy:GetPivot().Position end
+    
+    local velocity = Vector3.new()
+    local samples = math.min(#Prediction.History[enemy], 5)
+    
+    for i = 1, samples-1 do
+        local delta = Prediction.History[enemy][i] - Prediction.History[enemy][i+1]
+        velocity = velocity + (delta / Prediction.SampleRate)
+    end
+    velocity = velocity / samples
+    
+    return enemy:GetPivot().Position + (velocity * frames * Prediction.SampleRate)
+end
+
+local function UpdatePredictionHistory(enemy)
+    if not Prediction.History[enemy] then
+        Prediction.History[enemy] = {}
+    end
+    table.insert(Prediction.History[enemy], 1, enemy:GetPivot().Position)
+    if #Prediction.History[enemy] > 10 then
+        table.remove(Prediction.History[enemy])
+    end
+end
+
+-- Enhanced Gregg Detection
+local function isEnemyAlive(enemy)
+    if not enemy:FindFirstChild("HumanoidRootPart") then return false end
+    local enemyHumanoid = enemy:FindFirstChild("Humanoid")
+    if enemyHumanoid and enemyHumanoid.Health <= 0 then return false end
+    return true
+end
+
+local function findGregg()
+    -- Search through all enemy folders in the dungeon
+    for _, folder in pairs(Workspace:GetDescendants()) do
+        if folder.Name == "enemyFolder" then
+            for _, enemy in pairs(folder:GetChildren()) do
+                if enemy:IsA("Model") and enemy.Name == "Gregg" and isEnemyAlive(enemy) then
+                    return enemy
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function SafeTeleport(position)
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        humanoidRootPart.CFrame = CFrame.new(position)
+        return true
+    end
+    return false
+end
+
+local function ComputePath(target)
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        WaypointSpacing = 2
+    })
+    
+    local targetPos = PredictPosition(target, Prediction.PREDICTION_FRAMES)
+    path:ComputeAsync(LocalPlayer.Character:GetPivot().Position, targetPos)
+    
+    return path
+end
+
+local function EnhancedMoveToGregg(gregg)
+    if not gregg or not gregg:FindFirstChild("HumanoidRootPart") then return false end
+    
+    local path = ComputePath(gregg)
+    if not path or path.Status ~= Enum.PathStatus.Success then
+        return false
+    end
+
+    local waypoints = path:GetWaypoints()
+    
+    for _, waypoint in ipairs(waypoints) do
+        if not isEnemyAlive(gregg) then
+            return false -- Gregg died while we were moving
+        end
+        
+        if waypoint.Action == Enum.PathWaypointAction.Jump then
+            SafeTeleport(waypoint.Position + Vector3.new(0, 5, 0))
+        else
+            SafeTeleport(waypoint.Position)
+        end
+        
+        UpdatePredictionHistory(gregg)
+        task.wait(0.025)
+    end
+    
+    return true
+end
 
 -- GUI Setup
 local ScreenGui = Instance.new("ScreenGui")
@@ -231,11 +340,11 @@ local humanoid = nil
 local stopRecording = nil
 local stopPlaying = nil
 local greggDetected = false
-local greggCheckInterval = 2 -- Check for Gregg every 2 seconds
-local lastGreggCheck = 0
 local macroPaused = false
 local pauseTime = 0
 local greggConnection = nil
+local greggCheckInterval = 1 -- Check for Gregg every second
+local lastGreggCheck = 0
 
 -- Wait for character
 if not LocalPlayer.Character then
@@ -243,17 +352,7 @@ if not LocalPlayer.Character then
 end
 humanoid = LocalPlayer.Character:WaitForChild("Humanoid")
 
--- Functions
-local function findGregg()
-    -- Check if Gregg exists in the workspace
-    for _, child in pairs(Workspace:GetChildren()) do
-        if child.Name == "Gregg" and child:FindFirstChild("Humanoid") and child.Humanoid.Health > 0 then
-            return child
-        end
-    end
-    return nil
-end
-
+-- Enhanced Gregg Handling
 local function handleGregg()
     local gregg = findGregg()
     if gregg and isPlaying and not greggDetected then
@@ -266,27 +365,30 @@ local function handleGregg()
             stopPlaying()
         end
         
-        -- Teleport to Gregg
-        local humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if humanoidRootPart then
-            humanoidRootPart.CFrame = gregg:GetPivot()
-        end
+        -- Enhanced movement to Gregg with pathfinding
+        local success = EnhancedMoveToGregg(gregg)
         
-        -- Wait until Gregg is defeated
-        local greggDefeated = false
-        greggConnection = gregg.Humanoid.Died:Connect(function()
-            greggDefeated = true
-        end)
-        
-        -- Check every second if Gregg is defeated
-        while not greggDefeated and gregg:FindFirstChild("Humanoid") and gregg.Humanoid.Health > 0 do
-            wait(1)
-        end
-        
-        -- Clean up
-        if greggConnection then
-            greggConnection:Disconnect()
-            greggConnection = nil
+        if success then
+            -- Wait until Gregg is defeated
+            local greggDefeated = false
+            greggConnection = gregg.Humanoid.Died:Connect(function()
+                greggDefeated = true
+            end)
+            
+            -- Check every second if Gregg is defeated
+            while not greggDefeated and isEnemyAlive(gregg) do
+                -- Update our position to follow Gregg if he moves
+                UpdatePredictionHistory(gregg)
+                local targetPos = PredictPosition(gregg, Prediction.PREDICTION_FRAMES)
+                SafeTeleport(targetPos)
+                wait(0.5)
+            end
+            
+            -- Clean up
+            if greggConnection then
+                greggConnection:Disconnect()
+                greggConnection = nil
+            end
         end
         
         -- Resume macro
@@ -528,7 +630,7 @@ local function startPlaying(manualTrigger, resumeTime)
             return
         end
         
-        -- Check for Gregg periodically
+        -- Enhanced Gregg check with cooldown
         if tick() - lastGreggCheck > greggCheckInterval then
             lastGreggCheck = tick()
             coroutine.wrap(handleGregg)()
