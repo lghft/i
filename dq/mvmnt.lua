@@ -132,6 +132,8 @@ local greggDetected = false
 local macroPaused = false
 local pauseTime = 0
 local greggConnection = nil
+local lastGreggCheck = 0
+local greggCheckInterval = 1
 
 local function handleGregg()
     local gregg = findGregg()
@@ -174,6 +176,179 @@ local playbackIndex = 1
 local stopRecording = nil
 local stopPlaying = nil
 
+-- GUI Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MacroGui"
+ScreenGui.Parent = game.CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 350, 0, 450)
+MainFrame.Position = UDim2.new(0, 10, config.windowPosition.y, -225)
+MainFrame.AnchorPoint = Vector2.new(0, 0.5)
+MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Text = "MACRO RECORDER (Drag Here)"
+Title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
+Title.Parent = MainFrame
+
+-- Macro List Container
+local ListContainer = Instance.new("Frame")
+ListContainer.Size = UDim2.new(1, -20, 0, 250)
+ListContainer.Position = UDim2.new(0, 10, 0, 50)
+ListContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+ListContainer.BorderSizePixel = 0
+ListContainer.Parent = MainFrame
+
+local ListTitle = Instance.new("TextLabel")
+ListTitle.Size = UDim2.new(1, 0, 0, 25)
+ListTitle.Position = UDim2.new(0, 0, 0, 0)
+ListTitle.Text = "SAVED MACROS"
+ListTitle.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+ListTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+ListTitle.Font = Enum.Font.Gotham
+ListTitle.TextSize = 14
+ListTitle.TextXAlignment = Enum.TextXAlignment.Left
+ListTitle.Parent = ListContainer
+
+local TitlePadding = Instance.new("UIPadding")
+TitlePadding.PaddingLeft = UDim.new(0, 10)
+TitlePadding.Parent = ListTitle
+
+local MacroList = Instance.new("ScrollingFrame")
+MacroList.Size = UDim2.new(1, 0, 1, -25)
+MacroList.Position = UDim2.new(0, 0, 0, 25)
+MacroList.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+MacroList.BorderSizePixel = 0
+MacroList.ScrollBarThickness = 6
+MacroList.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+MacroList.CanvasSize = UDim2.new(0, 0, 0, 0)
+MacroList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+MacroList.Parent = ListContainer
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 2)
+UIListLayout.Parent = MacroList
+
+-- Control Buttons
+local buttonYOffset = 310
+local buttonWidth = 0.45
+local buttonSpacing = 0.525
+
+local RefreshButton = Instance.new("TextButton")
+RefreshButton.Size = UDim2.new(buttonWidth, 0, 0, 35)
+RefreshButton.Position = UDim2.new(0.025, 0, 0, buttonYOffset)
+RefreshButton.Text = "🔄 REFRESH"
+RefreshButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+RefreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+RefreshButton.Font = Enum.Font.GothamBold
+RefreshButton.TextSize = 14
+RefreshButton.Parent = MainFrame
+
+local DeleteButton = Instance.new("TextButton")
+DeleteButton.Size = UDim2.new(buttonWidth, 0, 0, 35)
+DeleteButton.Position = UDim2.new(buttonSpacing, 0, 0, buttonYOffset)
+DeleteButton.Text = "❌ DELETE"
+DeleteButton.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
+DeleteButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+DeleteButton.Font = Enum.Font.GothamBold
+DeleteButton.TextSize = 14
+DeleteButton.Parent = MainFrame
+
+-- New Macro Creation
+local NewMacroFrame = Instance.new("Frame")
+NewMacroFrame.Size = UDim2.new(1, -20, 0, 70)
+NewMacroFrame.Position = UDim2.new(0, 10, 0, 355)
+NewMacroFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+NewMacroFrame.BorderSizePixel = 0
+NewMacroFrame.Parent = MainFrame
+
+local MacroNameBox = Instance.new("TextBox")
+MacroNameBox.Size = UDim2.new(0.65, 0, 0, 35)
+MacroNameBox.Position = UDim2.new(0, 5, 0, 5)
+MacroNameBox.PlaceholderText = "Enter Macro Name..."
+MacroNameBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+MacroNameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+MacroNameBox.Font = Enum.Font.Gotham
+MacroNameBox.TextSize = 14
+MacroNameBox.Parent = NewMacroFrame
+
+local CreateButton = Instance.new("TextButton")
+CreateButton.Size = UDim2.new(0.3, 0, 0, 35)
+CreateButton.Position = UDim2.new(0.675, 0, 0, 5)
+CreateButton.Text = "➕ CREATE"
+CreateButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+CreateButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CreateButton.Font = Enum.Font.GothamBold
+CreateButton.TextSize = 14
+CreateButton.Parent = NewMacroFrame
+
+-- Action Buttons
+local RecordButton = Instance.new("TextButton")
+RecordButton.Size = UDim2.new(buttonWidth, 0, 0, 40)
+RecordButton.Position = UDim2.new(0.025, 0, 0, 400)
+RecordButton.Text = "⏺ RECORD"
+RecordButton.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
+RecordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+RecordButton.Font = Enum.Font.GothamBold
+RecordButton.TextSize = 16
+RecordButton.Parent = MainFrame
+
+local PlayButton = Instance.new("TextButton")
+PlayButton.Size = UDim2.new(buttonWidth, 0, 0, 40)
+PlayButton.Position = UDim2.new(buttonSpacing, 0, 0, 400)
+PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
+PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
+PlayButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlayButton.Font = Enum.Font.GothamBold
+PlayButton.TextSize = 16
+PlayButton.Parent = MainFrame
+
+-- Draggable GUI
+local dragging, dragInput, dragStart, startPos
+
+local function updateInput(input)
+    local delta = input.Position - dragStart
+    local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    MainFrame.Position = newPos
+    config.windowPosition = {x = 0, y = newPos.Y.Scale}
+    saveConfig()
+end
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        updateInput(input)
+    end
+end)
+
+-- Macro Functions
 local function createMacroButton(macroName)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, -10, 0, 35)
@@ -220,33 +395,33 @@ local function refreshMacroList()
         end
     end
     
-    local files = {}
-    local success, result = pcall(function()
-        return listfiles("MacroTesting/Macros")
-    end)
-    
-    if success then
-        for _, filePath in ipairs(result) do
-            local fileName = filePath:match("^.+\\(.+)%.json$") or filePath:match("^.+/(.+)%.json$")
+    local success, files = pcall(function()
+        local allFiles = listfiles("MacroTesting/Macros")
+        local macroFiles = {}
+        for _, filePath in ipairs(allFiles) do
+            local fileName = filePath:match("^.+\\(.+).json$") or filePath:match("^.+/(.+).json$")
             if fileName then
-                table.insert(files, fileName)
+                table.insert(macroFiles, fileName)
             end
         end
-    else
-        warn("Failed to list macro files: "..tostring(result))
-    end
+        return macroFiles
+    end)
     
-    if #files == 0 then
+    if not success or #files == 0 then
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(1, -10, 0, 30)
-        label.Text = "No macros found"
-        label.TextColor3 = Color3.fromRGB(200, 200, 200)
+        label.Text = success and "No macros found" or "Error loading macros"
+        label.TextColor3 = success and Color3.fromRGB(200, 200, 200) or Color3.fromRGB(255, 100, 100)
         label.BackgroundTransparency = 1
         label.Parent = MacroList
     else
         table.sort(files)
         for _, fileName in ipairs(files) do
-            createMacroButton(fileName)
+            local button = createMacroButton(fileName)
+            if fileName == config.selectedMacro then
+                button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+                selectedMacro = fileName
+            end
         end
     end
 end
@@ -258,6 +433,8 @@ local function startRecording()
     isRecording = true
     currentRecording = {}
     recordingStartTime = tick()
+    RecordButton.Text = "⏹ STOP REC"
+    RecordButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
     
     local connection = RunService.Heartbeat:Connect(function()
         local char = LocalPlayer.Character
@@ -273,6 +450,8 @@ local function startRecording()
     stopRecording = function()
         connection:Disconnect()
         isRecording = false
+        RecordButton.Text = "⏺ RECORD"
+        RecordButton.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
         writefile("MacroTesting/Macros/"..selectedMacro..".json", HttpService:JSONEncode(currentRecording))
         refreshMacroList()
     end
@@ -285,15 +464,40 @@ local function startPlaying(manualTrigger, resumeTime)
     local fileName = "MacroTesting/Macros/"..selectedMacro..".json"
     if not isfile(fileName) then return end
     
+    -- Wait for timeLeftGui if manual trigger
+    if manualTrigger then
+        local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+        local timeLeftGui = playerGui:FindFirstChild("timeLeftGui")
+        
+        if not timeLeftGui or not timeLeftGui.Enabled then
+            PlayButton.Text = "⏳ WAITING..."
+            PlayButton.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
+            
+            local startWait = tick()
+            repeat
+                wait(0.1)
+                timeLeftGui = playerGui:FindFirstChild("timeLeftGui")
+            until (timeLeftGui and timeLeftGui.Enabled) or (tick() - startWait > 10)
+            
+            if not timeLeftGui or not timeLeftGui.Enabled then
+                PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
+                PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
+                return
+            end
+        end
+    end
+    
     local success, macroData = pcall(function()
         return HttpService:JSONDecode(readfile(fileName))
     end)
     
-    if not success or not macroData then return end
+    if not success or not macroData or #macroData == 0 then return end
     
     isPlaying = true
     playbackStartTime = tick() - (resumeTime or 0)
     playbackIndex = 1
+    PlayButton.Text = "⏹ STOP PLAY"
+    PlayButton.BackgroundColor3 = Color3.fromRGB(40, 200, 40)
     
     local connection = RunService.Heartbeat:Connect(function()
         if not isPlaying then
@@ -301,7 +505,7 @@ local function startPlaying(manualTrigger, resumeTime)
             return
         end
         
-        -- Handle Gregg detection
+        -- Gregg detection
         if tick() - lastGreggCheck > greggCheckInterval then
             lastGreggCheck = tick()
             coroutine.wrap(handleGregg)()
@@ -313,15 +517,19 @@ local function startPlaying(manualTrigger, resumeTime)
         local char = LocalPlayer.Character
         if not char or not char:FindFirstChild("HumanoidRootPart") then return end
         
+        -- Advance playback index
         while playbackIndex <= #macroData and macroData[playbackIndex].time <= currentTime do
             playbackIndex = playbackIndex + 1
         end
         
         if playbackIndex > #macroData then
             isPlaying = false
+            PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
+            PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
             return
         end
         
+        -- Interpolate between frames
         local prevFrame = macroData[playbackIndex - 1]
         local nextFrame = macroData[playbackIndex]
         
@@ -337,28 +545,13 @@ local function startPlaying(manualTrigger, resumeTime)
     stopPlaying = function()
         isPlaying = false
         connection:Disconnect()
+        PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
+        PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
     end
 end
 
--- GUI Setup
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MacroGui"
-ScreenGui.Parent = game.CoreGui
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 350, 0, 450)
-MainFrame.Position = UDim2.new(0, 10, config.windowPosition.y, -225)
-MainFrame.AnchorPoint = Vector2.new(0, 0.5)
-MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-MainFrame.BorderSizePixel = 0
-MainFrame.Parent = ScreenGui
-
--- [Include all other GUI elements here following the same pattern]
-
 -- Idle Detection
 local lastMovementTime = tick()
-local lastGreggCheck = 0
-local greggCheckInterval = 1
 local idleThreshold = 60 -- 1 minute
 
 local function checkIdle()
@@ -369,6 +562,7 @@ local function checkIdle()
             if char and char:FindFirstChild("Humanoid") then
                 if char.Humanoid.MoveDirection.Magnitude < 0.1 then
                     if tick() - lastMovementTime > idleThreshold then
+                        print("Player idle - restarting macro")
                         if stopPlaying then stopPlaying() end
                         stopPlaying = startPlaying(true)
                     end
@@ -379,6 +573,61 @@ local function checkIdle()
         end
     end
 end
+
+-- Button Connections
+RefreshButton.MouseButton1Click:Connect(refreshMacroList)
+
+DeleteButton.MouseButton1Click:Connect(function()
+    if not selectedMacro then return end
+    local fileName = "MacroTesting/Macros/"..selectedMacro..".json"
+    if isfile(fileName) then
+        delfile(fileName)
+        selectedMacro = nil
+        config.selectedMacro = nil
+        saveConfig()
+        refreshMacroList()
+    end
+end)
+
+CreateButton.MouseButton1Click:Connect(function()
+    local macroName = trim(MacroNameBox.Text)
+    if macroName == "" then return end
+    
+    macroName = macroName:gsub("[^%w%s_-]", ""):gsub("%s+", " ")
+    if macroName == "" then return end
+    
+    local fileName = "MacroTesting/Macros/"..macroName..".json"
+    if not isfile(fileName) then
+        writefile(fileName, "[]")
+        selectedMacro = macroName
+        config.selectedMacro = macroName
+        MacroNameBox.Text = ""
+        saveConfig()
+        refreshMacroList()
+    else
+        warn("Macro already exists")
+    end
+end)
+
+RecordButton.MouseButton1Click:Connect(function()
+    if isRecording then
+        if stopRecording then stopRecording() end
+    else
+        stopRecording = startRecording()
+    end
+end)
+
+PlayButton.MouseButton1Click:Connect(function()
+    if isPlaying then
+        if stopPlaying then stopPlaying() end
+    else
+        config.manualPlayEnabled = true
+        saveConfig()
+        PlayButton.Text = "✅ MANUAL PLAY"
+        PlayButton.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
+        stopPlaying = startPlaying(true)
+    end
+end)
 
 -- Initialize
 if not LocalPlayer.Character then LocalPlayer.CharacterAdded:Wait() end
@@ -402,3 +651,28 @@ if config.manualPlayEnabled and selectedMacro then
         stopPlaying = startPlaying(true)
     end)()
 end
+
+-- Cleanup
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.Delete then
+        ScreenGui:Destroy()
+    end
+end)
+
+-- Character respawn handling
+LocalPlayer.CharacterAdded:Connect(function(character)
+    humanoid = character:WaitForChild("Humanoid")
+    humanoid:GetPropertyChangedSignal("MoveDirection"):Connect(function()
+        if humanoid.MoveDirection.Magnitude > 0.1 then
+            lastMovementTime = tick()
+        end
+    end)
+    
+    if isPlaying then
+        if stopPlaying then stopPlaying() end
+        wait(1)
+        if config.manualPlayEnabled and not isPlaying and not isRecording then
+            stopPlaying = startPlaying(true)
+        end
+    end
+end)
