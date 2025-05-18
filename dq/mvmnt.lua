@@ -81,22 +81,35 @@ local function isEnemyAlive(enemy)
 end
 
 local function findGregg()
-    for _, folder in pairs(Workspace:GetDescendants()) do
-        if folder.Name == "enemyFolder" then
-            for _, enemy in pairs(folder:GetChildren()) do
+    -- Search through all dungeon rooms
+    local dungeon = Workspace:FindFirstChild("dungeon")
+    if not dungeon then 
+        warn("Dungeon folder not found in Workspace")
+        return nil 
+    end
+    
+    -- Check all enemyFolders in dungeon and its subrooms
+    for _, descendant in ipairs(dungeon:GetDescendants()) do
+        if descendant.Name == "enemyFolder" then
+            for _, enemy in ipairs(descendant:GetChildren()) do
                 if enemy:IsA("Model") and enemy.Name == "Gregg" and isEnemyAlive(enemy) then
                     return enemy
                 end
             end
         end
     end
+    
+    warn("No alive Gregg found in dungeon")
     return nil
 end
 
 -- Movement Functions
 local function SafeTeleport(position)
     local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
+    if not character or not character:FindFirstChild("HumanoidRootPart") then 
+        warn("Cannot teleport - character or HRP missing")
+        return false 
+    end
     character.HumanoidRootPart.CFrame = CFrame.new(position)
     return true
 end
@@ -113,14 +126,29 @@ local function ComputePath(target)
 end
 
 local function EnhancedMoveToGregg(gregg)
-    if not gregg or not gregg:FindFirstChild("HumanoidRootPart") then return false end
+    if not gregg or not gregg:FindFirstChild("HumanoidRootPart") then 
+        warn("Invalid Gregg target")
+        return false 
+    end
     
     local path = ComputePath(gregg)
-    if not path or path.Status ~= Enum.PathStatus.Success then return false end
+    if not path or path.Status ~= Enum.PathStatus.Success then
+        warn("Pathfinding failed to Gregg")
+        return false 
+    end
 
     for _, waypoint in ipairs(path:GetWaypoints()) do
-        if not isEnemyAlive(gregg) then return false end
-        SafeTeleport(waypoint.Position + (waypoint.Action == Enum.PathWaypointAction.Jump and Vector3.new(0,5,0) or Vector3.zero))
+        if not isEnemyAlive(gregg) then 
+            warn("Gregg died during movement")
+            return false 
+        end
+        
+        if waypoint.Action == Enum.PathWaypointAction.Jump then
+            SafeTeleport(waypoint.Position + Vector3.new(0, 5, 0))
+        else
+            SafeTeleport(waypoint.Position)
+        end
+        
         UpdatePredictionHistory(gregg)
         task.wait(0.025)
     end
@@ -146,7 +174,9 @@ local function handleGregg()
         
         if EnhancedMoveToGregg(gregg) then
             local greggDefeated = false
-            greggConnection = gregg.Humanoid.Died:Connect(function() greggDefeated = true end)
+            greggConnection = gregg.Humanoid.Died:Connect(function() 
+                greggDefeated = true 
+            end)
             
             while not greggDefeated and isEnemyAlive(gregg) do
                 UpdatePredictionHistory(gregg)
@@ -154,7 +184,10 @@ local function handleGregg()
                 wait(0.5)
             end
             
-            if greggConnection then greggConnection:Disconnect() end
+            if greggConnection then 
+                greggConnection:Disconnect() 
+                greggConnection = nil
+            end
         end
         
         greggDetected = false
