@@ -99,7 +99,7 @@ local function findGregg()
         end
     end
     
-    --warn("No alive Gregg found in dungeon")
+    warn("No alive Gregg found in dungeon")
     return nil
 end
 
@@ -150,7 +150,7 @@ local function EnhancedMoveToGregg(gregg)
         end
         
         UpdatePredictionHistory(gregg)
-        task.wait(0.025)
+        task.wait(0.1) -- Increased wait time for more reliable movement
     end
     return true
 end
@@ -164,50 +164,62 @@ local lastGreggCheck = 0
 local greggCheckInterval = 1
 
 local function handleGregg()
+    if not isPlaying or greggDetected then return end
+    
     local gregg = findGregg()
-    if gregg and isPlaying and not greggDetected then
+    if gregg and isEnemyAlive(gregg) then
+        print("[Gregg Handler] Gregg detected - pausing macro")
         greggDetected = true
         macroPaused = true
         pauseTime = tick() - playbackStartTime
         
-        if stopPlaying then stopPlaying() end
+        -- Pause macro playback
+        if stopPlaying then 
+            stopPlaying()
+            stopPlaying = nil
+        end
         
-        if EnhancedMoveToGregg(gregg) then
+        -- Move to Gregg
+        print("[Gregg Handler] Attempting to move to Gregg")
+        local success = EnhancedMoveToGregg(gregg)
+        
+        if success then
+            print("[Gregg Handler] Successfully moved to Gregg")
             local greggDefeated = false
-            greggConnection = gregg.Humanoid.Died:Connect(function() 
-                greggDefeated = true 
+            
+            -- Connect to Gregg's death event
+            greggConnection = gregg.Humanoid.Died:Connect(function()
+                print("[Gregg Handler] Gregg defeated")
+                greggDefeated = true
             end)
             
+            -- Stay near Gregg until defeated
             while not greggDefeated and isEnemyAlive(gregg) do
                 UpdatePredictionHistory(gregg)
-                SafeTeleport(PredictPosition(gregg, Prediction.PREDICTION_FRAMES))
+                local targetPos = PredictPosition(gregg, Prediction.PREDICTION_FRAMES)
+                SafeTeleport(targetPos + Vector3.new(0, 2, 0)) -- Slightly above to avoid collision
                 wait(0.5)
             end
             
-            if greggConnection then 
-                greggConnection:Disconnect() 
+            -- Clean up connection
+            if greggConnection then
+                greggConnection:Disconnect()
                 greggConnection = nil
             end
+        else
+            print("[Gregg Handler] Failed to move to Gregg")
         end
         
+        -- Resume macro
+        print("[Gregg Handler] Resuming macro")
         greggDetected = false
         macroPaused = false
+        
         if config.manualPlayEnabled then
             stopPlaying = startPlaying(true, pauseTime)
         end
     end
 end
-
--- Macro Management
-local isRecording = false
-local isPlaying = false
-local selectedMacro = nil
-local currentRecording = {}
-local recordingStartTime = 0
-local playbackStartTime = 0
-local playbackIndex = 1
-local stopRecording = nil
-local stopPlaying = nil
 
 -- GUI Setup
 local ScreenGui = Instance.new("ScreenGui")
@@ -546,13 +558,16 @@ local function startPlaying(manualTrigger, resumeTime)
             return
         end
         
-        -- Gregg detection
+        -- Check for Gregg periodically
         if tick() - lastGreggCheck > greggCheckInterval then
             lastGreggCheck = tick()
-            coroutine.wrap(handleGregg)()
+            if not greggDetected and not macroPaused then
+                coroutine.wrap(handleGregg)()
+            end
         end
         
-        if greggDetected then return end
+        -- Skip movement if Gregg is being handled
+        if greggDetected or macroPaused then return end
         
         local currentTime = tick() - playbackStartTime
         local char = LocalPlayer.Character
