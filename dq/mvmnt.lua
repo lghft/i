@@ -99,7 +99,7 @@ local function findGregg()
         end
     end
     
-    warn("No alive Gregg found in dungeon")
+    --warn("No alive Gregg found in dungeon")
     return nil
 end
 
