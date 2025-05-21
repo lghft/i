@@ -1,27 +1,30 @@
--- Macro Recorder/Player with Enhanced Gregg Detection
-repeat wait(6) until game:IsLoaded()
-wait(16)
-
--- Services
+-- Macro Recorder/Player with Config Saving
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
-local Workspace = game:GetService("Workspace")
-local PathfindingService = game:GetService("PathfindingService")
 
--- Configuration
-local config = {
-    manualPlayEnabled = false,
-    selectedMacro = nil,
-    windowPosition = {x = 0, y = 0.5} -- Left side by default
-}
-
--- Utility Functions
+-- Custom trim function
 local function trim(s)
     return s:match("^%s*(.-)%s*$")
 end
+
+-- Create main folders if they don't exist
+if not isfolder("MacroTesting") then
+    makefolder("MacroTesting")
+end
+
+if not isfolder("MacroTesting/Macros") then
+    makefolder("MacroTesting/Macros")
+end
+
+-- Load or create config
+local config = {
+    manualPlayEnabled = false,
+    selectedMacro = nil,
+    windowPosition = {x = 0.5, y = 0.5}
+}
 
 local function loadConfig()
     if isfile("MacroTesting/config.json") then
@@ -31,195 +34,15 @@ local function loadConfig()
         if success then
             config = loaded
             config.manualPlayEnabled = config.manualPlayEnabled or false
-            config.windowPosition.x = 0 -- Force left side
         end
     end
 end
 
 local function saveConfig()
-    config.windowPosition.x = 0 -- Lock to left side
     writefile("MacroTesting/config.json", HttpService:JSONEncode(config))
 end
 
--- Setup folders
-if not isfolder("MacroTesting") then makefolder("MacroTesting") end
-if not isfolder("MacroTesting/Macros") then makefolder("MacroTesting/Macros") end
 loadConfig()
-
--- Prediction System
-local Prediction = {
-    History = {},
-    SampleRate = 0.1,
-    PREDICTION_FRAMES = 10
-}
-
-local function PredictPosition(enemy, frames)
-    if not Prediction.History[enemy] then return enemy:GetPivot().Position end
-    local velocity = Vector3.new()
-    local samples = math.min(#Prediction.History[enemy], 5)
-    
-    for i = 1, samples-1 do
-        local delta = Prediction.History[enemy][i] - Prediction.History[enemy][i+1]
-        velocity = velocity + (delta / Prediction.SampleRate)
-    end
-    velocity = velocity / samples
-    
-    return enemy:GetPivot().Position + (velocity * frames * Prediction.SampleRate)
-end
-
-local function UpdatePredictionHistory(enemy)
-    if not Prediction.History[enemy] then Prediction.History[enemy] = {} end
-    table.insert(Prediction.History[enemy], 1, enemy:GetPivot().Position)
-    if #Prediction.History[enemy] > 10 then table.remove(Prediction.History[enemy]) end
-end
-
--- Enemy Handling
-local function isEnemyAlive(enemy)
-    if not enemy:FindFirstChild("HumanoidRootPart") then return false end
-    local enemyHumanoid = enemy:FindFirstChild("Humanoid")
-    return not (enemyHumanoid and enemyHumanoid.Health <= 0)
-end
-
-local function findGregg()
-    -- Search through all dungeon rooms
-    local dungeon = Workspace:FindFirstChild("dungeon")
-    if not dungeon then 
-        warn("Dungeon folder not found in Workspace")
-        return nil 
-    end
-    
-    -- Check all enemyFolders in dungeon and its subrooms
-    for _, descendant in ipairs(dungeon:GetDescendants()) do
-        if descendant.Name == "enemyFolder" then
-            for _, enemy in ipairs(descendant:GetChildren()) do
-                if enemy:IsA("Model") and enemy.Name == "Gregg" and isEnemyAlive(enemy) then
-                    return enemy
-                end
-            end
-        end
-    end
-    
-    --warn("No alive Gregg found in dungeon")
-    return nil
-end
-
--- Movement Functions
-local function SafeTeleport(position)
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then 
-        warn("Cannot teleport - character or HRP missing")
-        return false 
-    end
-    character.HumanoidRootPart.CFrame = CFrame.new(position)
-    return true
-end
-
-local function ComputePath(target)
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 2,
-        AgentHeight = 5,
-        AgentCanJump = true,
-        WaypointSpacing = 2
-    })
-    path:ComputeAsync(LocalPlayer.Character:GetPivot().Position, PredictPosition(target, Prediction.PREDICTION_FRAMES))
-    return path
-end
-
-local function EnhancedMoveToGregg(gregg)
-    if not gregg or not gregg:FindFirstChild("HumanoidRootPart") then 
-        warn("Invalid Gregg target")
-        return false 
-    end
-    
-    local path = ComputePath(gregg)
-    if not path or path.Status ~= Enum.PathStatus.Success then
-        warn("Pathfinding failed to Gregg")
-        return false 
-    end
-
-    for _, waypoint in ipairs(path:GetWaypoints()) do
-        if not isEnemyAlive(gregg) then 
-            warn("Gregg died during movement")
-            return false 
-        end
-        
-        if waypoint.Action == Enum.PathWaypointAction.Jump then
-            SafeTeleport(waypoint.Position + Vector3.new(0, 5, 0))
-        else
-            SafeTeleport(waypoint.Position)
-        end
-        
-        UpdatePredictionHistory(gregg)
-        task.wait(0.1) -- Increased wait time for more reliable movement
-    end
-    return true
-end
-
--- Gregg Handling
-local greggDetected = false
-local macroPaused = false
-local pauseTime = 0
-local greggConnection = nil
-local lastGreggCheck = 0
-local greggCheckInterval = 1
-
-local function handleGregg()
-    if not isPlaying or greggDetected then return end
-    
-    local gregg = findGregg()
-    if gregg and isEnemyAlive(gregg) then
-        print("[Gregg Handler] Gregg detected - pausing macro")
-        greggDetected = true
-        macroPaused = true
-        pauseTime = tick() - playbackStartTime
-        
-        -- Pause macro playback
-        if stopPlaying then 
-            stopPlaying()
-            stopPlaying = nil
-        end
-        
-        -- Move to Gregg
-        print("[Gregg Handler] Attempting to move to Gregg")
-        local success = EnhancedMoveToGregg(gregg)
-        
-        if success then
-            print("[Gregg Handler] Successfully moved to Gregg")
-            local greggDefeated = false
-            
-            -- Connect to Gregg's death event
-            greggConnection = gregg.Humanoid.Died:Connect(function()
-                print("[Gregg Handler] Gregg defeated")
-                greggDefeated = true
-            end)
-            
-            -- Stay near Gregg until defeated
-            while not greggDefeated and isEnemyAlive(gregg) do
-                UpdatePredictionHistory(gregg)
-                local targetPos = PredictPosition(gregg, Prediction.PREDICTION_FRAMES)
-                SafeTeleport(targetPos + Vector3.new(0, 2, 0)) -- Slightly above to avoid collision
-                wait(0.5)
-            end
-            
-            -- Clean up connection
-            if greggConnection then
-                greggConnection:Disconnect()
-                greggConnection = nil
-            end
-        else
-            print("[Gregg Handler] Failed to move to Gregg")
-        end
-        
-        -- Resume macro
-        print("[Gregg Handler] Resuming macro")
-        greggDetected = false
-        macroPaused = false
-        
-        if config.manualPlayEnabled then
-            stopPlaying = startPlaying(true, pauseTime)
-        end
-    end
-end
 
 -- GUI Setup
 local ScreenGui = Instance.new("ScreenGui")
@@ -228,13 +51,49 @@ ScreenGui.Parent = game.CoreGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 350, 0, 450)
-MainFrame.Position = UDim2.new(0, 10, config.windowPosition.y, -225)
-MainFrame.AnchorPoint = Vector2.new(0, 0.5)
+MainFrame.Position = UDim2.new(config.windowPosition.x, -175, config.windowPosition.y, -225)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
--- Title
+-- Make the window draggable
+local dragging, dragInput, dragStart, startPos
+
+local function updateInput(input)
+    local delta = input.Position - dragStart
+    local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    MainFrame.Position = newPos
+    config.windowPosition = {x = newPos.X.Scale, y = newPos.Y.Scale}
+    saveConfig()
+end
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        updateInput(input)
+    end
+end)
+
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Text = "MACRO RECORDER (Drag Here)"
@@ -356,44 +215,25 @@ PlayButton.Font = Enum.Font.GothamBold
 PlayButton.TextSize = 16
 PlayButton.Parent = MainFrame
 
--- Draggable GUI
-local dragging, dragInput, dragStart, startPos
+-- Variables
+local isRecording = false
+local isPlaying = false
+local selectedMacro = nil
+local currentRecording = {}
+local recordingStartTime = 0
+local playbackStartTime = 0
+local playbackIndex = 1
+local humanoid = nil
+local stopRecording = nil
+local stopPlaying = nil
 
-local function updateInput(input)
-    local delta = input.Position - dragStart
-    local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    MainFrame.Position = newPos
-    config.windowPosition = {x = 0, y = newPos.Y.Scale}
-    saveConfig()
+-- Wait for character
+if not LocalPlayer.Character then
+    LocalPlayer.CharacterAdded:Wait()
 end
+humanoid = LocalPlayer.Character:WaitForChild("Humanoid")
 
-MainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-MainFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        updateInput(input)
-    end
-end)
-
--- Macro Functions
+-- Functions
 local function createMacroButton(macroName)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, -10, 0, 35)
@@ -435,7 +275,7 @@ end
 
 local function refreshMacroList()
     for _, child in ipairs(MacroList:GetChildren()) do
-        if child:IsA("TextButton") then
+        if child:IsA("TextButton") or child:IsA("TextLabel") then
             child:Destroy()
         end
     end
@@ -443,24 +283,40 @@ local function refreshMacroList()
     local success, files = pcall(function()
         local allFiles = listfiles("MacroTesting/Macros")
         local macroFiles = {}
+        
         for _, filePath in ipairs(allFiles) do
-            local fileName = filePath:match("^.+\\(.+).json$") or filePath:match("^.+/(.+).json$")
+            local fileName = filePath:match(".+[\\/](.+)%.json$") or filePath:match(".+[\\/](.+)$")
             if fileName then
                 table.insert(macroFiles, fileName)
             end
         end
+        
         return macroFiles
     end)
     
-    if not success or #files == 0 then
+    if not success then
+        warn("Failed to list macro files: "..tostring(files))
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(1, -10, 0, 30)
-        label.Text = success and "No macros found" or "Error loading macros"
-        label.TextColor3 = success and Color3.fromRGB(200, 200, 200) or Color3.fromRGB(255, 100, 100)
+        label.Text = "Error loading macros"
+        label.TextColor3 = Color3.fromRGB(255, 100, 100)
+        label.BackgroundTransparency = 1
+        label.Parent = MacroList
+        return
+    end
+    
+    if #files == 0 then
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -10, 0, 30)
+        label.Text = "No macros found"
+        label.TextColor3 = Color3.fromRGB(200, 200, 200)
         label.BackgroundTransparency = 1
         label.Parent = MacroList
     else
-        table.sort(files)
+        table.sort(files, function(a, b)
+            return a:lower() < b:lower()
+        end)
+        
         for _, fileName in ipairs(files) do
             local button = createMacroButton(fileName)
             if fileName == config.selectedMacro then
@@ -473,7 +329,16 @@ end
 
 local function startRecording()
     if isPlaying or isRecording then return end
-    if not selectedMacro then return end
+    
+    if not selectedMacro then
+        warn("Please select a macro first")
+        return
+    end
+    
+    if #Players:GetPlayers() > 1 then
+        warn("Cannot record with other players in game")
+        return
+    end
     
     isRecording = true
     currentRecording = {}
@@ -481,43 +346,60 @@ local function startRecording()
     RecordButton.Text = "⏹ STOP REC"
     RecordButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
     
-    local connection = RunService.Heartbeat:Connect(function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            table.insert(currentRecording, {
-                time = tick() - recordingStartTime,
-                position = char.HumanoidRootPart.Position,
-                moveDirection = char.Humanoid.MoveDirection
-            })
-        end
+    local connection
+    
+    connection = RunService.Heartbeat:Connect(function()
+        local currentTime = tick() - recordingStartTime
+        local currentPosition = LocalPlayer.Character.HumanoidRootPart.Position
+        local moveDirection = LocalPlayer.Character.Humanoid.MoveDirection
+        
+        table.insert(currentRecording, {
+            time = currentTime,
+            position = {
+                x = currentPosition.X,
+                y = currentPosition.Y,
+                z = currentPosition.Z
+            },
+            moveDirection = {
+                x = moveDirection.X,
+                y = moveDirection.Y,
+                z = moveDirection.Z
+            }
+        })
     end)
     
-    stopRecording = function()
+    return function()
         connection:Disconnect()
         isRecording = false
         RecordButton.Text = "⏺ RECORD"
         RecordButton.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
-        writefile("MacroTesting/Macros/"..selectedMacro..".json", HttpService:JSONEncode(currentRecording))
+        
+        local fileName = "MacroTesting/Macros/"..selectedMacro..".json"
+        writefile(fileName, HttpService:JSONEncode(currentRecording))
         refreshMacroList()
     end
 end
 
-local function lerpVector3(a, b, alpha)
-    return Vector3.new(
-        a.X + (b.X - a.X) * alpha,
-        a.Y + (b.Y - a.Y) * alpha,
-        a.Z + (b.Z - a.Z) * alpha
-    )
-end
-
-local function startPlaying(manualTrigger, resumeTime)
+local function startPlaying(manualTrigger)
     if isPlaying or isRecording then return end
-    if not selectedMacro then return end
+    
+    if not selectedMacro then
+        warn("Please select a macro first")
+        return
+    end
+    
+    if #Players:GetPlayers() > 1 then
+        warn("Cannot play with other players in game")
+        return
+    end
     
     local fileName = "MacroTesting/Macros/"..selectedMacro..".json"
-    if not isfile(fileName) then return end
+    if not isfile(fileName) then
+        warn("Macro file not found")
+        return
+    end
     
-    -- Wait for timeLeftGui if manual trigger
+    -- For manual play, wait for timeLeftGui to be enabled
     if manualTrigger then
         local playerGui = LocalPlayer:WaitForChild("PlayerGui")
         local timeLeftGui = playerGui:FindFirstChild("timeLeftGui")
@@ -530,11 +412,12 @@ local function startPlaying(manualTrigger, resumeTime)
             repeat
                 wait(0.1)
                 timeLeftGui = playerGui:FindFirstChild("timeLeftGui")
-            until (timeLeftGui and timeLeftGui.Enabled) or (tick() - startWait > 10)
+            until timeLeftGui and timeLeftGui.Enabled or (tick() - startWait) > 10
             
             if not timeLeftGui or not timeLeftGui.Enabled then
                 PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
                 PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
+                warn("Timed out waiting for timeLeftGui")
                 return
             end
         end
@@ -544,106 +427,99 @@ local function startPlaying(manualTrigger, resumeTime)
         return HttpService:JSONDecode(readfile(fileName))
     end)
     
-    if not success or not macroData or #macroData == 0 then return end
+    if not success or not macroData or #macroData == 0 then
+        warn("Failed to load macro data or empty macro")
+        return
+    end
     
     isPlaying = true
-    playbackStartTime = tick() - (resumeTime or 0)
+    playbackStartTime = tick()
     playbackIndex = 1
     PlayButton.Text = "⏹ STOP PLAY"
     PlayButton.BackgroundColor3 = Color3.fromRGB(40, 200, 40)
     
-    local connection = RunService.Heartbeat:Connect(function()
+    local character = LocalPlayer.Character
+    if not character then
+        warn("No character found")
+        isPlaying = false
+        PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
+        PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
+        return
+    end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then
+        warn("No HumanoidRootPart found")
+        isPlaying = false
+        PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
+        PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
+        return
+    end
+    
+    local connection
+    
+    connection = RunService.Heartbeat:Connect(function()
         if not isPlaying then
             connection:Disconnect()
             return
         end
         
-        -- Check for Gregg periodically
-        if tick() - lastGreggCheck > greggCheckInterval then
-            lastGreggCheck = tick()
-            if not greggDetected and not macroPaused then
-                coroutine.wrap(handleGregg)()
-            end
-        end
-        
-        -- Skip movement if Gregg is being handled
-        if greggDetected or macroPaused then return end
-        
         local currentTime = tick() - playbackStartTime
-        local char = LocalPlayer.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
         
-        -- Advance playback index
         while playbackIndex <= #macroData and macroData[playbackIndex].time <= currentTime do
             playbackIndex = playbackIndex + 1
         end
         
         if playbackIndex > #macroData then
             isPlaying = false
+            connection:Disconnect()
             PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
             PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
             return
         end
         
-        -- Interpolate between frames
         local prevFrame = macroData[playbackIndex - 1]
         local nextFrame = macroData[playbackIndex]
         
         if prevFrame and nextFrame then
             local alpha = (currentTime - prevFrame.time) / (nextFrame.time - prevFrame.time)
-            local position = lerpVector3(
-                Vector3.new(prevFrame.position.x, prevFrame.position.y, prevFrame.position.z),
-                Vector3.new(nextFrame.position.x, nextFrame.position.y, nextFrame.position.z),
-                alpha
-            )
-            char.HumanoidRootPart.CFrame = CFrame.new(position)
             
-            local moveDir = lerpVector3(
-                Vector3.new(prevFrame.moveDirection.x, prevFrame.moveDirection.y, prevFrame.moveDirection.z),
-                Vector3.new(nextFrame.moveDirection.x, nextFrame.moveDirection.y, nextFrame.moveDirection.z),
-                alpha
+            humanoidRootPart.CFrame = CFrame.new(
+                Vector3.new(
+                    prevFrame.position.x + (nextFrame.position.x - prevFrame.position.x) * alpha,
+                    prevFrame.position.y + (nextFrame.position.y - prevFrame.position.y) * alpha,
+                    prevFrame.position.z + (nextFrame.position.z - prevFrame.position.z) * alpha
+                )
             )
-            char.Humanoid:Move(moveDir)
+            
+            local moveDir = Vector3.new(
+                prevFrame.moveDirection.x + (nextFrame.moveDirection.x - prevFrame.moveDirection.x) * alpha,
+                prevFrame.moveDirection.y + (nextFrame.moveDirection.y - prevFrame.moveDirection.y) * alpha,
+                prevFrame.moveDirection.z + (nextFrame.moveDirection.z - prevFrame.moveDirection.z) * alpha
+            )
+            
+            humanoid:Move(moveDir, false)
         end
     end)
     
-    stopPlaying = function()
+    return function()
         isPlaying = false
-        connection:Disconnect()
+        if connection then
+            connection:Disconnect()
+        end
         PlayButton.Text = config.manualPlayEnabled and "✅ MANUAL PLAY" or "▶ MANUAL PLAY"
         PlayButton.BackgroundColor3 = config.manualPlayEnabled and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(60, 60, 60)
     end
 end
 
--- Idle Detection
-local lastMovementTime = tick()
-local idleThreshold = 60 -- 1 minute
-
-local function checkIdle()
-    while true do
-        wait(5)
-        if not isPlaying and config.manualPlayEnabled and selectedMacro then
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                if char.Humanoid.MoveDirection.Magnitude < 0.1 then
-                    if tick() - lastMovementTime > idleThreshold then
-                        print("Player idle - restarting macro")
-                        if stopPlaying then stopPlaying() end
-                        stopPlaying = startPlaying(true)
-                    end
-                else
-                    lastMovementTime = tick()
-                end
-            end
-        end
-    end
-end
-
--- Button Connections
-RefreshButton.MouseButton1Click:Connect(refreshMacroList)
+-- Connect buttons
+RefreshButton.MouseButton1Click:Connect(function()
+    refreshMacroList()
+end)
 
 DeleteButton.MouseButton1Click:Connect(function()
     if not selectedMacro then return end
+    
     local fileName = "MacroTesting/Macros/"..selectedMacro..".json"
     if isfile(fileName) then
         delfile(fileName)
@@ -655,10 +531,11 @@ DeleteButton.MouseButton1Click:Connect(function()
 end)
 
 CreateButton.MouseButton1Click:Connect(function()
-    local macroName = trim(MacroNameBox.Text)
+    local macroName = MacroNameBox.Text
     if macroName == "" then return end
     
     macroName = macroName:gsub("[^%w%s_-]", ""):gsub("%s+", " ")
+    macroName = trim(macroName)
     if macroName == "" then return end
     
     local fileName = "MacroTesting/Macros/"..macroName..".json"
@@ -670,13 +547,15 @@ CreateButton.MouseButton1Click:Connect(function()
         saveConfig()
         refreshMacroList()
     else
-        warn("Macro already exists")
+        warn("Macro with this name already exists")
     end
 end)
 
 RecordButton.MouseButton1Click:Connect(function()
     if isRecording then
-        if stopRecording then stopRecording() end
+        if stopRecording then
+            stopRecording()
+        end
     else
         stopRecording = startRecording()
     end
@@ -684,7 +563,9 @@ end)
 
 PlayButton.MouseButton1Click:Connect(function()
     if isPlaying then
-        if stopPlaying then stopPlaying() end
+        if stopPlaying then
+            stopPlaying()
+        end
     else
         config.manualPlayEnabled = true
         saveConfig()
@@ -694,31 +575,11 @@ PlayButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Initialize
-if not LocalPlayer.Character then LocalPlayer.CharacterAdded:Wait() end
-local humanoid = LocalPlayer.Character:WaitForChild("Humanoid")
-
--- Movement tracking
-humanoid:GetPropertyChangedSignal("MoveDirection"):Connect(function()
-    if humanoid.MoveDirection.Magnitude > 0.1 then
-        lastMovementTime = tick()
-    end
-end)
-
--- Start systems
-coroutine.wrap(checkIdle)()
+-- Initial setup
 refreshMacroList()
 
--- Auto-start if enabled
-if config.manualPlayEnabled and selectedMacro then
-    coroutine.wrap(function()
-        wait(2)
-        stopPlaying = startPlaying(true)
-    end)()
-end
-
--- Cleanup
-game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+-- Cleanup on script termination
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.Delete then
         ScreenGui:Destroy()
     end
@@ -727,17 +588,18 @@ end)
 -- Character respawn handling
 LocalPlayer.CharacterAdded:Connect(function(character)
     humanoid = character:WaitForChild("Humanoid")
-    humanoid:GetPropertyChangedSignal("MoveDirection"):Connect(function()
-        if humanoid.MoveDirection.Magnitude > 0.1 then
-            lastMovementTime = tick()
-        end
-    end)
     
     if isPlaying then
-        if stopPlaying then stopPlaying() end
-        wait(1)
-        if config.manualPlayEnabled and not isPlaying and not isRecording then
-            stopPlaying = startPlaying(true)
+        if stopPlaying then
+            stopPlaying()
         end
     end
 end)
+
+-- Auto-start manual play if enabled in config
+if config.manualPlayEnabled and selectedMacro then
+    coroutine.wrap(function()
+        wait(2) -- Give time for everything to initialize
+        stopPlaying = startPlaying(true)
+    end)()
+end
