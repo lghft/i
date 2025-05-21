@@ -356,23 +356,23 @@ PlayButton.Font = Enum.Font.GothamBold
 PlayButton.TextSize = 16
 PlayButton.Parent = MainFrame
 
--- Draggable GUI
-local dragging, dragInput, dragStart, startPos
+-- Improved Draggable GUI
+local dragging = false
+local dragStart, startPos
 
 local function updateInput(input)
     local delta = input.Position - dragStart
-    local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    MainFrame.Position = newPos
-    config.windowPosition = {x = 0, y = newPos.Y.Scale}
+    local newY = math.clamp(startPos.Y + delta.Y, 0, 1)
+    MainFrame.Position = UDim2.new(0, 10, newY, -225)
+    config.windowPosition = {x = 0, y = newY}
     saveConfig()
 end
 
-MainFrame.InputBegan:Connect(function(input)
+Title.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
         dragStart = input.Position
-        startPos = MainFrame.Position
-        
+        startPos = MainFrame.Position.Y.Scale
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -381,14 +381,8 @@ MainFrame.InputBegan:Connect(function(input)
     end
 end)
 
-MainFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
         updateInput(input)
     end
 end)
@@ -472,33 +466,55 @@ local function refreshMacroList()
 end
 
 local function startRecording()
-    if isPlaying or isRecording then return end
-    if not selectedMacro then return end
+    if isPlaying or isRecording then 
+        print("Cannot start recording - already playing or recording")
+        return 
+    end
+    if not selectedMacro then 
+        print("No macro selected for recording")
+        return 
+    end
     
-    isRecording = true
-    currentRecording = {}
-    recordingStartTime = tick()
-    RecordButton.Text = "⏹ STOP REC"
-    RecordButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-    
-    local connection = RunService.Heartbeat:Connect(function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            table.insert(currentRecording, {
-                time = tick() - recordingStartTime,
-                position = char.HumanoidRootPart.Position,
-                moveDirection = char.Humanoid.MoveDirection
-            })
-        end
+    local success, err = pcall(function()
+        isRecording = true
+        currentRecording = {}
+        recordingStartTime = tick()
+        RecordButton.Text = "⏹ STOP REC"
+        RecordButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+        
+        connection = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                table.insert(currentRecording, {
+                    time = tick() - recordingStartTime,
+                    position = char.HumanoidRootPart.Position,
+                    moveDirection = char.Humanoid.MoveDirection
+                })
+            end
+        end)
     end)
     
-    stopRecording = function()
-        connection:Disconnect()
+    if not success then
+        warn("Recording error:", err)
         isRecording = false
         RecordButton.Text = "⏺ RECORD"
         RecordButton.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
-        writefile("MacroTesting/Macros/"..selectedMacro..".json", HttpService:JSONEncode(currentRecording))
-        refreshMacroList()
+    end
+    
+    stopRecording = function()
+        print("Stopping recording...")
+        if connection then
+            connection:Disconnect()
+            connection = nil
+        end
+        isRecording = false
+        RecordButton.Text = "⏺ RECORD"
+        RecordButton.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
+        if currentRecording and #currentRecording > 0 then
+            writefile("MacroTesting/Macros/"..selectedMacro..".json", HttpService:JSONEncode(currentRecording))
+            refreshMacroList()
+        end
+        stopRecording = nil
     end
 end
 
@@ -675,9 +691,17 @@ CreateButton.MouseButton1Click:Connect(function()
 end)
 
 RecordButton.MouseButton1Click:Connect(function()
+    print("Record button clicked")
     if isRecording then
-        if stopRecording then stopRecording() end
+        print("Attempting to stop recording")
+        if stopRecording then 
+            stopRecording() 
+            print("Recording stopped")
+        else
+            print("No stopRecording function available")
+        end
     else
+        print("Starting recording")
         stopRecording = startRecording()
     end
 end)
@@ -695,6 +719,10 @@ PlayButton.MouseButton1Click:Connect(function()
 end)
 
 -- Initialize
+print("Script initialized")
+print("Config loaded:", config)
+print("GUI created")
+
 if not LocalPlayer.Character then LocalPlayer.CharacterAdded:Wait() end
 local humanoid = LocalPlayer.Character:WaitForChild("Humanoid")
 
