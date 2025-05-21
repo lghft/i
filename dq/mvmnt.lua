@@ -11,12 +11,12 @@
     - Teleports player in front of Gregg (not just above) when detected
 --]]
 
-repeat wait() until game:IsLoaded()
+repeat wait(6) until game:IsLoaded()
 local Players = game:GetService("Players")
 while #Players:GetPlayers() < 1 do wait() end
 local LocalPlayer = Players.LocalPlayer
 repeat wait() until LocalPlayer and LocalPlayer.Character
-
+wait(10)
 -- Synapse X file helpers
 local FOLDER = "DqmacTest"
 local MACRO_FOLDER = FOLDER.."/Macros"
