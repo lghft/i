@@ -16,7 +16,7 @@ local Players = game:GetService("Players")
 while #Players:GetPlayers() < 1 do wait() end
 local LocalPlayer = Players.LocalPlayer
 repeat wait() until LocalPlayer and LocalPlayer.Character
-wait(10)
+wait(16)
 -- Synapse X file helpers
 local FOLDER = "DqmacTest"
 local MACRO_FOLDER = FOLDER.."/Macros"
@@ -53,6 +53,27 @@ end
 local function tblv3(t)
     return Vector3.new(t.x, t.y, t.z)
 end
+
+function clickButton(ClickOnPart)
+    local vim = game:GetService("VirtualInputManager")
+    local inset1, inset2 = game:GetService('GuiService'):GetGuiInset()
+    local insetOffset = inset1 - inset2
+    -- Replace "button location here" with the actual GUI object (e.g., a TextButton)
+    local part = ClickOnPart
+    -- Calculate the center of the GUI element
+    local topLeft = part.AbsolutePosition + insetOffset
+    local center = topLeft + (part.AbsoluteSize / 2)
+    -- Adjust the click position if needed
+    local X = center.X + 15
+    local Y = center.Y
+    -- Simulate a mouse click
+    vim:SendMouseButtonEvent(X, Y, 0, true, game, 0) -- Mouse down
+    task.wait(0.1) -- Small delay to simulate a real click
+    vim:SendMouseButtonEvent(X, Y, 0, false, game, 0) -- Mouse up
+    task.wait(1)
+    print("Clicked: ", ClickOnPart)
+end
+
 
 -- Sleek Navy/Blue UI Colors
 local colors = {
@@ -200,6 +221,7 @@ playBtn.BackgroundColor3 = colors.accent2
 playBtn.TextColor3 = Color3.new(1,1,1)
 playBtn.Font = ARIMO
 playBtn.TextSize = 18
+playBtn.Name = "Play"
 playBtn.BorderSizePixel = 0
 local playBtnCorner = Instance.new("UICorner", playBtn)
 playBtnCorner.CornerRadius = UDim.new(0, 8)
@@ -579,7 +601,8 @@ end)
 -- Autoplay on script load if enabled and isPlaying is true
 if config.autoplay == true and config.selectedMacro == "Void3" then
     print("autoPlay YESS")
-    firesignal(playBtn.Activated)
+    wait(1)
+    clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
 end
 
 -- Always press the playback button on script execution
