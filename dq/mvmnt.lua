@@ -6,7 +6,7 @@
     - Stores macros in Workspace/DqmacTest/Macros
     - Sleek, navy/blue GUI: record/play, macro list, textbox, create button, exit button, autoplay toggle
     - Config file for selected macro and autoplay
-    - Gregg detection: pauses macro and teleports to Gregg, resumes when Gregg is dead
+    - Gregg detection: rapid TP to Gregg while alive, resumes macro when Gregg is dead
     - Loads even if only 1 player in the server
     - Teleports player in front of Gregg (not just above) when detected
 --]]
@@ -16,7 +16,7 @@ local Players = game:GetService("Players")
 while #Players:GetPlayers() < 1 do wait() end
 local LocalPlayer = Players.LocalPlayer
 repeat wait() until LocalPlayer and LocalPlayer.Character
-wait(16)
+wait(10)
 -- Synapse X file helpers
 local FOLDER = "DqmacTest"
 local MACRO_FOLDER = FOLDER.."/Macros"
@@ -388,14 +388,32 @@ local currentRecording, recordingStart, recordConn
 local playConn, playIndex, playStart, playData
 
 local isPausedForGregg = false
+local rapidGreggTP = false
+local rapidGreggTPThread = nil
+
 local function teleportToGregg(gregg)
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     local greggHRP = gregg and gregg:FindFirstChild("HumanoidRootPart")
     if hrp and greggHRP then
-        -- Teleport in front of Gregg (towards his LookVector, 4 studs away, and 2 studs above ground)
         local offset = greggHRP.CFrame.LookVector * 4 + Vector3.new(0, 2, 0)
         hrp.CFrame = greggHRP.CFrame + offset
     end
+end
+
+local function startRapidGreggTP(gregg)
+    rapidGreggTP = true
+    rapidGreggTPThread = coroutine.create(function()
+        while rapidGreggTP and gregg and isEnemyAlive(gregg) and isPlaying do
+            teleportToGregg(gregg)
+            wait(0.1)
+        end
+    end)
+    coroutine.resume(rapidGreggTPThread)
+end
+
+local function stopRapidGreggTP()
+    rapidGreggTP = false
+    rapidGreggTPThread = nil
 end
 
 recordBtn.MouseButton1Click:Connect(function()
@@ -436,13 +454,15 @@ playBtn.MouseButton1Click:Connect(function()
         if playConn then playConn:Disconnect() end
         playBtn.Text = "▶ Play"
         playBtn.BackgroundColor3 = colors.accent2
+        stopRapidGreggTP()
         return
     end
     if not selectedMacro then return end
 
-    -- Macro can only play if timeLeftGui exists
+    -- Only play if timeLeftGui exists and is Enabled==true
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui or not playerGui:FindFirstChild("timeLeftGui") then
+    local timeLeftGui = playerGui and playerGui:FindFirstChild("timeLeftGui")
+    if not (timeLeftGui and timeLeftGui.Enabled == true) then
         playBtn.Text = "▶ Play"
         playBtn.BackgroundColor3 = colors.accent2
         return
@@ -461,24 +481,36 @@ playBtn.MouseButton1Click:Connect(function()
     playBtn.Text = "⏹ Stop"
     playBtn.BackgroundColor3 = colors.btnActive
     isPausedForGregg = false
+    stopRapidGreggTP()
 
     playConn = RunService.Heartbeat:Connect(function()
-        if not isPlaying then if playConn then playConn:Disconnect() end return end
+        if not isPlaying then if playConn then playConn:Disconnect() end stopRapidGreggTP() return end
 
-        -- Gregg detection and rapid teleport logic
-        local gregg = findGregg()
-        if gregg then
-            isPausedForGregg = true
-            teleportToGregg(gregg) -- Teleport every frame while Gregg is alive
-            playBtn.Text = "⏸ Paused (Gregg)"
-            playBtn.BackgroundColor3 = colors.accent
-            return -- Do not play macro while Gregg is alive
-        else
-            if isPausedForGregg then
-                isPausedForGregg = false
-                playBtn.Text = "⏹ Stop"
-                playBtn.BackgroundColor3 = colors.btnActive
+        -- Gregg detection and rapid TP logic
+        if not isPausedForGregg then
+            local gregg = findGregg()
+            if gregg then
+                isPausedForGregg = true
+                playBtn.Text = "⏸ Paused (Gregg)"
+                playBtn.BackgroundColor3 = colors.accent
+                startRapidGreggTP(gregg)
+                coroutine.wrap(function()
+                    while gregg and isEnemyAlive(gregg) and isPlaying do
+                        wait(0.1)
+                    end
+                    stopRapidGreggTP()
+                    if isPlaying then
+                        isPausedForGregg = false
+                        playBtn.Text = "⏹ Stop"
+                        playBtn.BackgroundColor3 = colors.btnActive
+                    end
+                end)()
+                return
             end
+        end
+
+        if isPausedForGregg then
+            return
         end
 
         local char = LocalPlayer.Character
@@ -495,6 +527,7 @@ playBtn.MouseButton1Click:Connect(function()
             playBtn.Text = "▶ Play"
             playBtn.BackgroundColor3 = colors.accent2
             playConn:Disconnect()
+            stopRapidGreggTP()
             return
         end
         char.HumanoidRootPart.CFrame = CFrame.new(tblv3(frame.position))
@@ -506,6 +539,7 @@ playBtn.MouseButton1Click:Connect(function()
             playBtn.Text = "▶ Play"
             playBtn.BackgroundColor3 = colors.accent2
             playConn:Disconnect()
+            stopRapidGreggTP()
         end
     end)
 end)
@@ -529,6 +563,7 @@ exitBtn.MouseButton1Click:Connect(function()
     if isPlaying and playConn then
         isPlaying = false
         playConn:Disconnect()
+        stopRapidGreggTP()
     end
     if isRecording and recordConn then
         isRecording = false
@@ -540,7 +575,7 @@ end)
 -- Autoplay on script load if enabled and isPlaying is true
 if config.autoplay == true and config.selectedMacro == "Void3" then
     print("autoPlay YESS")
-    clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
+    clickButton(game.CoreGui.DqmacMacroGui.Frame.Play.Activated)
 end
 
 -- Always press the playback button on script execution
