@@ -23,7 +23,6 @@ local CONFIG_PATH = CONFIG_FOLDER.."/config.json"
 
 local DEFAULT_CONFIG = {
     autofarmActive = false,
-    autospellActive = false,
     heightAboveEnemy = 10,
     orbitRadius = 6
 }
@@ -90,7 +89,6 @@ local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 -- Enemy search now uses all enemyFolder folders under workspace.dungeon
 local dungeon = workspace:WaitForChild("dungeon")
 
-local SPELLS = {"Q", "E"}
 local SPELL_INTERVAL = 1 -- seconds between spell casts
 local TELEPORT_TIME = 0.5 -- seconds for tween teleport
 
@@ -108,7 +106,6 @@ local TEMP_PLATFORM_OFFSET = Vector3.new(0, 50, 0) -- 50 studs above current pos
 
 -- State (from config)
 local autofarmActive = config.autofarmActive
-local autospellActive = config.autospellActive
 local heightAboveEnemy = config.heightAboveEnemy
 local orbitRadius = config.orbitRadius
 
@@ -119,7 +116,7 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 250, 0, 260)
+frame.Size = UDim2.new(0, 250, 0, 220)
 frame.Position = UDim2.new(0, 20, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
@@ -144,16 +141,6 @@ autofarmToggle.TextColor3 = Color3.new(1,1,1)
 autofarmToggle.Font = Enum.Font.SourceSans
 autofarmToggle.TextSize = 18
 autofarmToggle.Parent = frame
-
-local autospellToggle = Instance.new("TextButton")
-autospellToggle.Size = UDim2.new(0, 110, 0, 30)
-autospellToggle.Position = UDim2.new(0, 130, 0, 40)
-autospellToggle.BackgroundColor3 = autospellActive and Color3.fromRGB(50, 50, 100) or Color3.fromRGB(100, 50, 50)
-autospellToggle.Text = "Autospell: " .. (autospellActive and "ON" or "OFF")
-autospellToggle.TextColor3 = Color3.new(1,1,1)
-autospellToggle.Font = Enum.Font.SourceSans
-autospellToggle.TextSize = 18
-autospellToggle.Parent = frame
 
 local heightLabel = Instance.new("TextLabel")
 heightLabel.Size = UDim2.new(0, 120, 0, 25)
@@ -214,7 +201,7 @@ statsLabel.Parent = frame
 
 local healthStatusLabel = Instance.new("TextLabel")
 healthStatusLabel.Size = UDim2.new(1, -20, 0, 20)
-healthStatusLabel.Position = UDim2.new(0, 10, 0, 215)
+healthStatusLabel.Position = UDim2.new(0, 10, 0, 185)
 healthStatusLabel.BackgroundTransparency = 1
 healthStatusLabel.Text = ""
 healthStatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -255,11 +242,7 @@ local function setTogglesInteractable(state)
     autofarmToggle.AutoButtonColor = state
     autofarmToggle.BackgroundColor3 = (autofarmActive and state) and Color3.fromRGB(50, 100, 50)
         or (state and Color3.fromRGB(100, 50, 50) or Color3.fromRGB(60, 60, 60))
-    autospellToggle.AutoButtonColor = state
-    autospellToggle.BackgroundColor3 = (autospellActive and state) and Color3.fromRGB(50, 50, 100)
-        or (state and Color3.fromRGB(100, 50, 50) or Color3.fromRGB(60, 60, 60))
     autofarmToggle.Text = "Autofarm: " .. (autofarmActive and "ON" or "OFF")
-    autospellToggle.Text = "Autospell: " .. (autospellActive and "ON" or "OFF")
 end
 
 local function setTextboxesInteractable(state)
@@ -277,13 +260,11 @@ local function enforceSinglePlayer()
     else
         -- Auto-disable toggles and lock them
         autofarmActive = false
-        autospellActive = false
         setTogglesInteractable(false)
         setTextboxesInteractable(false)
         healthStatusLabel.Text = "Disabled: More than 1 player in game!"
         -- Save config with toggles off
         config.autofarmActive = false
-        config.autospellActive = false
         saveConfig(config)
     end
 end
@@ -306,15 +287,6 @@ autofarmToggle.MouseButton1Click:Connect(function()
     autofarmToggle.Text = "Autofarm: " .. (autofarmActive and "ON" or "OFF")
     autofarmToggle.BackgroundColor3 = autofarmActive and Color3.fromRGB(50, 100, 50) or Color3.fromRGB(100, 50, 50)
     config.autofarmActive = autofarmActive
-    saveConfig(config)
-end)
-
-autospellToggle.MouseButton1Click:Connect(function()
-    if not isSinglePlayer() then return end
-    autospellActive = not autospellActive
-    autospellToggle.Text = "Autospell: " .. (autospellActive and "ON" or "OFF")
-    autospellToggle.BackgroundColor3 = autospellActive and Color3.fromRGB(50, 50, 100) or Color3.fromRGB(100, 50, 50)
-    config.autospellActive = autospellActive
     saveConfig(config)
 end)
 
@@ -527,10 +499,9 @@ spawn(function()
     while true do
         local targetName = currentTarget and currentTarget.Name or "None"
         statsLabel.Text = string.format(
-            "Target: %s\nAutofarm: %s\nAutospell: %s\nHeight: %d\nOrbit Radius: %d",
+            "Target: %s\nAutofarm: %s\nHeight: %d\nOrbit Radius: %d",
             targetName,
             autofarmActive and "ON" or "OFF",
-            autospellActive and "ON" or "OFF",
             heightAboveEnemy,
             orbitRadius
         )
