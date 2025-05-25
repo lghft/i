@@ -20,7 +20,7 @@ local humanoid = character:WaitForChild("Humanoid")
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
 local enemiesFolder = workspace:WaitForChild("Enemies")
--- Removed: local remainingEnemies = enemiesFolder:WaitForChild("remainingEnemies")
+local remainingEnemies = enemiesFolder:WaitForChild("remainingEnemies")
 
 local SPELLS = {"Q", "E"}
 local SPELL_INTERVAL = 1 -- seconds between spell casts
@@ -40,8 +40,8 @@ local TEMP_PLATFORM_SIZE = Vector3.new(12, 1, 12)
 local TEMP_PLATFORM_OFFSET = Vector3.new(0, 50, 0) -- 50 studs above current position
 
 -- State
-local autofarmActive = true
-local autospellActive = true
+local autofarmActive = false -- Default OFF
+local autospellActive = false -- Default OFF
 local heightAboveEnemy = 10
 
 -- GUI Setup
@@ -70,8 +70,8 @@ title.Parent = frame
 local autofarmToggle = Instance.new("TextButton")
 autofarmToggle.Size = UDim2.new(0, 110, 0, 30)
 autofarmToggle.Position = UDim2.new(0, 10, 0, 40)
-autofarmToggle.BackgroundColor3 = Color3.fromRGB(50, 100, 50)
-autofarmToggle.Text = "Autofarm: ON"
+autofarmToggle.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
+autofarmToggle.Text = "Autofarm: OFF"
 autofarmToggle.TextColor3 = Color3.new(1,1,1)
 autofarmToggle.Font = Enum.Font.SourceSans
 autofarmToggle.TextSize = 18
@@ -80,8 +80,8 @@ autofarmToggle.Parent = frame
 local autospellToggle = Instance.new("TextButton")
 autospellToggle.Size = UDim2.new(0, 110, 0, 30)
 autospellToggle.Position = UDim2.new(0, 130, 0, 40)
-autospellToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 100)
-autospellToggle.Text = "Autospell: ON"
+autospellToggle.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
+autospellToggle.Text = "Autospell: OFF"
 autospellToggle.TextColor3 = Color3.new(1,1,1)
 autospellToggle.Font = Enum.Font.SourceSans
 autospellToggle.TextSize = 18
@@ -301,7 +301,7 @@ spawn(function()
             wait(0.5)
         end
 
-        if autofarmActive then
+        if autofarmActive and remainingEnemies.Value > 0 then
             local enemy = getNearestEnemy()
             currentTarget = enemy
             if enemy then
@@ -366,8 +366,9 @@ spawn(function()
     while true do
         local targetName = currentTarget and currentTarget.Name or "None"
         statsLabel.Text = string.format(
-            "Target: %s\nAutofarm: %s\nAutospell: %s\nHeight: %d",
+            "Target: %s\nRemaining Enemies: %d\nAutofarm: %s\nAutospell: %s\nHeight: %d",
             targetName,
+            remainingEnemies.Value,
             autofarmActive and "ON" or "OFF",
             autospellActive and "ON" or "OFF",
             heightAboveEnemy
