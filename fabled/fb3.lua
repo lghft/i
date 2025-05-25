@@ -26,7 +26,7 @@ local SPELL_INTERVAL = 1 -- seconds between spell casts
 local TELEPORT_TIME = 0.5 -- seconds for tween teleport
 
 -- Orbit settings
-local ORBIT_RADIUS = 4 -- smaller radius for less mob movement
+local ORBIT_RADIUS = 6
 local ORBIT_SPEED = 1.5 -- radians/sec
 local ORBIT_DISTANCE_THRESHOLD = 1.5 -- how close before orbit starts
 
@@ -205,6 +205,7 @@ local function getNearestEnemy()
 end
 
 local function tweenAboveEnemy(enemy, height)
+    humanoidRootPart.Anchored = false -- Unanchor before tweening
     local goal = {}
     local enemyPos = enemy.HumanoidRootPart.Position
     goal.CFrame = CFrame.new(enemyPos + Vector3.new(0, height, 0))
@@ -217,26 +218,16 @@ local function tweenAboveEnemy(enemy, height)
     tween.Completed:Wait()
 end
 
--- Stable Orbit logic using Humanoid:MoveTo and BodyGyro
+-- Orbit logic with anchoring for stability
 local function orbitAroundEnemy(enemy, height, radius, speed)
-    -- Clamp radius to avoid wild orbits
-    radius = math.clamp(radius, 2, 8)
-    -- Setup BodyGyro for smooth facing
-    local bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.MaxTorque = Vector3.new(0, math.huge, 0)
-    bodyGyro.P = 10000
-    bodyGyro.D = 500
-    bodyGyro.Parent = humanoidRootPart
-
+    humanoidRootPart.Anchored = true -- Anchor for stable orbit
     local angle = math.random() * math.pi * 2
-    local orbiting = true
-    while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and orbiting do
+    while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive do
         if humanoid.Health / humanoid.MaxHealth < LOW_HEALTH_THRESHOLD then
             break
         end
         local dt = RunService.RenderStepped:Wait()
         angle = angle + speed * dt
-
         local enemyPos = enemy.HumanoidRootPart.Position
         local offset = Vector3.new(
             math.cos(angle) * radius,
@@ -244,21 +235,9 @@ local function orbitAroundEnemy(enemy, height, radius, speed)
             math.sin(angle) * radius
         )
         local targetPos = enemyPos + offset
-
-        -- Use Humanoid:MoveTo for smooth movement
-        humanoid:MoveTo(targetPos)
-
-        -- Face the mob smoothly
-        local lookAt = CFrame.new(humanoidRootPart.Position, enemyPos)
-        bodyGyro.CFrame = CFrame.new(humanoidRootPart.Position) * CFrame.Angles(0, math.atan2(enemyPos.X - humanoidRootPart.Position.X, enemyPos.Z - humanoidRootPart.Position.Z), 0)
-
-        -- If the mob moves too far, break orbit
-        if (humanoidRootPart.Position - enemyPos).Magnitude > radius * 2 then
-            orbiting = false
-        end
+        humanoidRootPart.CFrame = CFrame.new(targetPos, enemyPos)
     end
-    bodyGyro:Destroy()
-    humanoid:MoveTo(humanoidRootPart.Position) -- Stop movement
+    humanoidRootPart.Anchored = false -- Unanchor after orbit
 end
 
 -- Temp platform logic
@@ -285,6 +264,7 @@ local function removeTempPlatform()
 end
 
 local function moveToTempPlatform()
+    humanoidRootPart.Anchored = false -- Unanchor before teleporting
     local platform = createTempPlatform()
     local above = platform.Position + Vector3.new(0, 4, 0)
     humanoidRootPart.CFrame = CFrame.new(above)
@@ -313,7 +293,6 @@ spawn(function()
         end
 
         while autofarmPausedForHealth do
-            -- Stay on platform and wait for heal
             moveToTempPlatform()
             if shouldResumeForHealth() then
                 autofarmPausedForHealth = false
@@ -327,9 +306,7 @@ spawn(function()
             local enemy = getNearestEnemy()
             currentTarget = enemy
             if enemy then
-                -- Move above enemy
                 tweenAboveEnemy(enemy, heightAboveEnemy)
-                -- Wait until close enough to start orbit
                 while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not autofarmPausedForHealth do
                     if shouldPauseForHealth() then
                         autofarmPausedForHealth = true
@@ -342,7 +319,6 @@ spawn(function()
                     if dist <= ORBIT_DISTANCE_THRESHOLD then
                         break
                     end
-                    -- Keep position above enemy until close
                     local goal = {}
                     goal.CFrame = CFrame.new(enemyPos)
                     TweenService:Create(
@@ -352,7 +328,6 @@ spawn(function()
                     ):Play()
                     wait(0.2)
                 end
-                -- Orbit around enemy while facing it
                 if enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not autofarmPausedForHealth then
                     orbitAroundEnemy(enemy, heightAboveEnemy, ORBIT_RADIUS, ORBIT_SPEED)
                 end
