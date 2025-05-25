@@ -1,17 +1,15 @@
 
 --[[
-    Roblox Macro Recorder/Player (Navy Sleek UI, Gregg Detection, Auto-Resume)
+    Roblox Macro Recorder/Player (Navy Sleek UI, Autoplay, Gregg Detection)
     - Records player position and MoveDirection
     - Saves/loads macros as JSON files (Synapse X read/write)
     - Stores macros in Workspace/DqmacTest/Macros
-    - Sleek, navy/blue GUI: record/play, macro list, textbox, create button, exit button
-    - Config file for selected macro and play state
+    - Sleek, navy/blue GUI: record/play, macro list, textbox, create button, exit button, autoplay toggle
+    - Config file for selected macro and autoplay
     - Gregg detection: pauses macro and teleports to Gregg, resumes when Gregg is dead
     - Loads even if only 1 player in the server
     - Teleports player in front of Gregg (not just above) when detected
-    - Keeps teleporting to Gregg until Gregg is dead
-    - No autoplay or timeleft toggles
-    - If play button was on last session, auto-plays on script execution, but only if timeLeftGui.Enabled is true
+    - Macro playback only occurs when timeLeftGui.Enabled is true (no toggle)
 --]]
 
 repeat wait(6) until game:IsLoaded()
@@ -19,7 +17,7 @@ local Players = game:GetService("Players")
 while #Players:GetPlayers() < 1 do wait() end
 local LocalPlayer = Players.LocalPlayer
 repeat wait() until LocalPlayer and LocalPlayer.Character
-wait(16)
+wait(10)
 -- Synapse X file helpers
 local FOLDER = "DqmacTest"
 local MACRO_FOLDER = FOLDER.."/Macros"
@@ -34,6 +32,7 @@ local RunService = game:GetService("RunService")
 -- Config
 local config = {
     selectedMacro = nil,
+    autoplay = false,
     windowPos = {x = 0.5, y = 0.5},
     isPlaying = false
 }
@@ -316,8 +315,6 @@ local currentRecording, recordingStart, recordConn
 local playConn, playIndex, playStart, playData
 
 local isPausedForGregg = false
-
--- Modified: Keep teleporting to Gregg until Gregg is dead
 local function keepTeleportingToGregg(gregg)
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     local greggHRP = gregg and gregg:FindFirstChild("HumanoidRootPart")
@@ -325,47 +322,15 @@ local function keepTeleportingToGregg(gregg)
     local teleporting = true
     coroutine.wrap(function()
         while teleporting and gregg and isEnemyAlive(gregg) and isPlaying do
-            -- Teleport in front of Gregg (towards his LookVector, 4 studs away, and 2 studs above ground)
             local offset = greggHRP.CFrame.LookVector * 4 + Vector3.new(0, 2, 0)
             hrp.CFrame = greggHRP.CFrame + offset
             wait(0.2)
-            -- Refresh references in case of respawn
             hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             greggHRP = gregg and gregg:FindFirstChild("HumanoidRootPart")
             if not hrp or not greggHRP then break end
         end
     end)()
 end
-
-recordBtn.MouseButton1Click:Connect(function()
-    if isRecording then
-        isRecording = false
-        if recordConn then recordConn:Disconnect() end
-        recordBtn.Text = "⏺ Record"
-        recordBtn.BackgroundColor3 = colors.accent3
-        if selectedMacro then
-            writefile(MACRO_FOLDER.."/"..selectedMacro..".json", HttpService:JSONEncode(currentRecording))
-            refreshMacroList()
-        end
-        return
-    end
-    if not selectedMacro then return end
-    isRecording = true
-    currentRecording = {}
-    recordingStart = tick()
-    recordBtn.Text = "⏹ Stop"
-    recordBtn.BackgroundColor3 = colors.btnActive
-    recordConn = RunService.Heartbeat:Connect(function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-            table.insert(currentRecording, {
-                time = tick() - recordingStart,
-                position = v3tbl(char.HumanoidRootPart.Position),
-                moveDirection = v3tbl(char.Humanoid.MoveDirection)
-            })
-        end
-    end)
-end)
 
 local function canPlayMacro()
     -- Only play if timeLeftGui exists and is enabled
@@ -495,9 +460,9 @@ exitBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Auto-play macro on script execution if play button was on and timeLeftGui.Enabled is true
+-- Autoplay on script load if enabled and isPlaying is true, but only if timeLeftGui.Enabled is true
 coroutine.wrap(function()
-    if config.isPlaying and config.selectedMacro then
+    if config.autoplay and config.selectedMacro and config.isPlaying then
         -- Wait for PlayerGui and timeLeftGui to exist and be enabled
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         local timeLeftGui = playerGui and playerGui:FindFirstChild("timeLeftGui")
