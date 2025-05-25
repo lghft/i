@@ -575,6 +575,7 @@ setGuiVisible(true)
 if config.autoplay == true and config.selectedMacro == "Void3" then
     print("autoPlay YESS")
     clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
+    firesignal(game.CoreGui.DqmacMacroGui.Frame.Play.Activated)
 end
 
 -- Always press the playback button on script execution
