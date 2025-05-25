@@ -16,7 +16,7 @@ local Players = game:GetService("Players")
 while #Players:GetPlayers() < 1 do wait() end
 local LocalPlayer = Players.LocalPlayer
 repeat wait() until LocalPlayer and LocalPlayer.Character
-wait(10)
+wait(16)
 -- Synapse X file helpers
 local FOLDER = "DqmacTest"
 local MACRO_FOLDER = FOLDER.."/Macros"
@@ -575,6 +575,7 @@ end)
 -- Autoplay on script load if enabled and isPlaying is true
 if config.autoplay == true and config.selectedMacro == "Void3" then
     print("autoPlay YESS")
+    wait(1)
     clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
 end
 
