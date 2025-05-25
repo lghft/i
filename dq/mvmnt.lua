@@ -6,9 +6,10 @@
     - Stores macros in Workspace/DqmacTest/Macros
     - Sleek, navy/blue GUI: record/play, macro list, textbox, create button, exit button, autoplay toggle
     - Config file for selected macro and autoplay
-    - Gregg detection: rapid TP to Gregg while alive, resumes macro when Gregg is dead
+    - Gregg detection: pauses macro and teleports to Gregg, resumes when Gregg is dead
     - Loads even if only 1 player in the server
     - Teleports player in front of Gregg (not just above) when detected
+    - GUI visibility controlled by config.visibility
 --]]
 
 repeat wait(6) until game:IsLoaded()
@@ -16,7 +17,7 @@ local Players = game:GetService("Players")
 while #Players:GetPlayers() < 1 do wait() end
 local LocalPlayer = Players.LocalPlayer
 repeat wait() until LocalPlayer and LocalPlayer.Character
-wait(16)
+wait(10)
 -- Synapse X file helpers
 local FOLDER = "DqmacTest"
 local MACRO_FOLDER = FOLDER.."/Macros"
@@ -33,7 +34,9 @@ local config = {
     selectedMacro = nil,
     autoplay = false,
     windowPos = {x = 0.5, y = 0.5},
-    isPlaying = false
+    playIfTimeLeft = false,
+    isPlaying = false,
+    visibility = true -- new config for GUI visibility
 }
 if isfile(CONFIG_FILE) then
     local ok, data = pcall(function() return HttpService:JSONDecode(readfile(CONFIG_FILE)) end)
@@ -57,18 +60,14 @@ function clickButton(ClickOnPart)
     local vim = game:GetService("VirtualInputManager")
     local inset1, inset2 = game:GetService('GuiService'):GetGuiInset()
     local insetOffset = inset1 - inset2
-    -- Replace "button location here" with the actual GUI object (e.g., a TextButton)
     local part = ClickOnPart
-    -- Calculate the center of the GUI element
     local topLeft = part.AbsolutePosition + insetOffset
     local center = topLeft + (part.AbsoluteSize / 2)
-    -- Adjust the click position if needed
     local X = center.X + 15
     local Y = center.Y
-    -- Simulate a mouse click
-    vim:SendMouseButtonEvent(X, Y, 0, true, game, 0) -- Mouse down
-    task.wait(0.1) -- Small delay to simulate a real click
-    vim:SendMouseButtonEvent(X, Y, 0, false, game, 0) -- Mouse up
+    vim:SendMouseButtonEvent(X, Y, 0, true, game, 0)
+    task.wait(0.1)
+    vim:SendMouseButtonEvent(X, Y, 0, false, game, 0)
     task.wait(1)
     print("Clicked: ", ClickOnPart)
 end
@@ -227,10 +226,10 @@ playBtn.AutoButtonColor = false
 playBtn.MouseEnter:Connect(function() playBtn.BackgroundColor3 = colors.btnHover end)
 playBtn.MouseLeave:Connect(function() playBtn.BackgroundColor3 = colors.accent2 end)
 
--- Toggles Frame (only Autoplay toggle remains, moved higher)
+-- Toggles Frame
 local togglesFrame = Instance.new("Frame", frame)
-togglesFrame.Size = UDim2.new(0.5, -28, 0, 44)
-togglesFrame.Position = UDim2.new(0.5, 24, 1, -buttonHeight*2-buttonGap-44-32) -- moved up by 20px
+togglesFrame.Size = UDim2.new(0.5, -28, 0, 90)
+togglesFrame.Position = UDim2.new(0.5, 24, 1, -buttonHeight*2-buttonGap-90-12)
 togglesFrame.BackgroundTransparency = 1
 togglesFrame.BorderSizePixel = 0
 togglesFrame.Name = "TogglesFrame"
@@ -277,6 +276,52 @@ autoToggle.InputBegan:Connect(function(input)
         saveConfig()
         autoToggle.BackgroundColor3 = config.autoplay and colors.toggleOn or colors.toggleOff
         toggleCircle:TweenPosition(config.autoplay and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2), "Out", "Quad", 0.15, true)
+    end
+end)
+
+-- Play If timeLeftGui label
+local timeLeftLabel = Instance.new("TextLabel", togglesFrame)
+timeLeftLabel.Size = UDim2.new(0, 120, 0, 18)
+timeLeftLabel.Position = UDim2.new(0, 80, 0, 0)
+timeLeftLabel.BackgroundTransparency = 1
+timeLeftLabel.Text = "Play if TimeLeft"
+timeLeftLabel.TextColor3 = colors.textDim
+timeLeftLabel.Font = ARIMO
+timeLeftLabel.TextSize = 14
+timeLeftLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Play If timeLeftGui Toggle
+local playIfTimeLeft = config.playIfTimeLeft or false
+
+local timeLeftToggle = Instance.new("Frame", togglesFrame)
+timeLeftToggle.Size = UDim2.new(0, 44, 0, 22)
+timeLeftToggle.Position = UDim2.new(0, 100, 0, 22)
+timeLeftToggle.BackgroundColor3 = playIfTimeLeft and colors.toggleOn or colors.toggleOff
+timeLeftToggle.BorderSizePixel = 0
+timeLeftToggle.Name = "TimeLeftToggle"
+local timeLeftToggleCorner = Instance.new("UICorner", timeLeftToggle)
+timeLeftToggleCorner.CornerRadius = UDim.new(1, 0)
+
+local timeLeftCircle = Instance.new("Frame", timeLeftToggle)
+timeLeftCircle.Size = UDim2.new(0, 18, 0, 18)
+timeLeftCircle.Position = playIfTimeLeft and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2)
+timeLeftCircle.BackgroundColor3 = Color3.new(1,1,1)
+timeLeftCircle.BorderSizePixel = 0
+timeLeftCircle.ZIndex = 3
+timeLeftCircle.Name = "TimeLeftCircle"
+local timeLeftCircleCorner = Instance.new("UICorner", timeLeftCircle)
+timeLeftCircleCorner.CornerRadius = UDim.new(1, 0)
+timeLeftCircle.BackgroundTransparency = 0.1
+timeLeftCircle.ClipsDescendants = true
+timeLeftCircle:TweenSizeAndPosition(timeLeftCircle.Size, timeLeftCircle.Position, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true)
+
+timeLeftToggle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        playIfTimeLeft = not playIfTimeLeft
+        config.playIfTimeLeft = playIfTimeLeft
+        saveConfig()
+        timeLeftToggle.BackgroundColor3 = playIfTimeLeft and colors.toggleOn or colors.toggleOff
+        timeLeftCircle:TweenPosition(playIfTimeLeft and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2), "Out", "Quad", 0.15, true)
     end
 end)
 
@@ -388,9 +433,6 @@ local currentRecording, recordingStart, recordConn
 local playConn, playIndex, playStart, playData
 
 local isPausedForGregg = false
-local rapidGreggTP = false
-local rapidGreggTPThread = nil
-
 local function teleportToGregg(gregg)
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     local greggHRP = gregg and gregg:FindFirstChild("HumanoidRootPart")
@@ -398,22 +440,6 @@ local function teleportToGregg(gregg)
         local offset = greggHRP.CFrame.LookVector * 4 + Vector3.new(0, 2, 0)
         hrp.CFrame = greggHRP.CFrame + offset
     end
-end
-
-local function startRapidGreggTP(gregg)
-    rapidGreggTP = true
-    rapidGreggTPThread = coroutine.create(function()
-        while rapidGreggTP and gregg and isEnemyAlive(gregg) and isPlaying do
-            teleportToGregg(gregg)
-            wait(0.1)
-        end
-    end)
-    coroutine.resume(rapidGreggTPThread)
-end
-
-local function stopRapidGreggTP()
-    rapidGreggTP = false
-    rapidGreggTPThread = nil
 end
 
 recordBtn.MouseButton1Click:Connect(function()
@@ -454,18 +480,18 @@ playBtn.MouseButton1Click:Connect(function()
         if playConn then playConn:Disconnect() end
         playBtn.Text = "▶ Play"
         playBtn.BackgroundColor3 = colors.accent2
-        stopRapidGreggTP()
         return
     end
     if not selectedMacro then return end
 
-    -- Only play if timeLeftGui exists and is Enabled==true
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    local timeLeftGui = playerGui and playerGui:FindFirstChild("timeLeftGui")
-    if not (timeLeftGui and timeLeftGui.Enabled == true) then
-        playBtn.Text = "▶ Play"
-        playBtn.BackgroundColor3 = colors.accent2
-        return
+    -- Only play if timeLeftGui exists if toggle is enabled
+    if playIfTimeLeft then
+        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if not playerGui or not playerGui:FindFirstChild("timeLeftGui") then
+            playBtn.Text = "▶ Play"
+            playBtn.BackgroundColor3 = colors.accent2
+            return
+        end
     end
 
     local file = MACRO_FOLDER.."/"..selectedMacro..".json"
@@ -481,24 +507,22 @@ playBtn.MouseButton1Click:Connect(function()
     playBtn.Text = "⏹ Stop"
     playBtn.BackgroundColor3 = colors.btnActive
     isPausedForGregg = false
-    stopRapidGreggTP()
 
     playConn = RunService.Heartbeat:Connect(function()
-        if not isPlaying then if playConn then playConn:Disconnect() end stopRapidGreggTP() return end
+        if not isPlaying then if playConn then playConn:Disconnect() end return end
 
-        -- Gregg detection and rapid TP logic
+        -- Gregg detection and pause logic
         if not isPausedForGregg then
             local gregg = findGregg()
             if gregg then
                 isPausedForGregg = true
+                teleportToGregg(gregg)
                 playBtn.Text = "⏸ Paused (Gregg)"
                 playBtn.BackgroundColor3 = colors.accent
-                startRapidGreggTP(gregg)
                 coroutine.wrap(function()
                     while gregg and isEnemyAlive(gregg) and isPlaying do
-                        wait(0.1)
+                        wait(0.5)
                     end
-                    stopRapidGreggTP()
                     if isPlaying then
                         isPausedForGregg = false
                         playBtn.Text = "⏹ Stop"
@@ -527,7 +551,6 @@ playBtn.MouseButton1Click:Connect(function()
             playBtn.Text = "▶ Play"
             playBtn.BackgroundColor3 = colors.accent2
             playConn:Disconnect()
-            stopRapidGreggTP()
             return
         end
         char.HumanoidRootPart.CFrame = CFrame.new(tblv3(frame.position))
@@ -539,7 +562,6 @@ playBtn.MouseButton1Click:Connect(function()
             playBtn.Text = "▶ Play"
             playBtn.BackgroundColor3 = colors.accent2
             playConn:Disconnect()
-            stopRapidGreggTP()
         end
     end)
 end)
@@ -558,12 +580,12 @@ createBtn.MouseButton1Click:Connect(function()
 end)
 
 exitBtn.MouseButton1Click:Connect(function()
+    config.playIfTimeLeft = playIfTimeLeft
     config.isPlaying = isPlaying
     saveConfig()
     if isPlaying and playConn then
         isPlaying = false
         playConn:Disconnect()
-        stopRapidGreggTP()
     end
     if isRecording and recordConn then
         isRecording = false
@@ -575,9 +597,11 @@ end)
 -- Autoplay on script load if enabled and isPlaying is true
 if config.autoplay == true and config.selectedMacro == "Void3" then
     print("autoPlay YESS")
-    wait(1)
     clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
 end
+
+-- Set GUI visibility based on config after autoplay logic
+gui.Enabled = config.visibility
 
 -- Always press the playback button on script execution
 --playBtn.MouseButton1Click:Fire()
