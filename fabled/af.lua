@@ -6,8 +6,76 @@
     - Pauses autofarm and teleports to a temp platform if HP < 45%, resumes at > 90%
     - GUI for stats, toggles, height, and orbit radius input
     - Open/close button on right side of screen (no H keybind)
+    - Only works if there is exactly 1 player in the game (auto disables otherwise)
+    - Persists settings in Synapse config file: /fabledAutoTest/config.json
     Place as a LocalScript (e.g., StarterPlayerScripts)
 --]]
+
+-- Synapse X file functions
+local writefile = writefile
+local readfile = readfile
+local isfile = isfile
+local makefolder = makefolder
+local isfolder = isfolder
+
+local CONFIG_FOLDER = "fabledAutoTest"
+local CONFIG_PATH = CONFIG_FOLDER.."/config.json"
+
+local DEFAULT_CONFIG = {
+    autofarmActive = false,
+    autospellActive = false,
+    heightAboveEnemy = 10,
+    orbitRadius = 6
+}
+
+local function deepCopy(tbl)
+    local copy = {}
+    for k,v in pairs(tbl) do
+        if type(v) == "table" then
+            copy[k] = deepCopy(v)
+        else
+            copy[k] = v
+        end
+    end
+    return copy
+end
+
+local function saveConfig(config)
+    local json = game:GetService("HttpService"):JSONEncode(config)
+    writefile(CONFIG_PATH, json)
+end
+
+local function loadConfig()
+    if not isfolder(CONFIG_FOLDER) then
+        makefolder(CONFIG_FOLDER)
+    end
+    if not isfile(CONFIG_PATH) then
+        saveConfig(DEFAULT_CONFIG)
+        return deepCopy(DEFAULT_CONFIG)
+    end
+    local ok, data = pcall(readfile, CONFIG_PATH)
+    if not ok or not data then
+        saveConfig(DEFAULT_CONFIG)
+        return deepCopy(DEFAULT_CONFIG)
+    end
+    local ok2, parsed = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(data)
+    end)
+    if not ok2 or type(parsed) ~= "table" then
+        saveConfig(DEFAULT_CONFIG)
+        return deepCopy(DEFAULT_CONFIG)
+    end
+    -- Fill in missing keys
+    for k,v in pairs(DEFAULT_CONFIG) do
+        if parsed[k] == nil then
+            parsed[k] = v
+        end
+    end
+    return parsed
+end
+
+-- Load config at start
+local config = loadConfig()
 
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -26,7 +94,6 @@ local SPELL_INTERVAL = 1 -- seconds between spell casts
 local TELEPORT_TIME = 0.5 -- seconds for tween teleport
 
 -- Orbit settings
-local ORBIT_RADIUS = 6
 local ORBIT_SPEED = 1.5 -- radians/sec
 local ORBIT_DISTANCE_THRESHOLD = 1.5 -- how close before orbit starts
 
@@ -38,13 +105,11 @@ local LOW_HEALTH_THRESHOLD = 0.45
 local TEMP_PLATFORM_SIZE = Vector3.new(12, 1, 12)
 local TEMP_PLATFORM_OFFSET = Vector3.new(0, 50, 0) -- 50 studs above current position
 
--- State
-local autofarmActive = false -- Default OFF
-local autospellActive = false -- Default OFF
-local heightAboveEnemy = 10
-
--- New: Orbit radius state
-local orbitRadius = ORBIT_RADIUS
+-- State (from config)
+local autofarmActive = config.autofarmActive
+local autospellActive = config.autospellActive
+local heightAboveEnemy = config.heightAboveEnemy
+local orbitRadius = config.orbitRadius
 
 -- GUI Setup
 local screenGui = Instance.new("ScreenGui")
@@ -72,8 +137,8 @@ title.Parent = frame
 local autofarmToggle = Instance.new("TextButton")
 autofarmToggle.Size = UDim2.new(0, 110, 0, 30)
 autofarmToggle.Position = UDim2.new(0, 10, 0, 40)
-autofarmToggle.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
-autofarmToggle.Text = "Autofarm: OFF"
+autofarmToggle.BackgroundColor3 = autofarmActive and Color3.fromRGB(50, 100, 50) or Color3.fromRGB(100, 50, 50)
+autofarmToggle.Text = "Autofarm: " .. (autofarmActive and "ON" or "OFF")
 autofarmToggle.TextColor3 = Color3.new(1,1,1)
 autofarmToggle.Font = Enum.Font.SourceSans
 autofarmToggle.TextSize = 18
@@ -82,8 +147,8 @@ autofarmToggle.Parent = frame
 local autospellToggle = Instance.new("TextButton")
 autospellToggle.Size = UDim2.new(0, 110, 0, 30)
 autospellToggle.Position = UDim2.new(0, 130, 0, 40)
-autospellToggle.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
-autospellToggle.Text = "Autospell: OFF"
+autospellToggle.BackgroundColor3 = autospellActive and Color3.fromRGB(50, 50, 100) or Color3.fromRGB(100, 50, 50)
+autospellToggle.Text = "Autospell: " .. (autospellActive and "ON" or "OFF")
 autospellToggle.TextColor3 = Color3.new(1,1,1)
 autospellToggle.Font = Enum.Font.SourceSans
 autospellToggle.TextSize = 18
@@ -111,7 +176,6 @@ heightBox.TextSize = 16
 heightBox.ClearTextOnFocus = false
 heightBox.Parent = frame
 
--- New: Orbit Radius Label and Box
 local orbitRadiusLabel = Instance.new("TextLabel")
 orbitRadiusLabel.Size = UDim2.new(0, 120, 0, 25)
 orbitRadiusLabel.Position = UDim2.new(0, 10, 0, 110)
@@ -181,35 +245,105 @@ openCloseBtn.MouseButton1Click:Connect(function()
     setGuiOpen(not guiOpen)
 end)
 
+-- Player count restriction logic
+local function isSinglePlayer()
+    return #Players:GetPlayers() == 1
+end
+
+local function setTogglesInteractable(state)
+    autofarmToggle.AutoButtonColor = state
+    autofarmToggle.BackgroundColor3 = (autofarmActive and state) and Color3.fromRGB(50, 100, 50)
+        or (state and Color3.fromRGB(100, 50, 50) or Color3.fromRGB(60, 60, 60))
+    autospellToggle.AutoButtonColor = state
+    autospellToggle.BackgroundColor3 = (autospellActive and state) and Color3.fromRGB(50, 50, 100)
+        or (state and Color3.fromRGB(100, 50, 50) or Color3.fromRGB(60, 60, 60))
+    autofarmToggle.Text = "Autofarm: " .. (autofarmActive and "ON" or "OFF")
+    autospellToggle.Text = "Autospell: " .. (autospellActive and "ON" or "OFF")
+end
+
+local function setTextboxesInteractable(state)
+    heightBox.TextEditable = state
+    heightBox.BackgroundColor3 = state and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(60, 60, 60)
+    orbitRadiusBox.TextEditable = state
+    orbitRadiusBox.BackgroundColor3 = state and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(60, 60, 60)
+end
+
+local function enforceSinglePlayer()
+    if isSinglePlayer() then
+        setTogglesInteractable(true)
+        setTextboxesInteractable(true)
+        healthStatusLabel.Text = ""
+    else
+        -- Auto-disable toggles and lock them
+        autofarmActive = false
+        autospellActive = false
+        setTogglesInteractable(false)
+        setTextboxesInteractable(false)
+        healthStatusLabel.Text = "Disabled: More than 1 player in game!"
+        -- Save config with toggles off
+        config.autofarmActive = false
+        config.autospellActive = false
+        saveConfig(config)
+    end
+end
+
+-- Initial enforce
+enforceSinglePlayer()
+
+-- Listen for player join/leave
+Players.PlayerAdded:Connect(enforceSinglePlayer)
+Players.PlayerRemoving:Connect(function()
+    -- Delay to allow player list to update
+    wait(0.1)
+    enforceSinglePlayer()
+end)
+
 -- GUI Logic
 autofarmToggle.MouseButton1Click:Connect(function()
+    if not isSinglePlayer() then return end
     autofarmActive = not autofarmActive
     autofarmToggle.Text = "Autofarm: " .. (autofarmActive and "ON" or "OFF")
     autofarmToggle.BackgroundColor3 = autofarmActive and Color3.fromRGB(50, 100, 50) or Color3.fromRGB(100, 50, 50)
+    config.autofarmActive = autofarmActive
+    saveConfig(config)
 end)
 
 autospellToggle.MouseButton1Click:Connect(function()
+    if not isSinglePlayer() then return end
     autospellActive = not autospellActive
     autospellToggle.Text = "Autospell: " .. (autospellActive and "ON" or "OFF")
     autospellToggle.BackgroundColor3 = autospellActive and Color3.fromRGB(50, 50, 100) or Color3.fromRGB(100, 50, 50)
+    config.autospellActive = autospellActive
+    saveConfig(config)
 end)
 
 heightBox.FocusLost:Connect(function(enterPressed)
+    if not isSinglePlayer() then
+        heightBox.Text = tostring(heightAboveEnemy)
+        return
+    end
     local val = tonumber(heightBox.Text)
     if val and val >= 0 then
         heightAboveEnemy = val
         heightBox.Text = tostring(val)
+        config.heightAboveEnemy = val
+        saveConfig(config)
     else
         heightBox.Text = tostring(heightAboveEnemy)
     end
 end)
 
--- New: Orbit Radius Box Logic
 orbitRadiusBox.FocusLost:Connect(function(enterPressed)
+    if not isSinglePlayer() then
+        orbitRadiusBox.Text = tostring(orbitRadius)
+        return
+    end
     local val = tonumber(orbitRadiusBox.Text)
     if val and val >= 1 then
         orbitRadius = val
         orbitRadiusBox.Text = tostring(val)
+        config.orbitRadius = val
+        saveConfig(config)
     else
         orbitRadiusBox.Text = tostring(orbitRadius)
     end
@@ -339,12 +473,12 @@ spawn(function()
             wait(0.5)
         end
 
-        if autofarmActive then
+        if autofarmActive and isSinglePlayer() then
             local enemy = getNearestEnemy()
             currentTarget = enemy
             if enemy then
                 tweenAboveEnemy(enemy, heightAboveEnemy)
-                while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not autofarmPausedForHealth do
+                while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not autofarmPausedForHealth and isSinglePlayer() do
                     if shouldPauseForHealth() then
                         autofarmPausedForHealth = true
                         healthStatusLabel.Text = "Low HP! Waiting to heal..."
@@ -365,7 +499,7 @@ spawn(function()
                     ):Play()
                     wait(0.2)
                 end
-                if enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not autofarmPausedForHealth then
+                if enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not autofarmPausedForHealth and isSinglePlayer() then
                     orbitAroundEnemy(enemy, heightAboveEnemy, orbitRadius, ORBIT_SPEED)
                 end
             else
@@ -381,9 +515,9 @@ end)
 -- Auto spell loop
 spawn(function()
     while true do
-        if autospellActive and not autofarmPausedForHealth then
+        if autospellActive and not autofarmPausedForHealth and isSinglePlayer() then
             for _, spell in ipairs(SPELLS) do
-                if autospellActive and not autofarmPausedForHealth then
+                if autospellActive and not autofarmPausedForHealth and isSinglePlayer() then
                     ReplicatedStorage:WaitForChild("useSpell"):FireServer(spell)
                 end
                 wait(SPELL_INTERVAL)
