@@ -575,7 +575,7 @@ end)
 -- Autoplay on script load if enabled and isPlaying is true
 if config.autoplay == true and config.selectedMacro == "Void3" then
     print("autoPlay YESS")
-    clickButton(game.CoreGui.DqmacMacroGui.Frame.Play.Activated)
+    clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
 end
 
 -- Always press the playback button on script execution
