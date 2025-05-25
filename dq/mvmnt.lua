@@ -227,10 +227,10 @@ playBtn.AutoButtonColor = false
 playBtn.MouseEnter:Connect(function() playBtn.BackgroundColor3 = colors.btnHover end)
 playBtn.MouseLeave:Connect(function() playBtn.BackgroundColor3 = colors.accent2 end)
 
--- Toggles Frame (only Autoplay toggle remains)
+-- Toggles Frame (only Autoplay toggle remains, moved higher)
 local togglesFrame = Instance.new("Frame", frame)
 togglesFrame.Size = UDim2.new(0.5, -28, 0, 44)
-togglesFrame.Position = UDim2.new(0.5, 24, 1, -buttonHeight*2-buttonGap-44-12)
+togglesFrame.Position = UDim2.new(0.5, 24, 1, -buttonHeight*2-buttonGap-44-32) -- moved up by 20px
 togglesFrame.BackgroundTransparency = 1
 togglesFrame.BorderSizePixel = 0
 togglesFrame.Name = "TogglesFrame"
