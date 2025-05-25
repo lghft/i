@@ -578,7 +578,8 @@ end)
 
 -- Autoplay on script load if enabled and isPlaying is true
 if config.autoplay == true and config.selectedMacro == "Void3" then
-    playBtn.MouseButton1Click:Fire()
+    print("autoPlay YESS")
+    firesignal(playBtn.Activated)
 end
 
 -- Always press the playback button on script execution
