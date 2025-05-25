@@ -272,11 +272,11 @@ end
 local autofarmPausedForHealth = false
 
 local function shouldPauseForHealth()
-    return humanoid.Health / humanoid.MaxHealth < LOW_HEALTH_THRESHOLD
+    return humanoid.Health / humanoid.MaxHealth <= LOW_HEALTH_THRESHOLD
 end
 
 local function shouldResumeForHealth()
-    return humanoid.Health / humanoid.MaxHealth > SAFE_HEALTH_THRESHOLD
+    return humanoid.Health / humanoid.MaxHealth >= SAFE_HEALTH_THRESHOLD
 end
 
 -- Autofarm loop
