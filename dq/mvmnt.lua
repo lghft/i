@@ -1,14 +1,17 @@
 
 --[[
-    Roblox Macro Recorder/Player (Navy Sleek UI, Autoplay Toggle, Gregg Detection)
+    Roblox Macro Recorder/Player (Navy Sleek UI, Gregg Detection, Auto-Resume)
     - Records player position and MoveDirection
     - Saves/loads macros as JSON files (Synapse X read/write)
     - Stores macros in Workspace/DqmacTest/Macros
-    - Sleek, navy/blue GUI: record/play, macro list, textbox, create button, exit button, autoplay toggle
-    - Config file for selected macro and autoplay
+    - Sleek, navy/blue GUI: record/play, macro list, textbox, create button, exit button
+    - Config file for selected macro and play state
     - Gregg detection: pauses macro and teleports to Gregg, resumes when Gregg is dead
     - Loads even if only 1 player in the server
     - Teleports player in front of Gregg (not just above) when detected
+    - Keeps teleporting to Gregg until Gregg is dead
+    - No autoplay or timeleft toggles
+    - If play button was on last session, auto-plays on script execution, but only if timeLeftGui.Enabled is true
 --]]
 
 repeat wait(6) until game:IsLoaded()
@@ -31,9 +34,7 @@ local RunService = game:GetService("RunService")
 -- Config
 local config = {
     selectedMacro = nil,
-    autoplay = false,
     windowPos = {x = 0.5, y = 0.5},
-    playIfTimeLeft = false,
     isPlaying = false
 }
 if isfile(CONFIG_FILE) then
@@ -207,105 +208,6 @@ playBtn.AutoButtonColor = false
 playBtn.MouseEnter:Connect(function() playBtn.BackgroundColor3 = colors.btnHover end)
 playBtn.MouseLeave:Connect(function() playBtn.BackgroundColor3 = colors.accent2 end)
 
--- Toggles Frame
-local togglesFrame = Instance.new("Frame", frame)
-togglesFrame.Size = UDim2.new(0.5, -28, 0, 90)
-togglesFrame.Position = UDim2.new(0.5, 24, 1, -buttonHeight*2-buttonGap-90-12)
-togglesFrame.BackgroundTransparency = 1
-togglesFrame.BorderSizePixel = 0
-togglesFrame.Name = "TogglesFrame"
-
--- Auto Play label
-local autoLabel = Instance.new("TextLabel", togglesFrame)
-autoLabel.Size = UDim2.new(0, 90, 0, 18)
-autoLabel.Position = UDim2.new(0, 0, 0, 0)
-autoLabel.BackgroundTransparency = 1
-autoLabel.Text = "Auto Play"
-autoLabel.TextColor3 = colors.textDim
-autoLabel.Font = ARIMO
-autoLabel.TextSize = 14
-autoLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- Autoplay toggle
-local autoToggle = Instance.new("Frame", togglesFrame)
-autoToggle.Size = UDim2.new(0, 44, 0, 22)
-autoToggle.Position = UDim2.new(0, 0, 0, 22)
-autoToggle.BackgroundColor3 = config.autoplay and colors.toggleOn or colors.toggleOff
-autoToggle.BorderSizePixel = 0
-autoToggle.ZIndex = 2
-autoToggle.Name = "AutoToggle"
-local autoToggleCorner = Instance.new("UICorner", autoToggle)
-autoToggleCorner.CornerRadius = UDim.new(1, 0)
-
-local toggleCircle = Instance.new("Frame", autoToggle)
-toggleCircle.Size = UDim2.new(0, 18, 0, 18)
-toggleCircle.Position = config.autoplay and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2)
-toggleCircle.BackgroundColor3 = Color3.new(1,1,1)
-toggleCircle.BorderSizePixel = 0
-toggleCircle.ZIndex = 3
-toggleCircle.Name = "ToggleCircle"
-toggleCircle.AnchorPoint = Vector2.new(0,0)
-local toggleCircleCorner = Instance.new("UICorner", toggleCircle)
-toggleCircleCorner.CornerRadius = UDim.new(1, 0)
-toggleCircle.BackgroundTransparency = 0.1
-toggleCircle.ClipsDescendants = true
-toggleCircle:TweenSizeAndPosition(toggleCircle.Size, toggleCircle.Position, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true)
-
-autoToggle.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        config.autoplay = not config.autoplay
-        saveConfig()
-        autoToggle.BackgroundColor3 = config.autoplay and colors.toggleOn or colors.toggleOff
-        toggleCircle:TweenPosition(config.autoplay and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2), "Out", "Quad", 0.15, true)
-    end
-end)
-
--- Play If timeLeftGui label
-local timeLeftLabel = Instance.new("TextLabel", togglesFrame)
-timeLeftLabel.Size = UDim2.new(0, 120, 0, 18)
-timeLeftLabel.Position = UDim2.new(0, 80, 0, 0)
-timeLeftLabel.BackgroundTransparency = 1
-timeLeftLabel.Text = "Play if TimeLeft"
-timeLeftLabel.TextColor3 = colors.textDim
-timeLeftLabel.Font = ARIMO
-timeLeftLabel.TextSize = 14
-timeLeftLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- Play If timeLeftGui Toggle
-local playIfTimeLeft = config.playIfTimeLeft or false
-
-local timeLeftToggle = Instance.new("Frame", togglesFrame)
-timeLeftToggle.Size = UDim2.new(0, 44, 0, 22)
-timeLeftToggle.Position = UDim2.new(0, 100, 0, 22)
-timeLeftToggle.BackgroundColor3 = playIfTimeLeft and colors.toggleOn or colors.toggleOff
-timeLeftToggle.BorderSizePixel = 0
-timeLeftToggle.Name = "TimeLeftToggle"
-local timeLeftToggleCorner = Instance.new("UICorner", timeLeftToggle)
-timeLeftToggleCorner.CornerRadius = UDim.new(1, 0)
-
-local timeLeftCircle = Instance.new("Frame", timeLeftToggle)
-timeLeftCircle.Size = UDim2.new(0, 18, 0, 18)
-timeLeftCircle.Position = playIfTimeLeft and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2)
-timeLeftCircle.BackgroundColor3 = Color3.new(1,1,1)
-timeLeftCircle.BorderSizePixel = 0
-timeLeftCircle.ZIndex = 3
-timeLeftCircle.Name = "TimeLeftCircle"
-local timeLeftCircleCorner = Instance.new("UICorner", timeLeftCircle)
-timeLeftCircleCorner.CornerRadius = UDim.new(1, 0)
-timeLeftCircle.BackgroundTransparency = 0.1
-timeLeftCircle.ClipsDescendants = true
-timeLeftCircle:TweenSizeAndPosition(timeLeftCircle.Size, timeLeftCircle.Position, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true)
-
-timeLeftToggle.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        playIfTimeLeft = not playIfTimeLeft
-        config.playIfTimeLeft = playIfTimeLeft
-        saveConfig()
-        timeLeftToggle.BackgroundColor3 = playIfTimeLeft and colors.toggleOn or colors.toggleOff
-        timeLeftCircle:TweenPosition(playIfTimeLeft and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2), "Out", "Quad", 0.15, true)
-    end
-end)
-
 -- Draggable GUI
 local dragging = false
 local dragStart, startPos
@@ -414,14 +316,25 @@ local currentRecording, recordingStart, recordConn
 local playConn, playIndex, playStart, playData
 
 local isPausedForGregg = false
-local function teleportToGregg(gregg)
+
+-- Modified: Keep teleporting to Gregg until Gregg is dead
+local function keepTeleportingToGregg(gregg)
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     local greggHRP = gregg and gregg:FindFirstChild("HumanoidRootPart")
-    if hrp and greggHRP then
-        -- Teleport in front of Gregg (towards his LookVector, 4 studs away, and 2 studs above ground)
-        local offset = greggHRP.CFrame.LookVector * 4 + Vector3.new(0, 2, 0)
-        hrp.CFrame = greggHRP.CFrame + offset
-    end
+    if not hrp or not greggHRP then return end
+    local teleporting = true
+    coroutine.wrap(function()
+        while teleporting and gregg and isEnemyAlive(gregg) and isPlaying do
+            -- Teleport in front of Gregg (towards his LookVector, 4 studs away, and 2 studs above ground)
+            local offset = greggHRP.CFrame.LookVector * 4 + Vector3.new(0, 2, 0)
+            hrp.CFrame = greggHRP.CFrame + offset
+            wait(0.2)
+            -- Refresh references in case of respawn
+            hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            greggHRP = gregg and gregg:FindFirstChild("HumanoidRootPart")
+            if not hrp or not greggHRP then break end
+        end
+    end)()
 end
 
 recordBtn.MouseButton1Click:Connect(function()
@@ -454,26 +367,20 @@ recordBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
-playBtn.MouseButton1Click:Connect(function()
-    if isPlaying then
-        isPlaying = false
-        config.isPlaying = false
-        saveConfig()
-        if playConn then playConn:Disconnect() end
+local function canPlayMacro()
+    -- Only play if timeLeftGui exists and is enabled
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    local timeLeftGui = playerGui and playerGui:FindFirstChild("timeLeftGui")
+    return timeLeftGui and timeLeftGui.Enabled
+end
+
+local function startMacroPlayback()
+    if isPlaying then return end
+    if not selectedMacro then return end
+    if not canPlayMacro() then
         playBtn.Text = "▶ Play"
         playBtn.BackgroundColor3 = colors.accent2
         return
-    end
-    if not selectedMacro then return end
-
-    -- Only play if timeLeftGui exists if toggle is enabled
-    if playIfTimeLeft then
-        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if not playerGui or not playerGui:FindFirstChild("timeLeftGui") then
-            playBtn.Text = "▶ Play"
-            playBtn.BackgroundColor3 = colors.accent2
-            return
-        end
     end
 
     local file = MACRO_FOLDER.."/"..selectedMacro..".json"
@@ -498,7 +405,7 @@ playBtn.MouseButton1Click:Connect(function()
             local gregg = findGregg()
             if gregg then
                 isPausedForGregg = true
-                teleportToGregg(gregg)
+                keepTeleportingToGregg(gregg)
                 playBtn.Text = "⏸ Paused (Gregg)"
                 playBtn.BackgroundColor3 = colors.accent
                 coroutine.wrap(function()
@@ -546,6 +453,19 @@ playBtn.MouseButton1Click:Connect(function()
             playConn:Disconnect()
         end
     end)
+end
+
+playBtn.MouseButton1Click:Connect(function()
+    if isPlaying then
+        isPlaying = false
+        config.isPlaying = false
+        saveConfig()
+        if playConn then playConn:Disconnect() end
+        playBtn.Text = "▶ Play"
+        playBtn.BackgroundColor3 = colors.accent2
+        return
+    end
+    startMacroPlayback()
 end)
 
 createBtn.MouseButton1Click:Connect(function()
@@ -562,7 +482,6 @@ createBtn.MouseButton1Click:Connect(function()
 end)
 
 exitBtn.MouseButton1Click:Connect(function()
-    config.playIfTimeLeft = playIfTimeLeft
     config.isPlaying = isPlaying
     saveConfig()
     if isPlaying and playConn then
@@ -576,7 +495,21 @@ exitBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Autoplay on script load if enabled and isPlaying is true
-if config.autoplay and config.selectedMacro and config.isPlaying then
-    playBtn.MouseButton1Click:Fire()
-end
+-- Auto-play macro on script execution if play button was on and timeLeftGui.Enabled is true
+coroutine.wrap(function()
+    if config.isPlaying and config.selectedMacro then
+        -- Wait for PlayerGui and timeLeftGui to exist and be enabled
+        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        local timeLeftGui = playerGui and playerGui:FindFirstChild("timeLeftGui")
+        local waited = 0
+        while (not timeLeftGui or not timeLeftGui.Enabled) and waited < 30 do
+            wait(0.5)
+            waited = waited + 0.5
+            playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+            timeLeftGui = playerGui and playerGui:FindFirstChild("timeLeftGui")
+        end
+        if timeLeftGui and timeLeftGui.Enabled then
+            startMacroPlayback()
+        end
+    end
+end)()
