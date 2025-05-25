@@ -32,7 +32,7 @@ local ORBIT_SPEED = 1.5 -- radians/sec
 local ORBIT_DISTANCE_THRESHOLD = 1.5 -- how close before orbit starts
 
 -- Health thresholds
-local SAFE_HEALTH_THRESHOLD = 0.90
+local SAFE_HEALTH_THRESHOLD = 0.50
 local LOW_HEALTH_THRESHOLD = 0.45
 
 -- Temp platform settings
