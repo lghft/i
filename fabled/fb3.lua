@@ -20,7 +20,7 @@ local humanoid = character:WaitForChild("Humanoid")
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
 local enemiesFolder = workspace:WaitForChild("Enemies")
-local remainingEnemies = enemiesFolder:WaitForChild("remainingEnemies")
+-- Removed: local remainingEnemies = enemiesFolder:WaitForChild("remainingEnemies")
 
 local SPELLS = {"Q", "E"}
 local SPELL_INTERVAL = 1 -- seconds between spell casts
@@ -301,7 +301,7 @@ spawn(function()
             wait(0.5)
         end
 
-        if autofarmActive and remainingEnemies.Value > 0 then
+        if autofarmActive then
             local enemy = getNearestEnemy()
             currentTarget = enemy
             if enemy then
@@ -366,9 +366,8 @@ spawn(function()
     while true do
         local targetName = currentTarget and currentTarget.Name or "None"
         statsLabel.Text = string.format(
-            "Target: %s\nRemaining Enemies: %d\nAutofarm: %s\nAutospell: %s\nHeight: %d",
+            "Target: %s\nAutofarm: %s\nAutospell: %s\nHeight: %d",
             targetName,
-            remainingEnemies.Value,
             autofarmActive and "ON" or "OFF",
             autospellActive and "ON" or "OFF",
             heightAboveEnemy
