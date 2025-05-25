@@ -9,7 +9,6 @@
     - Gregg detection: pauses macro and teleports to Gregg, resumes when Gregg is dead
     - Loads even if only 1 player in the server
     - Teleports player in front of Gregg (not just above) when detected
-    - Open/close toggle button for the macro GUI
 --]]
 
 repeat wait(6) until game:IsLoaded()
@@ -34,6 +33,7 @@ local config = {
     selectedMacro = nil,
     autoplay = false,
     windowPos = {x = 0.5, y = 0.5},
+    playIfTimeLeft = false,
     isPlaying = false
 }
 if isfile(CONFIG_FILE) then
@@ -58,17 +58,22 @@ function clickButton(ClickOnPart)
     local vim = game:GetService("VirtualInputManager")
     local inset1, inset2 = game:GetService('GuiService'):GetGuiInset()
     local insetOffset = inset1 - inset2
+    -- Replace "button location here" with the actual GUI object (e.g., a TextButton)
     local part = ClickOnPart
+    -- Calculate the center of the GUI element
     local topLeft = part.AbsolutePosition + insetOffset
     local center = topLeft + (part.AbsoluteSize / 2)
+    -- Adjust the click position if needed
     local X = center.X + 15
     local Y = center.Y
-    vim:SendMouseButtonEvent(X, Y, 0, true, game, 0)
-    task.wait(0.1)
-    vim:SendMouseButtonEvent(X, Y, 0, false, game, 0)
+    -- Simulate a mouse click
+    vim:SendMouseButtonEvent(X, Y, 0, true, game, 0) -- Mouse down
+    task.wait(0.1) -- Small delay to simulate a real click
+    vim:SendMouseButtonEvent(X, Y, 0, false, game, 0) -- Mouse up
     task.wait(1)
     print("Clicked: ", ClickOnPart)
 end
+
 
 -- Sleek Navy/Blue UI Colors
 local colors = {
@@ -94,29 +99,6 @@ local ARIMO = Enum.Font.Arimo
 local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.Name = "DqmacMacroGui"
 gui.IgnoreGuiInset = true
-
--- Open/Close Toggle Button
-local openCloseBtn = Instance.new("TextButton")
-openCloseBtn.Name = "OpenCloseBtn"
-openCloseBtn.Parent = gui
-openCloseBtn.Size = UDim2.new(0, 36, 0, 36)
-openCloseBtn.Position = UDim2.new(0, 16, 0, 120)
-openCloseBtn.BackgroundColor3 = colors.accent2
-openCloseBtn.Text = "≡"
-openCloseBtn.TextColor3 = Color3.new(1,1,1)
-openCloseBtn.Font = ARIMO
-openCloseBtn.TextSize = 22
-openCloseBtn.BorderSizePixel = 0
-openCloseBtn.AutoButtonColor = false
-local openCloseCorner = Instance.new("UICorner", openCloseBtn)
-openCloseCorner.CornerRadius = UDim.new(1, 0)
-openCloseBtn.ZIndex = 10
-openCloseBtn.MouseEnter:Connect(function()
-    openCloseBtn.BackgroundColor3 = colors.btnHover
-end)
-openCloseBtn.MouseLeave:Connect(function()
-    openCloseBtn.BackgroundColor3 = colors.accent2
-end)
 
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0, 400, 0, 440)
@@ -247,10 +229,10 @@ playBtn.AutoButtonColor = false
 playBtn.MouseEnter:Connect(function() playBtn.BackgroundColor3 = colors.btnHover end)
 playBtn.MouseLeave:Connect(function() playBtn.BackgroundColor3 = colors.accent2 end)
 
--- Toggles Frame (only Autoplay toggle remains, moved higher)
+-- Toggles Frame
 local togglesFrame = Instance.new("Frame", frame)
-togglesFrame.Size = UDim2.new(0.5, -28, 0, 44)
-togglesFrame.Position = UDim2.new(0.5, 24, 1, -buttonHeight*2-buttonGap-44-32) -- moved higher by 20px
+togglesFrame.Size = UDim2.new(0.5, -28, 0, 90)
+togglesFrame.Position = UDim2.new(0.5, 24, 1, -buttonHeight*2-buttonGap-90-12)
 togglesFrame.BackgroundTransparency = 1
 togglesFrame.BorderSizePixel = 0
 togglesFrame.Name = "TogglesFrame"
@@ -297,6 +279,52 @@ autoToggle.InputBegan:Connect(function(input)
         saveConfig()
         autoToggle.BackgroundColor3 = config.autoplay and colors.toggleOn or colors.toggleOff
         toggleCircle:TweenPosition(config.autoplay and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2), "Out", "Quad", 0.15, true)
+    end
+end)
+
+-- Play If timeLeftGui label
+local timeLeftLabel = Instance.new("TextLabel", togglesFrame)
+timeLeftLabel.Size = UDim2.new(0, 120, 0, 18)
+timeLeftLabel.Position = UDim2.new(0, 80, 0, 0)
+timeLeftLabel.BackgroundTransparency = 1
+timeLeftLabel.Text = "Play if TimeLeft"
+timeLeftLabel.TextColor3 = colors.textDim
+timeLeftLabel.Font = ARIMO
+timeLeftLabel.TextSize = 14
+timeLeftLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Play If timeLeftGui Toggle
+local playIfTimeLeft = config.playIfTimeLeft or false
+
+local timeLeftToggle = Instance.new("Frame", togglesFrame)
+timeLeftToggle.Size = UDim2.new(0, 44, 0, 22)
+timeLeftToggle.Position = UDim2.new(0, 100, 0, 22)
+timeLeftToggle.BackgroundColor3 = playIfTimeLeft and colors.toggleOn or colors.toggleOff
+timeLeftToggle.BorderSizePixel = 0
+timeLeftToggle.Name = "TimeLeftToggle"
+local timeLeftToggleCorner = Instance.new("UICorner", timeLeftToggle)
+timeLeftToggleCorner.CornerRadius = UDim.new(1, 0)
+
+local timeLeftCircle = Instance.new("Frame", timeLeftToggle)
+timeLeftCircle.Size = UDim2.new(0, 18, 0, 18)
+timeLeftCircle.Position = playIfTimeLeft and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2)
+timeLeftCircle.BackgroundColor3 = Color3.new(1,1,1)
+timeLeftCircle.BorderSizePixel = 0
+timeLeftCircle.ZIndex = 3
+timeLeftCircle.Name = "TimeLeftCircle"
+local timeLeftCircleCorner = Instance.new("UICorner", timeLeftCircle)
+timeLeftCircleCorner.CornerRadius = UDim.new(1, 0)
+timeLeftCircle.BackgroundTransparency = 0.1
+timeLeftCircle.ClipsDescendants = true
+timeLeftCircle:TweenSizeAndPosition(timeLeftCircle.Size, timeLeftCircle.Position, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true)
+
+timeLeftToggle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        playIfTimeLeft = not playIfTimeLeft
+        config.playIfTimeLeft = playIfTimeLeft
+        saveConfig()
+        timeLeftToggle.BackgroundColor3 = playIfTimeLeft and colors.toggleOn or colors.toggleOff
+        timeLeftCircle:TweenPosition(playIfTimeLeft and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2), "Out", "Quad", 0.15, true)
     end
 end)
 
@@ -460,12 +488,14 @@ playBtn.MouseButton1Click:Connect(function()
     end
     if not selectedMacro then return end
 
-    -- Macro can only play if timeLeftGui exists
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui or not playerGui:FindFirstChild("timeLeftGui") then
-        playBtn.Text = "▶ Play"
-        playBtn.BackgroundColor3 = colors.accent2
-        return
+    -- Only play if timeLeftGui exists if toggle is enabled
+    if playIfTimeLeft then
+        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if not playerGui or not playerGui:FindFirstChild("timeLeftGui") then
+            playBtn.Text = "▶ Play"
+            playBtn.BackgroundColor3 = colors.accent2
+            return
+        end
     end
 
     local file = MACRO_FOLDER.."/"..selectedMacro..".json"
@@ -485,20 +515,30 @@ playBtn.MouseButton1Click:Connect(function()
     playConn = RunService.Heartbeat:Connect(function()
         if not isPlaying then if playConn then playConn:Disconnect() end return end
 
-        -- Gregg detection and rapid teleport logic
-        local gregg = findGregg()
-        if gregg then
-            isPausedForGregg = true
-            teleportToGregg(gregg) -- Teleport every frame while Gregg is alive
-            playBtn.Text = "⏸ Paused (Gregg)"
-            playBtn.BackgroundColor3 = colors.accent
-            return -- Do not play macro while Gregg is alive
-        else
-            if isPausedForGregg then
-                isPausedForGregg = false
-                playBtn.Text = "⏹ Stop"
-                playBtn.BackgroundColor3 = colors.btnActive
+        -- Gregg detection and pause logic
+        if not isPausedForGregg then
+            local gregg = findGregg()
+            if gregg then
+                isPausedForGregg = true
+                teleportToGregg(gregg)
+                playBtn.Text = "⏸ Paused (Gregg)"
+                playBtn.BackgroundColor3 = colors.accent
+                coroutine.wrap(function()
+                    while gregg and isEnemyAlive(gregg) and isPlaying do
+                        wait(0.5)
+                    end
+                    if isPlaying then
+                        isPausedForGregg = false
+                        playBtn.Text = "⏹ Stop"
+                        playBtn.BackgroundColor3 = colors.btnActive
+                    end
+                end)()
+                return
             end
+        end
+
+        if isPausedForGregg then
+            return
         end
 
         local char = LocalPlayer.Character
@@ -544,6 +584,7 @@ createBtn.MouseButton1Click:Connect(function()
 end)
 
 exitBtn.MouseButton1Click:Connect(function()
+    config.playIfTimeLeft = playIfTimeLeft
     config.isPlaying = isPlaying
     saveConfig()
     if isPlaying and playConn then
@@ -557,28 +598,12 @@ exitBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Open/Close Toggle Logic
-local guiVisible = true
-local function setGuiVisible(state)
-    guiVisible = state
-    frame.Visible = guiVisible
-    -- Optionally, change the openCloseBtn icon
-    openCloseBtn.Text = guiVisible and "≡" or "▶"
-end
-openCloseBtn.MouseButton1Click:Connect(function()
-    setGuiVisible(not guiVisible)
-end)
--- Start visible
-setGuiVisible(true)
-
 -- Autoplay on script load if enabled and isPlaying is true
 if config.autoplay == true and config.selectedMacro == "Void3" then
     print("autoPlay YESS")
     clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
     firesignal(game.CoreGui.DqmacMacroGui.Frame.Play.Activated)
-    clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
 end
 
 -- Always press the playback button on script execution
 --playBtn.MouseButton1Click:Fire()
-clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
