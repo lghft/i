@@ -3,6 +3,7 @@
     Roblox Autofarm Script with GUI, Toggles, Height, Orbit Radius, and Orbit Speed Setting
     - Tweens above the enemy at configurable height
     - Orbits (rotates) around the enemy while facing it when close, with configurable radius and speed
+    - Pauses autofarm and teleports to a temp platform if HP < 45%, resumes at > 90%
     - GUI for stats, toggles, height, orbit radius, and orbit speed input
     - Open/close button on right side of screen (no H keybind)
     - Only works if there is exactly 1 player in the game (auto disables otherwise)
@@ -10,8 +11,6 @@
     Place as a LocalScript (e.g., StarterPlayerScripts)
     - Now dodges models with a Part called Hitbox or MeshPart called indicator if touching player
     - Dodge now faces mob and uses hitbox/indicator width for dodge distance
-    - Health-based pause logic and temp platform have been removed
-    - Autofarm recalculates and resumes on player respawn
 --]]
 
 -- Synapse X file functions
@@ -87,8 +86,6 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-
--- Character references (will be updated on respawn)
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
@@ -98,6 +95,14 @@ local enemiesFolder = workspace:WaitForChild("Enemies")
 local SPELLS = {"Q", "E"}
 local SPELL_INTERVAL = 1 -- seconds between spell casts
 local TELEPORT_TIME = 0.5 -- seconds for tween teleport
+
+-- Health thresholds
+local SAFE_HEALTH_THRESHOLD = 0.50
+local LOW_HEALTH_THRESHOLD = 0.45
+
+-- Temp platform settings
+local TEMP_PLATFORM_SIZE = Vector3.new(12, 1, 12)
+local TEMP_PLATFORM_OFFSET = Vector3.new(0, 50, 0) -- 50 studs above current position
 
 -- State (from config)
 local autofarmActive = config.autofarmActive
@@ -487,6 +492,9 @@ local function orbitAroundEnemy(enemy, height, radius, speed)
     humanoidRootPart.Anchored = true -- Anchor for stable orbit
     local angle = math.random() * math.pi * 2
     while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive do
+        if humanoid.Health / humanoid.MaxHealth < LOW_HEALTH_THRESHOLD then
+            break
+        end
         -- DODGE LOGIC: Dodge if touching danger
         if dodgeIfTouchingDanger(enemy) then
             humanoidRootPart.Anchored = false
@@ -503,34 +511,84 @@ local function orbitAroundEnemy(enemy, height, radius, speed)
         )
         local targetPos = enemyPos + offset
         humanoidRootPart.CFrame = CFrame.new(targetPos, enemyPos)
-        -- If player dies, break out
-        if humanoid.Health <= 0 then
-            break
-        end
     end
     humanoidRootPart.Anchored = false -- Unanchor after orbit
 end
 
--- Autofarm loop (with respawn handling)
-local currentTarget = nil
-local autofarmThread = nil
-local function startAutofarmLoop()
-    if autofarmThread then
-        -- Stop previous thread if running
-        autofarmThread:Disconnect()
+-- Temp platform logic
+local tempPlatform = nil
+local function createTempPlatform()
+    if tempPlatform and tempPlatform.Parent then return tempPlatform end
+    tempPlatform = Instance.new("Part")
+    tempPlatform.Name = "SafePlatform"
+    tempPlatform.Size = TEMP_PLATFORM_SIZE
+    tempPlatform.Anchored = true
+    tempPlatform.CanCollide = true
+    tempPlatform.Transparency = 0.2
+    tempPlatform.Color = Color3.fromRGB(100, 200, 255)
+    tempPlatform.Position = humanoidRootPart.Position + TEMP_PLATFORM_OFFSET
+    tempPlatform.Parent = workspace
+    return tempPlatform
+end
+
+local function removeTempPlatform()
+    if tempPlatform and tempPlatform.Parent then
+        tempPlatform:Destroy()
+        tempPlatform = nil
     end
-    autofarmThread = RunService.Heartbeat:Connect(function()
-        -- If player is dead, skip
-        if humanoid.Health <= 0 then
-            currentTarget = nil
-            return
+end
+
+local function moveToTempPlatform()
+    humanoidRootPart.Anchored = false -- Unanchor before teleporting
+    local platform = createTempPlatform()
+    local above = platform.Position + Vector3.new(0, 4, 0)
+    humanoidRootPart.CFrame = CFrame.new(above)
+end
+
+-- Health monitor and autofarm pause/resume
+local autofarmPausedForHealth = false
+
+local function shouldPauseForHealth()
+    return humanoid.Health / humanoid.MaxHealth < LOW_HEALTH_THRESHOLD
+end
+
+local function shouldResumeForHealth()
+    return humanoid.Health / humanoid.MaxHealth > SAFE_HEALTH_THRESHOLD
+end
+
+-- Autofarm loop
+local currentTarget = nil
+spawn(function()
+    while true do
+        -- Health check
+        if shouldPauseForHealth() and not autofarmPausedForHealth then
+            autofarmPausedForHealth = true
+            healthStatusLabel.Text = "Low HP! Waiting to heal..."
+            moveToTempPlatform()
         end
+
+        while autofarmPausedForHealth do
+            moveToTempPlatform()
+            if shouldResumeForHealth() then
+                autofarmPausedForHealth = false
+                healthStatusLabel.Text = ""
+                removeTempPlatform()
+            end
+            wait(0.5)
+        end
+
         if autofarmActive and isSinglePlayer() then
             local enemy = getNearestEnemy()
             currentTarget = enemy
             if enemy then
                 tweenAboveEnemy(enemy, heightAboveEnemy)
-                while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and humanoid.Health > 0 and isSinglePlayer() do
+                while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not autofarmPausedForHealth and isSinglePlayer() do
+                    if shouldPauseForHealth() then
+                        autofarmPausedForHealth = true
+                        healthStatusLabel.Text = "Low HP! Waiting to heal..."
+                        moveToTempPlatform()
+                        break
+                    end
                     -- DODGE LOGIC: Dodge if touching danger during approach
                     if dodgeIfTouchingDanger(enemy) then
                         wait(0.2)
@@ -548,37 +606,26 @@ local function startAutofarmLoop()
                         goal
                     ):Play()
                     wait(0.2)
-                    if humanoid.Health <= 0 then
-                        break
-                    end
                 end
-                if enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and humanoid.Health > 0 and isSinglePlayer() then
+                if enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not autofarmPausedForHealth and isSinglePlayer() then
                     orbitAroundEnemy(enemy, heightAboveEnemy, orbitRadius, orbitSpeed)
                 end
+            else
+                wait(0.5)
             end
         else
             currentTarget = nil
+            wait(0.5)
         end
-    end)
-end
-
--- Listen for character respawn to update references and restart autofarm
-player.CharacterAdded:Connect(function(newChar)
-    character = newChar
-    humanoid = character:WaitForChild("Humanoid")
-    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-    startAutofarmLoop()
+    end
 end)
-
--- Start autofarm loop for the first time
-startAutofarmLoop()
 
 -- Auto spell loop
 spawn(function()
     while true do
-        if autospellActive and isSinglePlayer() and humanoid and humanoid.Health > 0 then
+        if autospellActive and not autofarmPausedForHealth and isSinglePlayer() then
             for _, spell in ipairs(SPELLS) do
-                if autospellActive and isSinglePlayer() and humanoid and humanoid.Health > 0 then
+                if autospellActive and not autofarmPausedForHealth and isSinglePlayer() then
                     ReplicatedStorage:WaitForChild("useSpell"):FireServer(spell)
                 end
                 wait(SPELL_INTERVAL)
