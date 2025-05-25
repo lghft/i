@@ -18,7 +18,7 @@ local isfile = isfile
 local makefolder = makefolder
 local isfolder = isfolder
 
-local CONFIG_FOLDER = "fabledAutoTest"
+local CONFIG_FOLDER = "dqAutoTest"
 local CONFIG_PATH = CONFIG_FOLDER.."/config.json"
 
 local DEFAULT_CONFIG = {
