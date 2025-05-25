@@ -10,7 +10,6 @@
     - Persists settings in Synapse config file: /fabledAutoTest/config.json
     Place as a LocalScript (e.g., StarterPlayerScripts)
     - Now dodges models with a Part called Hitbox or MeshPart called indicator if touching player
-    - Dodge now faces mob and uses hitbox/indicator width for dodge distance
 --]]
 
 -- Synapse X file functions
@@ -430,7 +429,7 @@ local function tweenAboveEnemy(enemy, height)
     tween.Completed:Wait()
 end
 
--- DODGE LOGIC BEGIN (Enhanced: face mob, use hitbox width)
+-- DODGE LOGIC BEGIN
 
 local function getDangerParts()
     local dangers = {}
@@ -457,29 +456,20 @@ local function isTouchingDanger()
     return nil
 end
 
--- Enhanced dodge: face mob and dodge based on hitbox width
-local function dodgeIfTouchingDanger(enemy)
+local function dodgeIfTouchingDanger()
     local danger = isTouchingDanger()
     if danger then
         -- Compute a direction away from the danger
         local away = (humanoidRootPart.Position - danger.Position)
         if away.Magnitude < 0.1 then
-            away = Vector3.new(1,0,0)
+            away = Vector3.new(1,0,0) -- fallback direction
         end
         away = away.Unit
-
-        -- Determine dodge distance based on hitbox width (X or Z, whichever is larger)
-        local hitboxSize = danger.Size
-        local hitboxWidth = math.max(hitboxSize.X, hitboxSize.Z)
-        local buffer = 2
-        local dodgeDistance = hitboxWidth + buffer
-
-        -- Face the mob while dodging
-        local lookAt = enemy and enemy:FindFirstChild("HumanoidRootPart") and enemy.HumanoidRootPart.Position or (humanoidRootPart.Position + humanoidRootPart.CFrame.LookVector)
+        local dodgeDistance = 8
         local newPos = humanoidRootPart.Position + away * dodgeDistance + Vector3.new(0, 2, 0)
         humanoidRootPart.Anchored = false
-        humanoidRootPart.CFrame = CFrame.new(newPos, lookAt)
-        wait(0.15)
+        humanoidRootPart.CFrame = CFrame.new(newPos)
+        wait(0.15) -- brief pause to avoid repeated instant dodges
         return true
     end
     return false
@@ -496,7 +486,7 @@ local function orbitAroundEnemy(enemy, height, radius, speed)
             break
         end
         -- DODGE LOGIC: Dodge if touching danger
-        if dodgeIfTouchingDanger(enemy) then
+        if dodgeIfTouchingDanger() then
             humanoidRootPart.Anchored = false
             wait(0.2)
             humanoidRootPart.Anchored = true
@@ -590,7 +580,7 @@ spawn(function()
                         break
                     end
                     -- DODGE LOGIC: Dodge if touching danger during approach
-                    if dodgeIfTouchingDanger(enemy) then
+                    if dodgeIfTouchingDanger() then
                         wait(0.2)
                     end
                     local enemyPos = enemy.HumanoidRootPart.Position + Vector3.new(0, heightAboveEnemy, 0)
