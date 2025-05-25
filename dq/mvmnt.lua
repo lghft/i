@@ -57,14 +57,18 @@ function clickButton(ClickOnPart)
     local vim = game:GetService("VirtualInputManager")
     local inset1, inset2 = game:GetService('GuiService'):GetGuiInset()
     local insetOffset = inset1 - inset2
+    -- Replace "button location here" with the actual GUI object (e.g., a TextButton)
     local part = ClickOnPart
+    -- Calculate the center of the GUI element
     local topLeft = part.AbsolutePosition + insetOffset
     local center = topLeft + (part.AbsoluteSize / 2)
+    -- Adjust the click position if needed
     local X = center.X + 15
     local Y = center.Y
-    vim:SendMouseButtonEvent(X, Y, 0, true, game, 0)
-    task.wait(0.1)
-    vim:SendMouseButtonEvent(X, Y, 0, false, game, 0)
+    -- Simulate a mouse click
+    vim:SendMouseButtonEvent(X, Y, 0, true, game, 0) -- Mouse down
+    task.wait(0.1) -- Small delay to simulate a real click
+    vim:SendMouseButtonEvent(X, Y, 0, false, game, 0) -- Mouse up
     task.wait(1)
     print("Clicked: ", ClickOnPart)
 end
