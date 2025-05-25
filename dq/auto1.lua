@@ -1,10 +1,10 @@
 
 --[[
     Simplified Roblox Autofarm Script
-    - Tweens above the nearest enemy at configurable height (slower tween speed)
+    - Tweens behind the nearest enemy at configurable height and distance (slower tween speed)
     - Uses dungeon/enemyFolder structure for enemy search
     - No orbiting, no healing pause, no autospell
-    - GUI for stats, toggle, height, and orbit radius input (orbit radius is now unused)
+    - GUI for stats, toggle, height, and orbit radius input (orbit radius is now used as 'distance behind')
     - Open/close button on right side of screen (no H keybind)
     - Only works if there is exactly 1 player in the game (auto disables otherwise)
     - Persists settings in Synapse config file: /fabledAutoTest/config.json
@@ -24,7 +24,7 @@ local CONFIG_PATH = CONFIG_FOLDER.."/config.json"
 local DEFAULT_CONFIG = {
     autofarmActive = false,
     heightAboveEnemy = 10,
-    orbitRadius = 6
+    orbitRadius = 6 -- now used as 'distance behind'
 }
 
 local function deepCopy(tbl)
@@ -89,7 +89,7 @@ local TELEPORT_TIME = 0.8 -- seconds for tween teleport (slower than before)
 -- State (from config)
 local autofarmActive = config.autofarmActive
 local heightAboveEnemy = config.heightAboveEnemy
-local orbitRadius = config.orbitRadius -- unused, but kept for GUI compatibility
+local orbitRadius = config.orbitRadius -- now used as 'distance behind'
 
 -- GUI Setup
 local screenGui = Instance.new("ScreenGui")
@@ -150,7 +150,7 @@ local orbitRadiusLabel = Instance.new("TextLabel")
 orbitRadiusLabel.Size = UDim2.new(0, 120, 0, 25)
 orbitRadiusLabel.Position = UDim2.new(0, 10, 0, 110)
 orbitRadiusLabel.BackgroundTransparency = 1
-orbitRadiusLabel.Text = "Orbit Radius:"
+orbitRadiusLabel.Text = "Distance Behind:"
 orbitRadiusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 orbitRadiusLabel.Font = Enum.Font.SourceSans
 orbitRadiusLabel.TextSize = 16
@@ -321,11 +321,17 @@ local function getNearestEnemy()
     return closestEnemy
 end
 
-local function tweenAboveEnemy(enemy, height)
+-- NEW: Tween behind enemy instead of above
+local function tweenBehindEnemy(enemy, distanceBehind, height)
     humanoidRootPart.Anchored = false -- Unanchor before tweening
+    local hrp = enemy:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local enemyPos = hrp.Position
+    local lookVector = hrp.CFrame.LookVector
+    -- Calculate position behind enemy
+    local behindPos = enemyPos - lookVector * distanceBehind + Vector3.new(0, height, 0)
     local goal = {}
-    local enemyPos = enemy:FindFirstChild("HumanoidRootPart").Position
-    goal.CFrame = CFrame.new(enemyPos + Vector3.new(0, height, 0))
+    goal.CFrame = CFrame.new(behindPos)
     local tween = TweenService:Create(
         humanoidRootPart,
         TweenInfo.new(TELEPORT_TIME, Enum.EasingStyle.Linear),
@@ -335,7 +341,7 @@ local function tweenAboveEnemy(enemy, height)
     tween.Completed:Wait()
 end
 
--- Autofarm loop (no orbit, no heal pause, just tween above nearest enemy)
+-- Autofarm loop (no orbit, no heal pause, just tween behind nearest enemy)
 local currentTarget = nil
 spawn(function()
     while true do
@@ -343,7 +349,8 @@ spawn(function()
             local enemy = getNearestEnemy()
             currentTarget = enemy
             if enemy then
-                tweenAboveEnemy(enemy, heightAboveEnemy)
+                local distanceBehind = orbitRadius -- now used as distance behind
+                tweenBehindEnemy(enemy, distanceBehind, heightAboveEnemy)
             else
                 wait(0.5)
             end
@@ -359,7 +366,7 @@ spawn(function()
     while true do
         local targetName = currentTarget and currentTarget.Name or "None"
         statsLabel.Text = string.format(
-            "Target: %s\nAutofarm: %s\nHeight: %d\nOrbit Radius: %d",
+            "Target: %s\nAutofarm: %s\nHeight: %d\nDistance Behind: %d",
             targetName,
             autofarmActive and "ON" or "OFF",
             heightAboveEnemy,
