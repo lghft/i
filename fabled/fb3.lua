@@ -20,14 +20,13 @@ local humanoid = character:WaitForChild("Humanoid")
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
 local enemiesFolder = workspace:WaitForChild("Enemies")
--- Removed: local remainingEnemies = enemiesFolder:WaitForChild("remainingEnemies")
 
 local SPELLS = {"Q", "E"}
 local SPELL_INTERVAL = 1 -- seconds between spell casts
 local TELEPORT_TIME = 0.5 -- seconds for tween teleport
 
 -- Orbit settings
-local ORBIT_RADIUS = 6
+local ORBIT_RADIUS = 4 -- smaller radius for less mob movement
 local ORBIT_SPEED = 1.5 -- radians/sec
 local ORBIT_DISTANCE_THRESHOLD = 1.5 -- how close before orbit starts
 
@@ -218,16 +217,26 @@ local function tweenAboveEnemy(enemy, height)
     tween.Completed:Wait()
 end
 
--- Orbit logic
+-- Stable Orbit logic using Humanoid:MoveTo and BodyGyro
 local function orbitAroundEnemy(enemy, height, radius, speed)
+    -- Clamp radius to avoid wild orbits
+    radius = math.clamp(radius, 2, 8)
+    -- Setup BodyGyro for smooth facing
+    local bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.MaxTorque = Vector3.new(0, math.huge, 0)
+    bodyGyro.P = 10000
+    bodyGyro.D = 500
+    bodyGyro.Parent = humanoidRootPart
+
     local angle = math.random() * math.pi * 2
-    while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive do
-        -- Health check inside orbit
+    local orbiting = true
+    while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and orbiting do
         if humanoid.Health / humanoid.MaxHealth < LOW_HEALTH_THRESHOLD then
             break
         end
         local dt = RunService.RenderStepped:Wait()
         angle = angle + speed * dt
+
         local enemyPos = enemy.HumanoidRootPart.Position
         local offset = Vector3.new(
             math.cos(angle) * radius,
@@ -235,8 +244,21 @@ local function orbitAroundEnemy(enemy, height, radius, speed)
             math.sin(angle) * radius
         )
         local targetPos = enemyPos + offset
-        humanoidRootPart.CFrame = CFrame.new(targetPos, enemyPos)
+
+        -- Use Humanoid:MoveTo for smooth movement
+        humanoid:MoveTo(targetPos)
+
+        -- Face the mob smoothly
+        local lookAt = CFrame.new(humanoidRootPart.Position, enemyPos)
+        bodyGyro.CFrame = CFrame.new(humanoidRootPart.Position) * CFrame.Angles(0, math.atan2(enemyPos.X - humanoidRootPart.Position.X, enemyPos.Z - humanoidRootPart.Position.Z), 0)
+
+        -- If the mob moves too far, break orbit
+        if (humanoidRootPart.Position - enemyPos).Magnitude > radius * 2 then
+            orbiting = false
+        end
     end
+    bodyGyro:Destroy()
+    humanoid:MoveTo(humanoidRootPart.Position) -- Stop movement
 end
 
 -- Temp platform logic
@@ -309,7 +331,6 @@ spawn(function()
                 tweenAboveEnemy(enemy, heightAboveEnemy)
                 -- Wait until close enough to start orbit
                 while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not autofarmPausedForHealth do
-                    -- Health check inside loop
                     if shouldPauseForHealth() then
                         autofarmPausedForHealth = true
                         healthStatusLabel.Text = "Low HP! Waiting to heal..."
