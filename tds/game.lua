@@ -47,34 +47,43 @@ spawn(function()
   	if Ending.Visible == true then
   		--clickButton(leave)
   	end
-  	if wave.Text == "39" then
-  		local args = {
-  	"Troops",
-  	"Option",
-  	"Set",
-  	{
-  		Troop = workspace.Towers.Masquerade,
-  		Name = "Track",
-  		Value = "Red"
-  	}
-  }
-  game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
-  	end
-	  local args = {
-	  	"Troops",
-	  	"Abilities",
-	  	"Activate",
-	  	{
-	  		Troop = workspace.Towers.Masquerade,
-	  		Name = "Drop The Beat",
-	  		Data = {}
-	  	}
-	  }
-	  game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
-  
-  wait(1)
+				
 	end
   end)
+
+spawn(function()
+	repeat wait() until workspace.Towers.Masquerade
+	while true do
+		if wave.Text == "39" then
+  		local args = {
+		  	"Troops",
+		  	"Option",
+		  	"Set",
+		  	{
+		  		Troop = workspace.Towers.Masquerade,
+		  		Name = "Track",
+		  		Value = "Red"
+		  	}
+		  }
+		game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
+		end
+		local args = {
+		  	"Troops",
+		  	"Abilities",
+		  	"Activate",
+		  	{
+		  		Troop = workspace.Towers.Masquerade,
+		  		Name = "Drop The Beat",
+		  		Data = {}
+		  	}
+		  }
+		  game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
+	  
+	  wait(1)
+	end
+end)
+
+	
 elseif plrAmount > 1 then
     local args = {
 	"Multiplayer",
