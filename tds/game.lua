@@ -5,7 +5,6 @@ local char = game.Players.LocalPlayer.Character
 local Players = game:GetService('Players')
 local plr = Players.LocalPlayer
 local plrAmount = #Players:GetPlayers()
-local leave = Ending.content.buttons.lobby.content
 
 function clickButton(ClickOnPart)
     local vim = game:GetService("VirtualInputManager")
@@ -32,6 +31,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
 repeat wait() until plr.PlayerGui.ReactGameTopGameDisplay
 local wave = game:GetService("Players").LocalPlayer.PlayerGui.ReactGameTopGameDisplay.Frame.wave.container.value
 local Ending = game:GetService("Players").LocalPlayer.PlayerGui.ReactGameRewards.Frame.gameOver
+local leave = Ending.content.buttons.lobby.content
   repeat wait() until game.ReplicatedStorage.RemoteFunction
 print("yezfunc")
 spawn(function()
