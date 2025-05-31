@@ -50,5 +50,14 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
   wait(1)
   end
 elseif plrAmount > 1 then
-    
+    local args = {
+	"Multiplayer",
+	"v2:start",
+	{
+		difficulty = "Fallen",
+		mode = "survival",
+		count = 1
+	}
+}
+game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
 end
