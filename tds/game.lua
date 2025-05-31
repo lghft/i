@@ -6,7 +6,7 @@ local Players = game:GetService('Players')
 local plrAmount = #Players:GetPlayers()
 local wave = game:GetService("Players").LocalPlayer.PlayerGui.ReactGameTopGameDisplay.Frame.wave.container.value
 local Ending = game:GetService("Players").LocalPlayer.PlayerGui.ReactGameRewards.Frame.gameOver
-local leave = End.content.buttons.lobby.content
+local leave = Ending.content.buttons.lobby.content
 if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
   print("game?")
   repeat wait() until game.ReplicatedStorage.RemoteFunction
@@ -22,7 +22,7 @@ spawn(function()
 		game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
   	end
   	if Ending.Visible == true then
-  		clickButton(leave)
+  		--clickButton(leave)
   	end
   	if wave.Text == "39" then
   		local args = {
