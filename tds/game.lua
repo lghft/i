@@ -3,7 +3,9 @@ repeat wait(5) until game:IsLoaded()
 print("Lby Loaded1")
 local char = game.Players.LocalPlayer.Character
 local Players = game:GetService('Players')
+local plr = Players.LocalPlayer
 local plrAmount = #Players:GetPlayers()
+repeat wait() until plr.PlayerGui.ReactGameTopGameDisplay
 local wave = game:GetService("Players").LocalPlayer.PlayerGui.ReactGameTopGameDisplay.Frame.wave.container.value
 local Ending = game:GetService("Players").LocalPlayer.PlayerGui.ReactGameRewards.Frame.gameOver
 local leave = Ending.content.buttons.lobby.content
