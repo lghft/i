@@ -12,12 +12,12 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
   	local End = game:GetService("Players").LocalPlayer.PlayerGui.ReactGameRewards.Frame.gameOver
   	local leave = End.content.buttons.lobby.content
   	if wave.Text == "1" then
+		print("its wave 1")
   		local args = {
-  	"Voting",
-  	"Skip"
-  }
-  game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
-  
+			"Voting",
+			"Skip"
+		}
+		game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
   	end
   	if End.Visible == true then
   		clickButton(leave)
