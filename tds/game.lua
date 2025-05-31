@@ -7,6 +7,7 @@ local plrAmount = #Players:GetPlayers()
 
 if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
   print("game?")
+  repeat wait() until game.ReplicatedStorage.RemoteFunction
   while true do
   	local wave = game:GetService("Players").LocalPlayer.PlayerGui.ReactGameTopGameDisplay.Frame.wave.container.value
   	local End = game:GetService("Players").LocalPlayer.PlayerGui.ReactGameRewards.Frame.gameOver
