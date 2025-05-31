@@ -28,7 +28,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
   	"Option",
   	"Set",
   	{
-  		Troop = workspace:WaitForChild("Towers"):WaitForChild("Masquerade"),
+  		Troop = workspace.Towers.Masquerade,
   		Name = "Track",
   		Value = "Red"
   	}
