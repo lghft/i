@@ -75,7 +75,7 @@ spawn(function()
 		  	"Option",
 		  	"Set",
 		  	{
-		  		Troop = workspace.Towers.Masquerade,
+		  		Troop = workspace:WaitForChild("Towers"):WaitForChild("Masquerade"),
 		  		Name = "Track",
 		  		Value = "Red"
 		  	}
@@ -87,7 +87,7 @@ spawn(function()
 		  	"Abilities",
 		  	"Activate",
 		  	{
-		  		Troop = workspace.Towers.Masquerade,
+		  		Troop = workspace:WaitForChild("Towers"):WaitForChild("Masquerade"),
 		  		Name = "Drop The Beat",
 		  		Data = {}
 		  	}
