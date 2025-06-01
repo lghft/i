@@ -52,7 +52,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
                         "Upgrade",
                         "Set",
                         {
-                            Troop = v,
+                            Troop = v.Name,
                             Path = 1
                         }
                     }
