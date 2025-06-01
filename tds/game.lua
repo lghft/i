@@ -46,17 +46,18 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
                 --clickButton(leave)
             end
             if wave.Text == "40" then
-                for i, v in pairs(workspace.Towers:GetChildren()) do
-                    local args = {
+                for i,v in pairs(workspace.Towers:GetChildren()) do
+                        local args = {
                         "Troops",
                         "Upgrade",
                         "Set",
                         {
-                            Troop = v.Name,
+                            Troop = v,
                             Path = 1
                         }
                     }
-                    game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
+                
                 end
             end
             wait(0.5)
