@@ -57,7 +57,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
                         }
                     }
                     game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
-                
+                	wait()
                 end
             end
             wait(0.5)
@@ -80,7 +80,9 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
 					}
 				}
 				game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+				wait()
 			end
+			wait()
 		end
 	end
 	for i,v in pairs(workspace.Towers:GetChildren()) do
@@ -96,6 +98,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
 					}
 				}
 				game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+				wait()
 			end
 		end
 	end
