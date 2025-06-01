@@ -10,104 +10,112 @@ function clickButton(ClickOnPart)
     local vim = game:GetService("VirtualInputManager")
     local inset1, inset2 = game:GetService('GuiService'):GetGuiInset()
     local insetOffset = inset1 - inset2
-    -- Replace "button location here" with the actual GUI object (e.g., a TextButton)
     local part = ClickOnPart
-    -- Calculate the center of the GUI element
     local topLeft = part.AbsolutePosition + insetOffset
     local center = topLeft + (part.AbsoluteSize / 2)
-    -- Adjust the click position if needed
     local X = center.X + 15
     local Y = center.Y
-    -- Simulate a mouse click
-    vim:SendMouseButtonEvent(X, Y, 0, true, game, 0) -- Mouse down
-    task.wait(0.1) -- Small delay to simulate a real click
-    vim:SendMouseButtonEvent(X, Y, 0, false, game, 0) -- Mouse up
+    vim:SendMouseButtonEvent(X, Y, 0, true, game, 0)
+    task.wait(0.1)
+    vim:SendMouseButtonEvent(X, Y, 0, false, game, 0)
     task.wait(1)
     print("Clicked: ", ClickOnPart)
 end
 
 if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
-  print("game?")
-repeat wait() until plr.PlayerGui.ReactGameTopGameDisplay
-local wave = game:GetService("Players").LocalPlayer.PlayerGui.ReactGameTopGameDisplay.Frame.wave.container.value
-local Ending = game:GetService("Players").LocalPlayer.PlayerGui.ReactGameRewards.Frame.gameOver
-local leave = Ending.content.buttons.lobby.content
-  repeat wait() until game.ReplicatedStorage.RemoteFunction
-print("yezfunc")
-spawn(function()
-  while true do
-  	if wave.Text == "1" then
-		print("its wave 1")
-  		local args = {
-			"Voting",
-			"Skip"
-		}
-		game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
-  	end
-  	if Ending.Visible == true then
-  		--clickButton(leave)
-  	end
-	if wave.Text == "40" then
-		for i ,v in pairs(workspace.Towers) do
-			local args = {
-				"Troops",
-				"Upgrade",
-				"Set",
-				{
-					Troop = v,
-					Path = 1
-				}
-			}
-			game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
+    print("game?")
+    repeat wait() until plr.PlayerGui:FindFirstChild("ReactGameTopGameDisplay")
+    local wave = plr.PlayerGui.ReactGameTopGameDisplay.Frame.wave.container.value
+    local Ending = plr.PlayerGui.ReactGameRewards.Frame.gameOver
+    local leave = Ending.content.buttons.lobby.content
+    
+    repeat wait() until game.ReplicatedStorage:FindFirstChild("RemoteFunction")
+    print("yezfunc")
+    
+    spawn(function()
+        while true do
+            if wave.Text == "1" then
+                print("its wave 1")
+                local args = {
+                    "Voting",
+                    "Skip"
+                }
+                game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+            end
+            if Ending.Visible == true then
+                --clickButton(leave)
+            end
+            if wave.Text == "40" then
+                for i, v in pairs(workspace.Towers:GetChildren()) do
+                    local args = {
+                        "Troops",
+                        "Upgrade",
+                        "Set",
+                        {
+                            Troop = v,
+                            Path = 1
+                        }
+                    }
+                    game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+                end
+            end
+            wait(0.5)
+        end
+    end)
 
-		end
-	    end
-		wait(0.5)
-	end
-  end)
-
-spawn(function()
-	repeat wait() until workspace:WaitForChild("Towers"):WaitForChild("Masquerade")
-	while true do
-		if wave.Text == "39" then
-  		local args = {
-		  	"Troops",
-		  	"Option",
-		  	"Set",
-		  	{
-		  		Troop = workspace:WaitForChild("Towers"):WaitForChild("Masquerade"),
-		  		Name = "Track",
-		  		Value = "Red"
-		  	}
-		  }
-		game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
-		end
-		local args = {
-		  	"Troops",
-		  	"Abilities",
-		  	"Activate",
-		  	{
-		  		Troop = workspace:WaitForChild("Towers"):WaitForChild("Masquerade"),
-		  		Name = "Drop The Beat",
-		  		Data = {}
-		  	}
-		  }
-		  game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
-	  
-	  wait(0.5)
-	end
-end)
-
-	
+    spawn(function()
+        -- Wait for both the towers folder and masquerade to exist
+        repeat wait() until workspace:FindFirstChild("Towers")
+        repeat wait() until workspace.Towers:FindFirstChild("Masquerade")
+        
+        local masquerade = workspace.Towers.Masquerade
+        
+        while true do
+            if wave.Text == "39" then
+                local args = {
+                    "Troops",
+                    "Option",
+                    "Set",
+                    {
+                        Troop = masquerade,
+                        Name = "Track",
+                        Value = "Red"
+                    }
+                }
+                game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+            end
+            
+            -- Check if masquerade still exists before using it
+            if masquerade and masquerade.Parent then
+                local args = {
+                    "Troops",
+                    "Abilities",
+                    "Activate",
+                    {
+                        Troop = masquerade,
+                        Name = "Drop The Beat",
+                        Data = {}
+                    }
+                }
+                game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+            else
+                -- If masquerade is gone, try to find it again
+                masquerade = workspace.Towers:FindFirstChild("Masquerade")
+            end
+            
+            wait(0.5)
+        end
+    end)
+    
 elseif plrAmount > 1 then
     local args = {
-	"Multiplayer",
-	"v2:start",
-	{
-		difficulty = "Fallen",
-		mode = "survival",
-		count = 1
-	}
-}
-game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
+        "Multiplayer",
+        "v2:start",
+        {
+            difficulty = "Fallen",
+            mode = "survival",
+            count = 1
+        }
+    }
+    game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
 end
