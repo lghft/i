@@ -47,7 +47,22 @@ spawn(function()
   	if Ending.Visible == true then
   		--clickButton(leave)
   	end
-				
+	if wave.Text == "40" then
+		for i ,v in pairs(workspace.Towers) do
+			local args = {
+				"Troops",
+				"Upgrade",
+				"Set",
+				{
+					Troop = v,
+					Path = 1
+				}
+			}
+			game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
+
+		end
+	    end
+		wait(0.5)
 	end
   end)
 
@@ -79,7 +94,7 @@ spawn(function()
 		  }
 		  game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
 	  
-	  wait(1)
+	  wait(0.5)
 	end
 end)
 
