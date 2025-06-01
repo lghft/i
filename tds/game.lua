@@ -67,7 +67,7 @@ spawn(function()
   end)
 
 spawn(function()
-	repeat wait() until workspace.Towers.Masquerade
+	repeat wait() until workspace:WaitForChild("Towers"):WaitForChild("Masquerade")
 	while true do
 		if wave.Text == "39" then
   		local args = {
