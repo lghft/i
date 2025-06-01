@@ -43,7 +43,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
                 game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
             end
             if Ending.Visible == true then
-                --clickButton(leave)
+                clickButton(leave)
             end
             if wave.Text == "40" then
                 for i,v in pairs(workspace.Towers:GetChildren()) do
@@ -65,48 +65,43 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
     end)
 
     spawn(function()
-        -- Wait for both the towers folder and masquerade to exist
-        repeat wait() until workspace:FindFirstChild("Towers")
-        repeat wait() until workspace.Towers:FindFirstChild("Masquerade")
-        
-        local masquerade = workspace.Towers.Masquerade
-        
         while true do
             if wave.Text == "39" then
-                local args = {
+            for i,v in pairs(workspace.Towers:GetChildren()) do
+                if v.Name == "Masquerade" then
+                    local args = {
                     "Troops",
                     "Option",
                     "Set",
-                    {
-                        Troop = masquerade,
-                        Name = "Track",
-                        Value = "Red"
+                        {
+                            Troop = v,
+                            Name = "Track",
+                            Value = "Red"
+                        }
                     }
-                }
-                game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+                    game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+                end
             end
-            
-            -- Check if masquerade still exists before using it
-            if masquerade and masquerade.Parent then
-                local args = {
+        end
+            for i,v in pairs(workspace.Towers:GetChildren()) do
+                if v.Name == "Masquerade" then
+                    local args = {
                     "Troops",
                     "Abilities",
                     "Activate",
-                    {
-                        Troop = masquerade,
-                        Name = "Drop The Beat",
-                        Data = {}
+                        {
+                            Troop = v,
+                            Name = "Drop The Beat",
+                            Data = {}
+                        }
                     }
-                }
-                game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
-            else
-                -- If masquerade is gone, try to find it again
-                masquerade = workspace.Towers:FindFirstChild("Masquerade")
+                    game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+                end
             end
-            
-            wait(0.5)
         end
-    end)
+        wait(0.5)
+    end
+end)
     
 elseif plrAmount > 1 then
     local args = {
