@@ -41,6 +41,11 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
                     "Skip"
                 }
                 game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+		local args = {
+		    "Voting",
+		    "Restart"
+		}
+		game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
             end
             if Ending.Visible == true then
                 clickButton(leave)
