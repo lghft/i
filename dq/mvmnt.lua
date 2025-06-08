@@ -587,6 +587,6 @@ task.spawn(function()
     -- Only autoplay if enabled and macro is selected
     if config.autoplay and config.selectedMacro then
         -- Simulate Play button click
-        playBtn:Activate()
+        firesignal(playBtn.Activated)
     end
 end)
