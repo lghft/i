@@ -31,9 +31,9 @@ local RunService = game:GetService("RunService")
 -- Config
 local config = {
     selectedMacro = nil,
-    autoplay = true,
+    autoplay = false,
     windowPos = {x = 0.5, y = 0.5},
-    isPlaying = true
+    isPlaying = false
 }
 if isfile(CONFIG_FILE) then
     local ok, data = pcall(function() return HttpService:JSONDecode(readfile(CONFIG_FILE)) end)
@@ -572,21 +572,11 @@ exitBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- === AUTOPLAY ON SCRIPT EXECUTE ===
-task.spawn(function()
-    -- Wait for GUI and Play button to be ready
-    repeat wait() until playBtn and playBtn.Parent and playBtn.Visible
-    -- Wait for PlayerGui and timeLeftGui to be ready (as in playBtn logic)
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    local timeLeftGui = playerGui and playerGui:FindFirstChild("timeLeftGui")
-    while not (timeLeftGui and timeLeftGui.Enabled == true) do
-        playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-        timeLeftGui = playerGui and playerGui:FindFirstChild("timeLeftGui")
-        wait(0.5)
-    end
-    -- Only autoplay if enabled and macro is selected
-    if config.autoplay and config.selectedMacro then
-        -- Simulate Play button click
-        firesignal(playBtn.Activated)
-    end
-end)
+-- Autoplay on script load if enabled and isPlaying is true
+if config.autoplay == true and config.selectedMacro == "Void3" then
+    print("autoPlay YESS")
+    wait(1)
+    clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
+    wait(6)
+    gui.Enabled = false
+end
