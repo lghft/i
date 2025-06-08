@@ -582,5 +582,5 @@ if config.autoplay == true and config.selectedMacro == "Void3" then
     gui.Enabled = false
 end
 
--- Always press the playback button on script execution
---playBtn.MouseButton1Click:Fire()
+--Always press the playback button on script execution
+playBtn.MouseButton1Click:Fire()
