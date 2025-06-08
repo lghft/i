@@ -572,112 +572,21 @@ exitBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Autoplay on script load if enabled and isPlaying is true
-if config.autoplay == true and config.selectedMacro == "Void3" then
-    
-    print("autoPlay YESS")
-    if isPlaying then
-        isPlaying = false
-        config.isPlaying = false
-        saveConfig()
-        if playConn then playConn:Disconnect() end
-        playBtn.Text = "▶ Play"
-        playBtn.BackgroundColor3 = colors.accent2
-        stopRapidGreggTP()
-        return
-    end
-    if not selectedMacro then return end
-
-    -- Only play if timeLeftGui exists and is Enabled==true
+-- === AUTOPLAY ON SCRIPT EXECUTE ===
+task.spawn(function()
+    -- Wait for GUI and Play button to be ready
+    repeat wait() until playBtn and playBtn.Parent and playBtn.Visible
+    -- Wait for PlayerGui and timeLeftGui to be ready (as in playBtn logic)
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     local timeLeftGui = playerGui and playerGui:FindFirstChild("timeLeftGui")
-    if not (timeLeftGui and timeLeftGui.Enabled == true) then
-        playBtn.Text = "▶ Play"
-        playBtn.BackgroundColor3 = colors.accent2
-        return
+    while not (timeLeftGui and timeLeftGui.Enabled == true) do
+        playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        timeLeftGui = playerGui and playerGui:FindFirstChild("timeLeftGui")
+        wait(0.5)
     end
-
-    local file = MACRO_FOLDER.."/"..selectedMacro..".json"
-    if not isfile(file) then return end
-    local ok, data = pcall(function() return HttpService:JSONDecode(readfile(file)) end)
-    if not ok or type(data) ~= "table" or #data == 0 then return end
-    isPlaying = true
-    config.isPlaying = true
-    saveConfig()
-    playData = data
-    playIndex = 1
-    playStart = tick()
-    playBtn.Text = "⏹ Stop"
-    playBtn.BackgroundColor3 = colors.btnActive
-    isPausedForGregg = false
-    stopRapidGreggTP()
-
-    playConn = RunService.Heartbeat:Connect(function()
-        if not isPlaying then if playConn then playConn:Disconnect() end stopRapidGreggTP() return end
-
-        -- Gregg detection and rapid TP logic
-        if not isPausedForGregg then
-            local gregg = findGregg()
-            if gregg then
-                isPausedForGregg = true
-                playBtn.Text = "⏸ Paused (Gregg)"
-                playBtn.BackgroundColor3 = colors.accent
-                startRapidGreggTP(gregg)
-                coroutine.wrap(function()
-                    while gregg and isEnemyAlive(gregg) and isPlaying do
-                        wait(0.1)
-                    end
-                    stopRapidGreggTP()
-                    if isPlaying then
-                        isPausedForGregg = false
-                        playBtn.Text = "⏹ Stop"
-                        playBtn.BackgroundColor3 = colors.btnActive
-                    end
-                end)()
-                return
-            end
-        end
-
-        if isPausedForGregg then
-            return
-        end
-
-        local char = LocalPlayer.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-        local now = tick() - playStart
-        while playIndex < #playData and playData[playIndex+1].time <= now do
-            playIndex = playIndex + 1
-        end
-        local frame = playData[playIndex]
-        if not frame then
-            isPlaying = false
-            config.isPlaying = false
-            saveConfig()
-            playBtn.Text = "▶ Play"
-            playBtn.BackgroundColor3 = colors.accent2
-            playConn:Disconnect()
-            stopRapidGreggTP()
-            return
-        end
-        char.HumanoidRootPart.CFrame = CFrame.new(tblv3(frame.position))
-        char.Humanoid:Move(tblv3(frame.moveDirection))
-        if playIndex == #playData then
-            isPlaying = false
-            config.isPlaying = false
-            saveConfig()
-            playBtn.Text = "▶ Play"
-            playBtn.BackgroundColor3 = colors.accent2
-            playConn:Disconnect()
-            stopRapidGreggTP()
-        end
-    end)
-    
-    --[[
-    wait(1)
-    clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
-    firesignal(playBtn.Activated)
-    print("Fired? Signal?")
-    wait(6)
-    gui.Enabled = true
-    ]]
-end
+    -- Only autoplay if enabled and macro is selected
+    if config.autoplay and config.selectedMacro then
+        -- Simulate Play button click
+        playBtn:Activate()
+    end
+end)
