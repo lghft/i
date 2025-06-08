@@ -31,9 +31,9 @@ local RunService = game:GetService("RunService")
 -- Config
 local config = {
     selectedMacro = nil,
-    autoplay = false,
+    autoplay = true,
     windowPos = {x = 0.5, y = 0.5},
-    isPlaying = false
+    isPlaying = true
 }
 if isfile(CONFIG_FILE) then
     local ok, data = pcall(function() return HttpService:JSONDecode(readfile(CONFIG_FILE)) end)
