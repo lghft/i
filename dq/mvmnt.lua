@@ -576,11 +576,12 @@ end)
 if config.autoplay == true and config.selectedMacro == "Void3" then
     print("autoPlay YESS")
     wait(1)
+    --[[
     clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
     clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
+    ]]
+    firesignal(playBtn.Activated)
+    print("Fired? Signal?")
     wait(6)
     gui.Enabled = false
 end
-
---Always press the playback button on script execution
-playBtn.MouseButton1Click:Fire()
