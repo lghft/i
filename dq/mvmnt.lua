@@ -577,6 +577,7 @@ if config.autoplay == true and config.selectedMacro == "Void3" then
     print("autoPlay YESS")
     wait(1)
     clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
+    clickButton(game.CoreGui.DqmacMacroGui.Frame.Play)
     wait(6)
     gui.Enabled = false
 end
