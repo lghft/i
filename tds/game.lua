@@ -36,11 +36,13 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
         while true do
             if wave.Text == "1" then
                 print("its wave 1")
+		--[[			
                 local args = {
                     "Voting",
                     "Skip"
                 }
                 game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(unpack(args))
+		]]
 		local args = {
 		    "Voting",
 		    "Restart"
@@ -73,7 +75,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
         while true do
 		if wave.Text == "39" then
 		for i,v in pairs(workspace.Towers:GetChildren()) do
-			if v.Name == "Masquerade" then
+			if v.Name == "Default" then
 				local args = {
 				"Troops",
 				"Option",
@@ -89,7 +91,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and plrAmount < 2 then
 		end
 	end
 		for i,v in pairs(workspace.Towers:GetChildren()) do
-			if v.Name == "Masquerade" then
+			if v.Name == "Default" then
 				local args = {
 				"Troops",
 				"Abilities",
