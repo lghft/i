@@ -22,14 +22,50 @@ function createLby()
     game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("CreateRoom"):FireServer(unpack(args))
 end
 
-function getfeed()
-    a = nil
-    for i,v in pairs(workspace.Units:GetChildren()) do
-        if (v.Info.MaxSTA.Value - v.Info.STA.Value) > 15 and v.Info.Owner.Value == game.Players.LocalPlayer.Name then
-            a = v
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local changeModeRemote = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("ChangeUnitModeFunction")
+
+local targetModes = {
+    "First",
+    "Last",
+    "Strongest",
+    "Weakest",
+    "Nearest",
+    "Flying",
+    "Stop"
+}
+
+function getModeIndex(mode)
+    for i, v in ipairs(targetModes) do
+        if v == mode then
+            return i
         end
     end
-    return a
+    return nil
+end
+
+-- Sets the TargetMode of a specific unit to the desiredMode
+function setUnitTargetMode(unitUsed, desiredMode)
+    local info = unitUsed:FindFirstChild("Info")
+    if not info then
+        warn("Unit has no Info child:", unitUsed.Name)
+        return
+    end
+    local targetModeValue = info:FindFirstChild("TargetMode")
+    if not targetModeValue or not targetModeValue:IsA("StringValue") then
+        warn("Unit has no TargetMode StringValue:", unitUsed.Name)
+        return
+    end
+
+    while targetModeValue.Value ~= desiredMode do
+        changeModeRemote:InvokeServer(unit)
+        -- Wait for the value to update (avoid spamming)
+        repeat
+            task.wait(0.1)
+        until targetModeValue.Value == targetModes[(getModeIndex(targetModeValue.Value) or 1)]
+    end
+
+    print("TargetMode set to:", targetModeValue.Value, "for unit:", unitUsed.Name)
 end
 
 function clickButton(ClickOnPart)
@@ -54,7 +90,6 @@ end
 function sr2mac()
     local char = game.Players.LocalPlayer.Character
     char.HumanoidRootPart.CFrame = CFrame.new(-109, 6, 17)
-    local Efolder = workspace.Enemy
     local args = {
 	"Vending Machine",
 	CFrame.new(-105.38169860839844, 4.996660232543945, 32.78748321533203, 1, 0, 0, 0, 1, 0, 0, 0, 1),
@@ -73,20 +108,8 @@ startMatch()
 spawn(function() 
     while true do
     local args = {
-        "Vending Machine",
-        CFrame.new(-105.38169860839844, 4.996660232543945, 32.78748321533203, 1, 0, 0, 0, 1, 0, 0, 0, 1),
-        1,
-        {
-            "1",
-            "1",
-            "1",
-            "1"
-        }
-    }
-    game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SpawnUnit"):InvokeServer(unpack(args))
-    local args = {
-        "Umu",
-        CFrame.new(-106.19898986816406, 4.954528331756592, 13.752519607543945, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+	"Vending Machine",
+        CFrame.new(-105.71138000488281, 18.03795051574707, 30.91839027404785, 1, 0, 0, 0, 1, 0, 0, 0, 1),
         1,
         {
             "1",
@@ -98,8 +121,21 @@ spawn(function()
     game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SpawnUnit"):InvokeServer(unpack(args))
 
     local args = {
-        "Leader",
-        CFrame.new(-91.29405975341797, 4.993784427642822, 26.875513076782227, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+        "Umu",
+        CFrame.new(-97.70669555664062, 4.954528331756592, 64.87602233886719, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+        1,
+        {
+            "1",
+            "1",
+            "1",
+            "1"
+        }
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SpawnUnit"):InvokeServer(unpack(args))
+
+    local args = {
+	"Leader",
+        CFrame.new(-102.72235107421875, 18.429485321044922, 25.169254302978516, 1, 0, 0, 0, 1, 0, 0, 0, 1),
         1,
         {
             "1",
@@ -113,7 +149,7 @@ spawn(function()
 
     local args = {
         "Casual Hero",
-        CFrame.new(-106.00216674804688, 4.996660232543945, 22.60348892211914, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+        CFrame.new(-97.07447814941406, 4.996660232543945, 36.81475067138672, 1, 0, 0, 0, 1, 0, 0, 0, 1),
         1,
         {
             "1",
@@ -127,7 +163,7 @@ spawn(function()
 
     local args = {
         "Stone Doctor",
-        CFrame.new(-93.37698364257812, 4.996660232543945, 37.393699645996094, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+        CFrame.new(-93.76461791992188, 4.996660232543945, 46.77920150756836, 1, 0, 0, 0, 1, 0, 0, 0, 1),
         1,
         {
             "1",
@@ -140,7 +176,7 @@ spawn(function()
 
     local args = {
         "Gappy [Beyond]",
-        CFrame.new(-115.77452087402344, 4.996660232543945, 13.426719665527344, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+        CFrame.new(-103.39106750488281, 4.996660232543945, -37.01251220703125, 1, 0, 0, 0, 1, 0, 0, 0, 1),
         1,
         {
             "1",
@@ -154,17 +190,6 @@ spawn(function()
     end
 end)
 repeat wait() until game.Players.LocalPlayer.PlayerGui.InterFace.Day.Text == "[Shadow Realm II] [Master] Wave 3/10" --up1
-spawn(function()
-    while wait() do
-        pcall(function()
-            if game:GetService("Players").LocalPlayer.leaderstats.Meat.Value > 1 then
-                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("FeedUnit"):InvokeServer(getfeed())
-            else
-                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("BuyMeat"):InvokeServer(.5)
-            end
-        end)
-    end
-end)
 spawn(function()
     while true do
         for _, v in pairs (workspace.Units:GetChildren())do
@@ -195,17 +220,6 @@ spawn(function()
 end)
 
 repeat wait() until game.Players.LocalPlayer.PlayerGui.InterFace.Day.Text == "[Shadow Realm II] [Master] Wave 5/10" --up2
-spawn(function()
-    while wait() do
-        pcall(function()
-            if game:GetService("Players").LocalPlayer.leaderstats.Meat.Value > 1 then
-                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("FeedUnit"):InvokeServer(getfeed())
-            else
-                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("BuyMeat"):InvokeServer(.5)
-            end
-        end)
-    end
-end)
 spawn(function()
     while true do
         for _, v in pairs (workspace.Units:GetChildren())do
@@ -350,36 +364,19 @@ spawn(function()
         wait()
     end
 end)
-repeat wait() until #Efolder:GetChildren() > 1
-    for i=1, 2  do
-        local args = {
-        [1] = workspace:WaitForChild("Units"):WaitForChild("Umu")
-    }
-
-    game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("ChangeUnitModeFunction"):InvokeServer(unpack(args))
-    end
+    local unit = workspace.Units.Leader
+    setUnitTargetMode(unit, "Strongest")
 end
 
 if plrAmount > 1 then
 createLby()
 spawn(function()
     while true do
-        --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart)
-	firesignal(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart.Activated)
+        clickButton(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart)
         wait()
     end
 end)
 
 elseif plrAmount == 1 and game.Players.LocalPlayer then
-	--[[
-    createLby()
-        spawn(function()
-            while true do
-                --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart)
-                firesignal(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart.Activated)
-                wait()
-            end
-        end)
-	]]
     sr2mac()
 end
