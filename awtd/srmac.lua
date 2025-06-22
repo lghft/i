@@ -358,13 +358,14 @@ spawn(function()
 end)
 
 elseif plrAmount == 1 and game.Players.LocalPlayer then
+    if workspace.Map.Event.Persona:GetChildren()[6] then
+        createLby()
+        spawn(function()
+            while true do
+                clickButton(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart)
+                wait()
+            end
+        end)
+    end
     sr2mac()
-elseif workspace.Map.Event.Persona:GetChildren()[6] and #plrAmount == 1 then
-    createLby()
-    spawn(function()
-        while true do
-            clickButton(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart)
-            wait()
-        end
-    end)
 end
