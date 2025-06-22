@@ -364,7 +364,7 @@ spawn(function()
         wait()
     end
 end)
-    local unit = workspace.Units.Leader
+    local unit = workspace.Units.Umu
     setUnitTargetMode(unit, "Strongest")
 end
 
