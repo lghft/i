@@ -354,12 +354,14 @@ if plrAmount > 1 then
 createLby()
 spawn(function()
     while true do
-        clickButton(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart)
+        --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart)
+	firesignal(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart.Activated)
         wait()
     end
 end)
 
 elseif plrAmount == 1 and game.Players.LocalPlayer then
+	--[[
     createLby()
         spawn(function()
             while true do
@@ -368,5 +370,6 @@ elseif plrAmount == 1 and game.Players.LocalPlayer then
                 wait()
             end
         end)
+	]]
     sr2mac()
 end
