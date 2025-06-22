@@ -1,6 +1,6 @@
 repeat wait(4) until game:IsLoaded()
-local Players = game:GetService('Players')
-local plrAmount = #Players:GetPlayers()
+local plrs = game.Players
+local plrAmount = #plrs:GetPlayers()
 
 
 function startMatch()
@@ -21,6 +21,17 @@ function createLby()
     }
     game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("CreateRoom"):FireServer(unpack(args))
 end
+
+function getfeed()
+    a = nil
+    for i,v in pairs(workspace.Units:GetChildren()) do
+        if (v.Info.MaxSTA.Value - v.Info.STA.Value) > 15 and v.Info.Owner.Value == game.Players.LocalPlayer.Name then
+            a = v
+        end
+    end
+    return a
+end
+
 function clickButton(ClickOnPart)
         local vim = game:GetService("VirtualInputManager")
         local inset1, inset2 = game:GetService('GuiService'):GetGuiInset()
@@ -41,6 +52,7 @@ function clickButton(ClickOnPart)
         print("Clicked")
 end
 function sr2mac()
+    local Efolder = workspace.Enemy
     local args = {
 	"Vending Machine",
 	CFrame.new(-105.38169860839844, 4.996660232543945, 32.78748321533203, 1, 0, 0, 0, 1, 0, 0, 0, 1),
@@ -172,6 +184,17 @@ end)
 
 repeat wait() until game.Players.LocalPlayer.PlayerGui.InterFace.Day.Text == "[Shadow Realm II] [Master] Wave 5/10" --up2
 spawn(function()
+    while wait() do
+        pcall(function()
+            if game:GetService("Players").LocalPlayer.leaderstats.Meat.Value > 1 then
+                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("FeedUnit"):InvokeServer(getfeed())
+            else
+                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("BuyMeat"):InvokeServer(.5)
+            end
+        end)
+    end
+end)
+spawn(function()
     while true do
         for _, v in pairs (workspace.Units:GetChildren())do
             if v.Name == "Umu" then
@@ -258,8 +281,72 @@ spawn(function()
         wait(1)
     end
 end)
-end
+repeat wait() until game.Players.LocalPlayer.PlayerGui.InterFace.Day.Text == "[Shadow Realm II] [Master] Wave 10/10" --ups again
+spawn(function()
+    while true do
+        for _, v in pairs (workspace.Units:GetChildren())do
+            if v.Name == 'Leader' then -- change part to the name you want to look for
+                local args = {
+                    [1] = v
+                }
+                
+                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("UpgradeUnit"):InvokeServer(unpack(args))
+            end
+            if v.Name == "Vending Machine" then
+                local args = {
+                    [1] = v
+                }
+                
+                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("UpgradeUnit"):InvokeServer(unpack(args))
+            end
+            if v.Name == "Stone Doctor" then
+                local args = {
+                    [1] = v
+                }
+                
+                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("UpgradeUnit"):InvokeServer(unpack(args))
+            end
+        end
+        wait(1)
+    end
+end)
+spawn(function()
+    while true do
+        for _, v in pairs (workspace.Units:GetChildren())do
+            if v.Name == "Umu" then
+                local args = {
+                    [1] = v
+                }
+                
+                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("UpgradeUnit"):InvokeServer(unpack(args))
+            end
+            if v.Name == "Casual Hero" then
+                local args = {
+                    [1] = v
+                }
+                
+                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("UpgradeUnit"):InvokeServer(unpack(args))
+            end
+            if v.Name == "Gappy [Beyond]" then
+                local args = {
+                    [1] = v
+                }
+                
+                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("UpgradeUnit"):InvokeServer(unpack(args))
+            end
+        end
+        wait()
+    end
+end)
+repeat wait() until #Efolder:GetChildren() > 1
+    for i=1, 2  do
+        local args = {
+        [1] = workspace:WaitForChild("Units"):WaitForChild("Umu")
+    }
 
+    game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("ChangeUnitModeFunction"):InvokeServer(unpack(args))
+    end
+end
 
 if plrAmount > 1 then
 createLby()
@@ -272,7 +359,7 @@ end)
 
 elseif plrAmount == 1 and game.Players.LocalPlayer then
     sr2mac()
-elseif workspace.Map.Event.Persona:GetChildren()[6] and plrAmount == 1 then
+elseif workspace.Map.Event.Persona:GetChildren()[6] and #plrAmount == 1 then
     createLby()
     spawn(function()
         while true do
