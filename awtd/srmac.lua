@@ -261,7 +261,7 @@ end)
 end
 
 
-if #plrAmount > 1 then
+if plrAmount > 1 then
 createLby()
 spawn(function()
     while true do
@@ -270,9 +270,9 @@ spawn(function()
     end
 end)
 
-elseif #plrAmount == 1 and game.Players.LocalPlayer then
+elseif plrAmount == 1 and game.Players.LocalPlayer then
     sr2mac()
-elseif workspace.Map.Event.Persona:GetChildren()[6] and #plrAmount == 1 then
+elseif workspace.Map.Event.Persona:GetChildren()[6] and plrAmount == 1 then
     createLby()
     spawn(function()
         while true do
