@@ -154,7 +154,17 @@ spawn(function()
     end
 end)
 repeat wait() until game.Players.LocalPlayer.PlayerGui.InterFace.Day.Text == "[Shadow Realm II] [Master] Wave 3/10" --up1
-        
+spawn(function()
+    while wait() do
+        pcall(function()
+            if game:GetService("Players").LocalPlayer.leaderstats.Meat.Value > 1 then
+                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("FeedUnit"):InvokeServer(getfeed())
+            else
+                game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("BuyMeat"):InvokeServer(.5)
+            end
+        end)
+    end
+end)
 spawn(function()
     while true do
         for _, v in pairs (workspace.Units:GetChildren())do
