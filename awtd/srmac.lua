@@ -1,6 +1,6 @@
 repeat wait(4) until game:IsLoaded()
-local plrs = game.Players
-local plrAmount = #plrs:GetPlayers()
+local Players = game:GetService('Players')
+local plrAmount = #Players:GetPlayers()
 
 
 function startMatch()
