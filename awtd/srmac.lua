@@ -52,6 +52,8 @@ function clickButton(ClickOnPart)
         print("Clicked")
 end
 function sr2mac()
+    local char = game.Players.LocalPlayer.Character
+    char.HumanoidRootPart.CFrame = CFrame.new(-109, 6, 17)
     local Efolder = workspace.Enemy
     local args = {
 	"Vending Machine",
@@ -70,11 +72,6 @@ startMatch()
 --Place
 spawn(function() 
     while true do
-	local args = {
-		"x2"
-	}
-	game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("x2Event"):FireServer(unpack(args))
-			
     local args = {
         "Vending Machine",
         CFrame.new(-105.38169860839844, 4.996660232543945, 32.78748321533203, 1, 0, 0, 0, 1, 0, 0, 0, 1),
@@ -363,14 +360,13 @@ spawn(function()
 end)
 
 elseif plrAmount == 1 and game.Players.LocalPlayer then
-    if workspace.Map.Event.Persona:GetChildren()[6] then
-        createLby()
+    createLby()
         spawn(function()
             while true do
-                clickButton(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart)
+                --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart)
+                firesignal(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart.Activated)
                 wait()
             end
         end)
-    end
     sr2mac()
 end
