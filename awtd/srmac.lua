@@ -70,6 +70,11 @@ startMatch()
 --Place
 spawn(function() 
     while true do
+	local args = {
+		"x2"
+	}
+	game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("x2Event"):FireServer(unpack(args))
+			
     local args = {
         "Vending Machine",
         CFrame.new(-105.38169860839844, 4.996660232543945, 32.78748321533203, 1, 0, 0, 0, 1, 0, 0, 0, 1),
