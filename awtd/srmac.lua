@@ -6,6 +6,21 @@ local plrAmount = #plrs:GetPlayers()
 function startMatch()
     game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SkipEvent"):FireServer()
 end
+function createLby()
+    local char = game.Players.LocalPlayer.Character
+
+    char.HumanoidRootPart.CFrame = CFrame.new(347,-82, 209)
+    wait(2)
+    local args = {
+        {
+            StageSelect = "Shadow Realm II",
+            Image = "rbxassetid://15334750270",
+            FriendOnly = true,
+            Difficult = "Master"
+        }
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("CreateRoom"):FireServer(unpack(args))
+end
 function clickButton(ClickOnPart)
         local vim = game:GetService("VirtualInputManager")
         local inset1, inset2 = game:GetService('GuiService'):GetGuiInset()
@@ -246,20 +261,8 @@ end)
 end
 
 
-if #plrAmount > 1 then 
-local char = game.Players.LocalPlayer.Character
-
-char.HumanoidRootPart.CFrame = CFrame.new(347,-82, 209)
-wait(2)
-local args = {
-	{
-		StageSelect = "Shadow Realm II",
-		Image = "rbxassetid://15334750270",
-		FriendOnly = true,
-		Difficult = "Master"
-	}
-}
-game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("CreateRoom"):FireServer(unpack(args))
+if #plrAmount > 1 then
+createLby()
 spawn(function()
     while true do
         clickButton(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart)
@@ -269,4 +272,12 @@ end)
 
 elseif #plrAmount == 1 and game.Players.LocalPlayer then
     sr2mac()
+elseif workspace.Map.Event.Persona:GetChildren()[6] and #plrAmount == 1 then
+    createLby()
+    spawn(function()
+        while true do
+            clickButton(game:GetService("Players").LocalPlayer.PlayerGui.InRoomUi.RoomUI.QuickStart)
+            wait()
+        end
+    end)
 end
