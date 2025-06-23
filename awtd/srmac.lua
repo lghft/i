@@ -248,6 +248,11 @@ spawn(function()
         wait()
     end
 end)
+spawn(function()
+    while wait(1) do
+        game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("FeedAll"):InvokeServer()
+    end
+end)
 
 repeat wait() until game.Players.LocalPlayer.PlayerGui.InterFace.Day.Text == "[Shadow Realm II] [Master] Wave 6/10" --buffs
 spawn(function()
@@ -265,7 +270,6 @@ while true do
         
     game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("UnitAbility"):FireServer(unpack(args)) 
     wait(1)
-    game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("FeedAll"):InvokeServer()
 end
 end)   
 --lab buff 
