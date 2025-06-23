@@ -21,6 +21,20 @@ function createLby()
     }
     game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("CreateRoom"):FireServer(unpack(args))
 end
+function upgradeUnit(unit)
+    local args = {
+        [1] = workspace:WaitForChild("Units"):WaitForChild(unit)
+    }
+    
+    game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("UpgradeUnit"):InvokeServer(unpack(args))
+end 
+
+function autoUnitUp(unit)
+    local timeText = game.Players.LocalPlayer.PlayerGui.InterFace.Equip.val.Cash_Value.val
+	timeText:GetPropertyChangedSignal("Text"):Connect(function()
+    upgradeUnit(unit)
+    end)
+end
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local changeModeRemote = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("ChangeUnitModeFunction")
@@ -365,6 +379,12 @@ spawn(function()
     wait()
     end
 end)
+wait(10)
+autoUnitUp("Umu")
+wait()
+autoUnitUp("Gap [Beyond]")
+wait()
+autoUnitUp("Casual Hero")
 end
 
 if plrAmount > 1 then
