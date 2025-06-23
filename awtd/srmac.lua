@@ -92,7 +92,7 @@ function sr2mac()
     char.HumanoidRootPart.CFrame = CFrame.new(-109, 6, 17)
     local args = {
 	"Vending Machine",
-	CFrame.new(-105.38169860839844, 4.996660232543945, 32.78748321533203, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+	CFrame.new(-105.71138000488281, 18.03795051574707, 30.91839027404785, 1, 0, 0, 0, 1, 0, 0, 0, 1),
 	1,
 	{
 		"1",
