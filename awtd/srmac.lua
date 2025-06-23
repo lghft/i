@@ -432,6 +432,11 @@ timeText:GetPropertyChangedSignal("Text"):Connect(function()
         end
     end
 end)
+spawn(function()
+    while wait() do
+        clickButton(game:GetService("Players").LocalPlayer.PlayerGui.EndUI.UI.Back)
+    end
+end)
 end
 
 if plrAmount > 1 then
