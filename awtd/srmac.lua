@@ -389,7 +389,46 @@ local timeText = game.Players.LocalPlayer.PlayerGui.InterFace.Equip.val.Cash_Val
 timeText:GetPropertyChangedSignal("Text"):Connect(function()
     for index, v in pairs(workspace.Units:GetChildren()) do
         if v.Name == "Umu" then
-            setUnitTargetMode(v,"Strongest")
+            --setUnitTargetMode(v,"Strongest")
+
+            local targetModes = {
+                "First",
+                "Last",
+                "Strongest",
+                "Weakest",
+                "Nearest",
+                "Flying",
+                "Stop"
+            }
+
+            local desiredMode = "Strongest" -- Change this to your desired mode
+
+            local unit = v:WaitForChild("Info"):WaitForChild("TargetMode")
+            local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("ChangeUnitModeFunction")
+            local args = {
+                [1] = workspace:WaitForChild("Units"):WaitForChild("Leader")
+            }
+
+            -- Helper to get the current mode's index in the table
+            local function getModeIndex(mode)
+                for i, v in ipairs(targetModes) do
+                    if v == mode then
+                        return i
+                    end
+                end
+                return nil
+            end
+
+            -- Main loop: cycle until the desired mode is set
+            while unit.Value ~= desiredMode do
+                remote:InvokeServer(unpack(args))
+                -- Wait for the value to update (avoid spamming)
+                repeat
+                    wait(0.1)
+                until unit.Value == targetModes[(getModeIndex(unit.Value) or 1)]
+            end
+
+            print("TargetMode set to:", unit.Value)
         end
     end
 end)
