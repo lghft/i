@@ -382,9 +382,17 @@ end)
 wait(10)
 autoUnitUp("Umu")
 wait()
-autoUnitUp("Gap [Beyond]")
+autoUnitUp("Gappy [Beyond]")
 wait()
 autoUnitUp("Casual Hero")
+local timeText = game.Players.LocalPlayer.PlayerGui.InterFace.Equip.val.Cash_Value.val
+timeText:GetPropertyChangedSignal("Text"):Connect(function()
+    for index, v in pairs(workspace.Units:GetChildren()) do
+        if v.Name == "Umu" then
+            setUnitTargetMode(v,"Strongest")
+        end
+    end
+end)
 end
 
 if plrAmount > 1 then
