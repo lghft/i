@@ -406,7 +406,7 @@ timeText:GetPropertyChangedSignal("Text"):Connect(function()
             local unit = v:WaitForChild("Info"):WaitForChild("TargetMode")
             local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("ChangeUnitModeFunction")
             local args = {
-                [1] = workspace:WaitForChild("Units"):WaitForChild("Leader")
+                [1] = v
             }
 
             -- Helper to get the current mode's index in the table
