@@ -186,7 +186,7 @@ spawn(function()
         }
     }
     game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SpawnUnit"):InvokeServer(unpack(args))
-        wait(1)
+        wait()
     end
 end)
 repeat wait() until game.Players.LocalPlayer.PlayerGui.InterFace.Day.Text == "[Shadow Realm II] [Master] Wave 3/10" --up1
@@ -310,7 +310,7 @@ end)
 repeat wait() until game.Players.LocalPlayer.PlayerGui.InterFace.Day.Text == "[Shadow Realm II] [Master] Wave 10/10" --ups again
 spawn(function()
     while true do
-        for _, v in pairs (workspace.Units:GetChildren())do
+        for i, v in pairs (workspace.Units:GetChildren())do
             if v.Name == 'Leader' then -- change part to the name you want to look for
                 local args = {
                     [1] = v
@@ -332,13 +332,6 @@ spawn(function()
                 
                 game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("UpgradeUnit"):InvokeServer(unpack(args))
             end
-        end
-        wait(1)
-    end
-end)
-spawn(function()
-    while true do
-        for _, v in pairs (workspace.Units:GetChildren())do
             if v.Name == "Umu" then
                 local args = {
                     [1] = v
@@ -364,6 +357,7 @@ spawn(function()
         wait()
     end
 end)
+
     local unit = workspace.Units.Umu
     setUnitTargetMode(unit, "Strongest")
 end
