@@ -265,6 +265,7 @@ while true do
         
     game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("UnitAbility"):FireServer(unpack(args)) 
     wait(1)
+    game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("FeedAll"):InvokeServer()
 end
 end)   
 --lab buff 
@@ -357,9 +358,13 @@ spawn(function()
         wait()
     end
 end)
-
-    local unit = workspace.Units.Umu
-    setUnitTargetMode(unit, "Strongest")
+spawn(function()
+    while true do
+        local unit = workspace.Units.Umu
+        setUnitTargetMode(unit, "Strongest")
+    wait()
+    end
+end)
 end
 
 if plrAmount > 1 then
