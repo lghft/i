@@ -2,7 +2,6 @@ repeat wait(4) until game:IsLoaded()
 local plrs = game.Players
 local plrAmount = #plrs:GetPlayers()
 
-
 function startMatch()
     game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SkipEvent"):FireServer()
 end
@@ -87,6 +86,15 @@ function clickButton(ClickOnPart)
         task.wait(1)
         print("Clicked")
 end
+
+spawn(function()
+    while wait(0.5) do
+        if game:GetService("Players").LocalPlayer.PlayerGui.EndUI or game:GetService("Players").LocalPlayer.PlayerGui.EndUI.Enabled == true then
+            clickButton(game:GetService("Players").LocalPlayer.PlayerGui.EndUI.UI.Back)
+        end
+    end
+end)
+
 function sr2mac()
     local char = game.Players.LocalPlayer.Character
     char.HumanoidRootPart.CFrame = CFrame.new(-109, 6, 17)
@@ -105,13 +113,6 @@ function sr2mac()
 
 startMatch()
 --Place
-spawn(function()
-    while wait(1) do
-        if game:GetService("Players").LocalPlayer.PlayerGui.EndUI or game:GetService("Players").LocalPlayer.PlayerGui.EndUI.Enabled == true then
-            clickButton(game:GetService("Players").LocalPlayer.PlayerGui.EndUI.UI.Back)
-        end
-    end
-end)
 
 spawn(function() 
     while true do
