@@ -105,6 +105,14 @@ game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SpawnU
 
 startMatch()
 --Place
+spawn(function()
+    while wait(1) do
+        if game:GetService("Players").LocalPlayer.PlayerGui.EndUI or game:GetService("Players").LocalPlayer.PlayerGui.EndUI.Enabled == true then
+            clickButton(game:GetService("Players").LocalPlayer.PlayerGui.EndUI.UI.Back)
+        end
+    end
+end)
+
 spawn(function() 
     while true do
     local args = {
