@@ -91,17 +91,17 @@ function sr2mac()
     local char = game.Players.LocalPlayer.Character
     char.HumanoidRootPart.CFrame = CFrame.new(-109, 6, 17)
     local args = {
-	"Vending Machine",
-	CFrame.new(-105.71138000488281, 18.03795051574707, 30.91839027404785, 1, 0, 0, 0, 1, 0, 0, 0, 1),
-	1,
-	{
-		"1",
-		"1",
-		"1",
-		"1"
-	}
-}
-game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SpawnUnit"):InvokeServer(unpack(args))
+        "Umu",
+        CFrame.new(-97.70669555664062, 4.954528331756592, 64.87602233886719, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+        1,
+        {
+            "1",
+            "1",
+            "1",
+            "1"
+        }
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("SpawnUnit"):InvokeServer(unpack(args))
 
 startMatch()
 --Place
