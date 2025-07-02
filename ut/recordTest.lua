@@ -34,7 +34,7 @@ local function getHotbarIndexFromName(name)
     if not hotbar then return nil end
     local slot = hotbar:FindFirstChild(name)
     if slot and slot:FindFirstChild("HotbarIndex") then
-        return tonumber(slot.HotbarIndex.Value)
+        return tonumber(slot.HotbarIndex.Text)
     end
     return nil
 end
