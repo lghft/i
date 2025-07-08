@@ -136,16 +136,22 @@ local function logSellTower(args)
     end
 end
 
--- Hook __namecall for remotes
-local oldNamecall
+-- Improved remote hooking system based on SimpleSpy's robust method
+local originalNamecall
+local originalEvent
+local originalFunction
 local hooked = false
+
 local function hookRemotes()
     if hooked then return end
     hooked = true
-    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    
+    -- Store original functions
+    originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         local method = getnamecallmethod()
         local args = {...}
-        if method == "FireServer" then
+        
+        if recording and method == "FireServer" then
             if self.Name == "PlayerPlaceTower" then
                 logPlaceTower(args)
             elseif self.Name == "PlayerUpgradeTower" then
@@ -154,12 +160,60 @@ local function hookRemotes()
                 logSellTower(args)
             end
         end
-        return oldNamecall(self, ...)
+        
+        return originalNamecall(self, ...)
+    end)
+    
+    -- Hook RemoteEvent.FireServer directly for extra reliability
+    local remoteEvent = Instance.new("RemoteEvent")
+    originalEvent = hookfunction(remoteEvent.FireServer, function(self, ...)
+        local args = {...}
+        
+        if recording and self.Name == "PlayerPlaceTower" then
+            logPlaceTower(args)
+        elseif recording and self.Name == "PlayerUpgradeTower" then
+            logUpgradeTower(args)
+        elseif recording and self.Name == "PlayerSellTower" then
+            logSellTower(args)
+        end
+        
+        return originalEvent(self, ...)
+    end)
+    
+    -- Hook RemoteFunction.InvokeServer directly for extra reliability
+    local remoteFunction = Instance.new("RemoteFunction")
+    originalFunction = hookfunction(remoteFunction.InvokeServer, function(self, ...)
+        local args = {...}
+        
+        if recording and self.Name == "PlayerPlaceTower" then
+            logPlaceTower(args)
+        elseif recording and self.Name == "PlayerUpgradeTower" then
+            logUpgradeTower(args)
+        elseif recording and self.Name == "PlayerSellTower" then
+            logSellTower(args)
+        end
+        
+        return originalFunction(self, ...)
     end)
 end
 
 local function unhookRemotes()
-    -- Not unhooking for safety; Roblox Lua doesn't support unhooking cleanly
+    if not hooked then return end
+    
+    -- Restore original functions
+    if originalNamecall then
+        hookmetamethod(game, "__namecall", originalNamecall)
+    end
+    
+    if originalEvent then
+        hookfunction(Instance.new("RemoteEvent").FireServer, originalEvent)
+    end
+    
+    if originalFunction then
+        hookfunction(Instance.new("RemoteFunction").InvokeServer, originalFunction)
+    end
+    
+    hooked = false
 end
 
 function MacroRecorder.startRecording(outputFile)
@@ -169,13 +223,30 @@ function MacroRecorder.startRecording(outputFile)
     macroLog = {}
     lastCash = getTotalMoney()
     hookRemotes()
+    
     if recordTask then recordTask:Disconnect() end
     recordTask = game:GetService("RunService").Heartbeat:Connect(function()
         if outJson and recording then
             writefile(outJson, HttpService:JSONEncode(macroLog))
         end
     end)
+    
     print("✅ Macro recording started: " .. tostring(outJson))
+end
+
+function MacroRecorder.stopRecording()
+    if not recording then return end
+    recording = false
+    
+    if recordTask then recordTask:Disconnect() end
+    recordTask = nil
+    
+    if outJson then
+        writefile(outJson, HttpService:JSONEncode(macroLog))
+    end
+    
+    unhookRemotes()
+    print("⏹️ Macro recording stopped: " .. tostring(outJson))
 end
 
 -- Utility to check if RoundOver is visible
@@ -194,17 +265,6 @@ function MacroRecorder.isRoundOverVisible()
         end
     end
     return false
-end
-
-function MacroRecorder.stopRecording()
-    if not recording then return end
-    recording = false
-    if recordTask then recordTask:Disconnect() end
-    recordTask = nil
-    if outJson then
-        writefile(outJson, HttpService:JSONEncode(macroLog))
-    end
-    print("⏹️ Macro recording stopped: " .. tostring(outJson))
 end
 
 return MacroRecorder
