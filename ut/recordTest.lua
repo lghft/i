@@ -145,56 +145,63 @@ local hooked = false
 local function hookRemotes()
     if hooked then return end
     hooked = true
-    
-    -- Store original functions
-    originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-        local method = getnamecallmethod()
-        local args = {...}
-        
-        if recording and method == "FireServer" then
-            if self.Name == "PlayerPlaceTower" then
+
+    -- Only hook if not already hooked
+    if not originalNamecall then
+        originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            local args = {...}
+
+            if recording and method == "FireServer" then
+                if self.Name == "PlayerPlaceTower" then
+                    logPlaceTower(args)
+                elseif self.Name == "PlayerUpgradeTower" then
+                    logUpgradeTower(args)
+                elseif self.Name == "PlayerSellTower" then
+                    logSellTower(args)
+                end
+            end
+
+            -- Always call the original function
+            return originalNamecall(self, ...)
+        end)
+    end
+
+    if not originalEvent then
+        local remoteEvent = Instance.new("RemoteEvent")
+        originalEvent = hookfunction(remoteEvent.FireServer, function(self, ...)
+            local args = {...}
+
+            if recording and self.Name == "PlayerPlaceTower" then
                 logPlaceTower(args)
-            elseif self.Name == "PlayerUpgradeTower" then
+            elseif recording and self.Name == "PlayerUpgradeTower" then
                 logUpgradeTower(args)
-            elseif self.Name == "PlayerSellTower" then
+            elseif recording and self.Name == "PlayerSellTower" then
                 logSellTower(args)
             end
-        end
-        
-        return originalNamecall(self, ...)
-    end)
-    
-    -- Hook RemoteEvent.FireServer directly for extra reliability
-    local remoteEvent = Instance.new("RemoteEvent")
-    originalEvent = hookfunction(remoteEvent.FireServer, function(self, ...)
-        local args = {...}
-        
-        if recording and self.Name == "PlayerPlaceTower" then
-            logPlaceTower(args)
-        elseif recording and self.Name == "PlayerUpgradeTower" then
-            logUpgradeTower(args)
-        elseif recording and self.Name == "PlayerSellTower" then
-            logSellTower(args)
-        end
-        
-        return originalEvent(self, ...)
-    end)
-    
-    -- Hook RemoteFunction.InvokeServer directly for extra reliability
-    local remoteFunction = Instance.new("RemoteFunction")
-    originalFunction = hookfunction(remoteFunction.InvokeServer, function(self, ...)
-        local args = {...}
-        
-        if recording and self.Name == "PlayerPlaceTower" then
-            logPlaceTower(args)
-        elseif recording and self.Name == "PlayerUpgradeTower" then
-            logUpgradeTower(args)
-        elseif recording and self.Name == "PlayerSellTower" then
-            logSellTower(args)
-        end
-        
-        return originalFunction(self, ...)
-    end)
+
+            -- Always call the original function
+            return originalEvent(self, ...)
+        end)
+    end
+
+    if not originalFunction then
+        local remoteFunction = Instance.new("RemoteFunction")
+        originalFunction = hookfunction(remoteFunction.InvokeServer, function(self, ...)
+            local args = {...}
+
+            if recording and self.Name == "PlayerPlaceTower" then
+                logPlaceTower(args)
+            elseif recording and self.Name == "PlayerUpgradeTower" then
+                logUpgradeTower(args)
+            elseif recording and self.Name == "PlayerSellTower" then
+                logSellTower(args)
+            end
+
+            -- Always call the original function
+            return originalFunction(self, ...)
+        end)
+    end
 end
 
 local function unhookRemotes()
