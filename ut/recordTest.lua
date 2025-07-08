@@ -152,6 +152,11 @@ local function hookRemotes()
             local method = getnamecallmethod()
             local args = {...}
 
+            -- Avoid logging or interfering with remotes fired by this script or other scripts
+            if checkcaller and checkcaller() then
+                return originalNamecall(self, ...)
+            end
+
             if recording and method == "FireServer" then
                 if self.Name == "PlayerPlaceTower" then
                     logPlaceTower(args)
@@ -172,6 +177,10 @@ local function hookRemotes()
         originalEvent = hookfunction(remoteEvent.FireServer, function(self, ...)
             local args = {...}
 
+            if checkcaller and checkcaller() then
+                return originalEvent(self, ...)
+            end
+
             if recording and self.Name == "PlayerPlaceTower" then
                 logPlaceTower(args)
             elseif recording and self.Name == "PlayerUpgradeTower" then
@@ -189,6 +198,10 @@ local function hookRemotes()
         local remoteFunction = Instance.new("RemoteFunction")
         originalFunction = hookfunction(remoteFunction.InvokeServer, function(self, ...)
             local args = {...}
+
+            if checkcaller and checkcaller() then
+                return originalFunction(self, ...)
+            end
 
             if recording and self.Name == "PlayerPlaceTower" then
                 logPlaceTower(args)
