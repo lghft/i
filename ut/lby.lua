@@ -17,6 +17,11 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
     if eve == true then
         char:MoveTo(tele.Position)
     elseif dtele and dun == true then
+        local dunMap = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.MapName
+        if dunMap.Text == "Forsaken Prison - Floor 10" then
+            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerClaimDungeonReward"):FireServer()
+            print("YESSS")
+        end
         print("=1 dun")
         char.PrimaryPart.CFrame = CFrame.new(-17.5384903, 10.3119678, 3940.68262, -0.766061664, 0, 0.642767608, 0, 1, 0, -0.642767608, 0, -0.766061664)
         --char:MoveTo()
