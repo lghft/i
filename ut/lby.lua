@@ -11,7 +11,7 @@ local plrAmount = #Players:GetPlayers()
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter2.Part
 local stele = workspace.Lobby.ClassicPartyTeleporters.Teleporter2
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
-
+wait(5)
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrAmount < 2 then
     print("=1")
     if eve == true then
