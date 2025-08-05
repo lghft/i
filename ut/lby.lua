@@ -1,5 +1,6 @@
 print("lby?")
 repeat wait(5) until game:IsLoaded()
+repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.LoadingScreen.Visible == false
 print("Lby Loaded1")
 local dun = true
 local eve = false
