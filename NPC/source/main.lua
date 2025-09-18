@@ -3,7 +3,7 @@
 
 if patricknpcpanel then return end; patricknpcpanel = true
 
-local github = "https://raw.githubusercontent.com/randomstring0/fe-source/refs/heads/main/NPC"
+local github = "https://raw.githubusercontent.com/lghft/i/refs/heads/main/NPC/"
 local load = loadstring(game:HttpGet(github .. "/module.Luau"))()
 
 saved = loadstring(game:HttpGet(github .. "/table.luau"))()
