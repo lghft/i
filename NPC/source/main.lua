@@ -4,9 +4,9 @@
 if patricknpcpanel then return end; patricknpcpanel = true
 
 local github = "https://raw.githubusercontent.com/lghft/i/refs/heads/main/NPC/"
-local load = loadstring(game:HttpGet(github .. "/module.Luau"))()
+local load = loadstring(game:HttpGet(github .. "/module.lua"))()
 
-saved = loadstring(game:HttpGet(github .. "/table.luau"))()
+saved = loadstring(game:HttpGet(github .. "/table.lua"))()
 
 
 
