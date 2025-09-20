@@ -10,4 +10,4 @@ Examples folder:
 
 {% @github-files/github-code-block url="<https://github.com/depthso/Dear-ReGui/tree/main/demos>" %}
 
-<figure><img src="https://1061433021-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FbNfMkmxWyR6N5SCXKR8U%2Fuploads%2Fw05jx2kOq3tJShpzYiO3%2Fimage.png?alt=media&#x26;token=a31267a5-6020-4fb9-8412-1acd61653115" alt=""><figcaption><p><a href="https://github.com/depthso/Dear-ReGui/blob/main/demos/cheat%20window%20-%20advanced%20customizaton.lua">cheat window - advanced customizaton.lua</a></p></figcaption></figure>
+<figure><img src="https://github.com/lghft/i/blob/main/Libraries/ReguiDoc/Pics/reguiDemoWin2.png" alt=""><figcaption><p><a href="https://github.com/depthso/Dear-ReGui/blob/main/demos/cheat%20window%20-%20advanced%20customizaton.lua">cheat window - advanced customizaton.lua</a></p></figcaption></figure>
