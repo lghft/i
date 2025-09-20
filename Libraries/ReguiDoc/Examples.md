@@ -2,7 +2,7 @@
 
 {% @github-files/github-code-block url="<https://github.com/depthso/Dear-ReGui/blob/main/Demo%20window.lua>" %}
 
-<figure><img src="https://1061433021-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FbNfMkmxWyR6N5SCXKR8U%2Fuploads%2Fe48iiP1CrfGHhZxdDvhw%2FRobloxStudioBeta_XdOoWQ3wVK.png?alt=media&#x26;token=d056d13e-ba9a-44d5-ae45-1acd4fe4af33" alt=""><figcaption><p>Screenshot of the Demo window from 1.4.0</p></figcaption></figure>
+<figure><img src="https://github.com/lghft/i/blob/main/Libraries/ReguiDoc/Pics/reguiDemoWin.png" alt=""><figcaption><p>Screenshot of the Demo window from 1.4.0</p></figcaption></figure>
 
 # Example scripts
 
