@@ -154,3 +154,63 @@ ReGui:DefineGlobalFlag({
 	end
 })
 ```
+
+# Custom themes
+
+Themes use the `DarkTheme` configuration as the base and any defined theme will act as overwrites to this configuration
+
+### Accents
+
+ReGui comes with built-in accent colors that can be used for coloring. As seen in the source [here](https://github.com/depthso/Dear-ReGui/blob/1a0fb5a32aaf991c9061f8f12b980e3eb30a3c9a/ReGui.lua#L43)
+
+```lua
+ReGui.Accent = {
+	--// ReGui acent colors
+	Light = Color3.fromRGB(60, 150, 250),
+	Dark = Color3.fromRGB(29, 66, 115),
+	White = Color3.fromRGB(240, 240, 240),
+	Gray = Color3.fromRGB(127, 126, 129),
+	Black = Color3.fromRGB(15, 19, 24),
+	Yellow = Color3.fromRGB(217, 180, 62),
+	Orange = Color3.fromRGB(234, 157, 57),
+	Green = Color3.fromRGB(130, 188, 91),
+	Red = Color3.fromRGB(255, 69, 69),
+```
+
+***
+
+### Creating a theme
+
+For this example, we'll create a basic pink theme
+
+#### View the full theme configuration here:
+
+{% @github-files/github-code-block url="<https://github.com/depthso/Dear-ReGui/blob/e8e4105de400edeaae45c5b00edd49150b23c594/ReGui.lua#L162C3-L226C39>" %}
+
+```lua
+ReGui:DefineTheme("Pink Theme", {
+	Text = Color3.fromRGB(200, 180, 200),
+	WindowBg = Color3.fromRGB(35, 30, 35),
+	TitleBarBg = Color3.fromRGB(35, 30, 35),
+	TitleBarBgActive = Color3.fromRGB(50, 45, 50),
+	Border = Color3.fromRGB(50, 45, 50),
+	ResizeGrab = Color3.fromRGB(50, 45, 50),
+})
+```
+
+### Usage in a Window
+
+Now to use the theme we have just created, set the `Theme`flag to the name of the theme we have created - `RedTheme`
+
+```lua
+local Window = ReGui:Window({
+	Title = "My theme demo",
+	Theme = "Pink Theme",
+	Size = UDim2.fromOffset(300, 200)
+})
+
+Window:Label({
+	Text = "Hello, world!"
+})
+```
+
