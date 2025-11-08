@@ -209,6 +209,9 @@ end
 Clip = true
 spDelay = 0.1
 Players.LocalPlayer.CharacterAdded:Connect(function()
+    game.Players.LocalPlayer.Character['Left Arm'].Transparency = 1
+    game.Players.LocalPlayer.Character['Right Arm'].Transparency = 1
+    --[[
 	NOFLY()
 	getgenv().Floating = false
 
@@ -226,6 +229,7 @@ Players.LocalPlayer.CharacterAdded:Connect(function()
 	end)
 
 	onDied()
+    ]]
 end)
 onDied()
 getgenv().Floating = false
@@ -1639,7 +1643,11 @@ local function modAllMelee()
                         if kl == "swing1" or kl == "swing2" or kl == "heavyswing" or kl == "heavyswing2" then
                             swing.max_dist = 100
                             swing.min_dist = 100
-                            swing.num_times = 100
+                            swing.start = 0.1
+                            swing.num_rays = 45
+                            swing.raysbeforedelay = 15
+                            swing.delaytime = 0.01
+                            swing.num_times = 20
                         end
                     end
                 end
@@ -1649,20 +1657,24 @@ local function modAllMelee()
                 cfg.DrawSpeed = 1
                 cfg.StaminaRequired = 0
                 cfg.SwingComboStart = 0.1
-                cfg.SwingComboEnd = 0.2
+                cfg.SwingComboEnd = 0.3
                 cfg.SwingStart = 0.1
-                cfg.SwingEnd = 0.2
-                cfg.DelayPerShot = 0.2
+                cfg.SwingEnd = 0.3
+                cfg.DelayPerShot = 0.25
                 cfg.HeavyStaminaCost = 2
-                cfg.HeavyChargeStaminaDrain = 0
+                cfg.HeavyChargeStaminaDrain = -2
                 cfg.BlockStaminaRequired = 0
-                cfg.HeavyDelayPerShot = 1
-                cfg.HeavyStaminaRequired = 0
-                cfg.BlackStaminaUse = 0
+                cfg.HeavyDelayPerShot = 2
+                cfg.HeavyStaminaRequired = 1
+                cfg.BlockStaminaUse = 0
                 cfg.Penetration = 10
                 cfg.HeavySwingEnd = 0
                 cfg.BlockStaminaDrain = -0.1
                 cfg.BlockReduction = 1.1
+                cfg.HitRegLeniency = 10
+
+                cfg.MaxEnemiesPerSwing = 30
+                cfg.MaxHitsPerEnemy = 15;
             end
         end
     end
@@ -1674,69 +1686,96 @@ Window = ReGui:TabsWindow({
     Size = UDim2.fromOffset(520, 420)
 })
 
+
 -- Main Tab
 local MainTab = Window:CreateTab({ Name = "Main" })
-MainTab:Label({ Text = "Controls" })
+MainTab:Label({ Text = "▬ Controls ▬" })
 MainTab:Separator({})
 
-MainTab:Checkbox({
+-- BOSS ZOMBIE BRING
+local BossBringToggle = MainTab:Checkbox({
     Label = "Bring Boss Zombies",
     Value = getgenv().Mob,
     Callback = function(self, state)
         getgenv().Mob = state
-        if state then
-            runMobLoop()
-        else
-            -- The loop will naturally exit on next check; thread will end
-        end
+        if state then runMobLoop() end
     end
 })
+ReGui:SetItemTooltip(BossBringToggle, function(c)
+    c:Label({Text="BOSS ZOMBIE BRINGER", TextColor=Color3.fromRGB(255,50,50), TextSize=20, Font=Enum.Font.GothamBlack})
+    c:Label({Text="Instantly drags these bosses to you:", TextColor=Color3.fromRGB(255,180,180), TextSize=16})
+    c:Label({Text="• Nick", TextColor=Color3.fromRGB(255,100,100)})
+    c:Label({Text="• Adam", TextColor=Color3.fromRGB(255,100,100)})
+    c:Label({Text="• Bezerker", TextColor=Color3.fromRGB(255,100,100)})
+    c:Label({Text="• Trickster", TextColor=Color3.fromRGB(255,100,100)})
+    c:Label({Text="• SlasherGeneral", TextColor=Color3.fromRGB(255,100,100)})
+    c:Label({Text="• TaintedMastermind (Be on Roof)", TextColor=Color3.fromRGB(255,220,100), TextSize=15})
+    c:Label({Text="▬ Panic Stop instantly disables ▬", TextColor=Color3.fromRGB(255,150,150)})
+end)
 
-MainTab:Checkbox({
+
+-- REGULAR ZOMBIE BRING
+local RegularBringToggle = MainTab:Checkbox({
     Label = "Bring Most Zombies",
     Value = getgenv().Mob2,
     Callback = function(self, state)
         getgenv().Mob2 = state
-        if state then
-            runMobLoop2()
-        else
-            -- The loop will naturally exit on next check; thread will end
-        end
+        if state then runMobLoop2() end
     end
 })
 
-MainTab:Button({
+ReGui:SetItemTooltip(RegularBringToggle, function(c)
+    c:Label({Text="MASS ZOMBIE BRINGER", TextColor=Color3.fromRGB(0,255,100), TextSize=20, Font=Enum.Font.GothamBlack})
+    c:Label({Text="Pulls EVERY zombie except TaintedMastermind", TextColor=Color3.fromRGB(180,255,180), TextSize=16})
+    c:Label({Text="Perfect for:", TextColor=Color3.fromRGB(200,255,200)})
+    c:Label({Text="• Farming kills", TextColor=Color3.fromRGB(150,255,150)})
+    c:Label({Text="• Speedrunning waves", TextColor=Color3.fromRGB(150,255,150)})
+    c:Label({Text="▬ Panic Stop instantly disables ▬", TextColor=Color3.fromRGB(255,150,150)})
+end)
+
+
+-- PANIC STOP (already has tooltip from before, keeping it)
+local PanicButton = MainTab:Button({
     Text = "Panic Stop",
     Callback = function()
         getgenv().Mob = false
         getgenv().Mob2 = false
         getgenv().AimbotEnabled = false
-        -- Stop aimbot
         stopAimbot()
-        -- Stop elf teleport (return to saved pos)
-        if getgenv().Elf then
-            getgenv().Elf = false
-            stopElfTeleportLoop(true)
-        end
-        -- Stop resource teleport (return to saved pos)
-        if getgenv().TeleportEnabled then
-            getgenv().TeleportEnabled = false
-            stopOreTeleportLoop(true)
-        end
-        -- Stop player loops
-        if getgenv().WSLoopEnabled then
-            getgenv().WSLoopEnabled = false
-            stopWSLoop()
-        end
-        if getgenv().JPLoopEnabled then
-            getgenv().JPLoopEnabled = false
-            stopJPLoop()
-        end
+        if getgenv().Elf then getgenv().Elf = false stopElfTeleportLoop(true) end
+        if getgenv().TeleportEnabled then getgenv().TeleportEnabled = false stopOreTeleportLoop(true) end
+        if getgenv().WSLoopEnabled then getgenv().WSLoopEnabled = false stopWSLoop() end
+        if getgenv().JPLoopEnabled then getgenv().JPLoopEnabled = false stopJPLoop() end
     end
 })
 
+ReGui:SetItemTooltip(PanicButton, function(canvas)
+    canvas:Label({
+        Text = "EMERGENCY STOP",TextColor = Color3.fromRGB(255, 50, 50),TextSize = 22,Font = Enum.Font.GothamBlack,BackgroundTransparency = 1,
+    })
+    canvas:Label({
+        Text = "• Stops ALL zombie bringing",TextColor = Color3.fromRGB(255, 200, 200),TextSize = 16,
+    })
+    canvas:Label({
+        Text = "• Disables Aimbot + FOV ring",TextColor = Color3.fromRGB(255, 200, 200),TextSize = 16,
+    })
+    canvas:Label({
+        Text = "• Stops Elf & Resource teleport",TextColor = Color3.fromRGB(255, 200, 200),TextSize = 16,
+    })
+    canvas:Label({
+        Text = "• Returns you to spawn position",TextColor = Color3.fromRGB(255, 200, 200),TextSize = 16,
+    })
+    canvas:Label({
+        Text = "• Resets WalkSpeed/JumpPower",TextColor = Color3.fromRGB(255, 200, 200),TextSize = 16,
+    })
+    canvas:Label({
+        Text = "Use when things go WRONG!",TextColor = Color3.fromRGB(255, 100, 100),TextSize = 18,Font = Enum.Font.GothamBold,BackgroundTransparency = 1,
+    })
+end)
+
 -- Teleports Tab
 local TeleTab = Window:CreateTab({ Name = "Teleports" })
+
 TeleTab:Label({ Text = "Resource Teleports" })
 TeleTab:Separator({})
 
@@ -1745,129 +1784,295 @@ TeleTab:Combo({
     Selected = getgenv().TeleportType,
     Items = {"Coal", "Iron", "Ring"},
     Callback = function(self, value)
-        local selected = tostring(value)
-        if selected ~= "Coal" and selected ~= "Iron" and selected ~= "Ring" then
-            selected = "Coal"
-        end
-        getgenv().TeleportType = selected
+        getgenv().TeleportType = tostring(value)
     end
 })
 
-TeleTab:Checkbox({
+local ResourceTPToggle = TeleTab:Checkbox({
     Label = "Enable Resource Teleport",
     Value = getgenv().TeleportEnabled,
     Callback = function(self, state)
         getgenv().TeleportEnabled = state
-        if state then
-            startOreTeleportLoop()
-        else
-            stopOreTeleportLoop(true)
-        end
+        if state then startOreTeleportLoop() else stopOreTeleportLoop(true) end
     end
 })
 
+ReGui:SetItemTooltip(ResourceTPToggle, function(c)
+    c:Label({Text="Auto-teleports you under the selected resource", TextColor=Color3.fromRGB(0,255,150), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="• Coal / Iron → keeps only 1 alive", TextColor=Color3.fromRGB(200,255,220)})
+    c:Label({Text="• Ring → teleports directly to the Collection ring", TextColor=Color3.fromRGB(200,255,220)})
+    c:Label({Text="Returns to spawn when resource disappears", TextColor=Color3.fromRGB(255,200,100)})
+end)
+
+-- Levers Section
+-- ===== LEVERS SECTION – FULLY FIXED REFRESH =====
 TeleTab:Label({ Text = "Levers Objects" })
 TeleTab:Separator({})
-local LeversCombo
-local function refreshLeversList()
-    local items = collectLeversObjects()
-    local default = items[1]
-    getgenv().LeversState.selected = default
 
-    if LeversCombo and LeversCombo.Update then
-        LeversCombo:Update({
-            Items = items,
-            Selected = default
-        })
+-- Global reference so we can destroy/recreate the combo
+local LeversComboControl = nil
+
+-- THE ONLY FUNCTION THAT CREATES THE COMBO
+local function createLeversCombo(items, selected)
+    -- Destroy old one if exists
+    if LeversComboControl and LeversComboControl.Destroy then
+        pcall(LeversComboControl.Destroy, LeversComboControl)
     end
+    task.wait() -- let ReGui finish cleanup
+
+    -- Create fresh combo
+    LeversComboControl = TeleTab:Combo({
+        Label = "Levers Object",
+        Items = items,
+        Selected = selected,
+        Callback = function(self, value)
+            getgenv().LeversState.selected = tostring(value)
+        end
+    })
 end
 
-LeversCombo = TeleTab:Combo({
-    Label = "Levers Object",
-    Items = collectLeversObjects(),
-    Callback = function(self, value)
-        getgenv().LeversState.selected = tostring(value)
+-- REAL REFRESH FUNCTION
+local function refreshLeversList()
+    local items = collectLeversObjects()          -- scans workspace
+    if #items == 0 then
+        items = { "(No levers found – check map is loaded)" }
     end
-})
+    
+    local selected = getgenv().LeversState.selected
+    if not selected or not table.find(items, selected) then
+        selected = items[1]
+        getgenv().LeversState.selected = selected
+    end
 
-TeleTab:Button({
+    createLeversCombo(items, selected)
+end
+
+-- INITIAL CREATION
+refreshLeversList()
+
+-- REFRESH BUTTON
+local RefreshLeversBtn = TeleTab:Button({
     Text = "Refresh Levers List",
-    Callback = function()
-        refreshLeversList()
-    end
+    Callback = refreshLeversList
 })
 
-TeleTab:Button({
+ReGui:SetItemTooltip(RefreshLeversBtn, function(c)
+    c:Label({Text="FORCE refresh lever list", TextColor=Color3.fromRGB(0,255,150), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="Fixes missing levers after Path TP", TextColor=Color3.fromRGB(255,240,180)})
+end)
+
+-- TELEPORT BUTTON
+local TeleportLeverBtn = TeleTab:Button({
     Text = "Teleport Selected In Front",
     Callback = function()
         local sel = getgenv().LeversState.selected
-        if not sel then
-            refreshLeversList()
-            sel = getgenv().LeversState.selected
+        if not sel or sel:find("No levers") then 
+            warn("[Levers] Nothing selected!")
+            return 
         end
-
-        if not sel then
-            warn("[Levers] No selectable items found.")
-            return
-        end
-
         local ok = teleportLeversObjectInFront(sel)
         if not ok then
-            warn(string.format("[Levers] Failed to teleport '%s'. It may have been removed.", tostring(sel)))
+            warn("[Levers] Teleport failed – refreshing list...")
+            refreshLeversList()
         end
     end
 })
 
+ReGui:SetItemTooltip(TeleportLeverBtn, function(c)
+    c:Label({Text="Spawns selected lever in front of you", TextColor=Color3.fromRGB(0,255,150), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="Auto-refreshes list if lever breaks", TextColor=Color3.fromRGB(180,230,255)})
+end)
+
+-- Elf Teleport
 TeleTab:Label({ Text = "Elf Teleport" })
 TeleTab:Separator({})
 
-TeleTab:Checkbox({
+local ElfToggle = TeleTab:Checkbox({
     Label = "Enable Elf Teleport",
     Value = getgenv().Elf,
     Callback = function(self, state)
         getgenv().Elf = state
-        if state then
-            startElfTeleportLoop()
-        else
-            stopElfTeleportLoop(true)
-        end
+        if state then startElfTeleportLoop() else stopElfTeleportLoop(true) end
     end
 })
 
-TeleTab:Label({ Text = "Teleport Items" })
+ReGui:SetItemTooltip(ElfToggle, function(c)
+    c:Label({Text="Teleports you UNDER every Christmas Elf", TextColor=Color3.fromRGB(255,50,50), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="• Instantly kills them", TextColor=Color3.fromRGB(255,180,180)})
+    c:Label({Text="• Auto-returns when elf touches train", TextColor=Color3.fromRGB(255,180,180)})
+    c:Label({Text="Panic Stop = instant disable + return", TextColor=Color3.fromRGB(255,100,100)})
+end)
+
+-- Teleport Items
+TeleTab:Label({ Text = "Instant Item Grabbers" })
 TeleTab:Separator({})
 
-TeleTab:Button({
-    Text = "Teleport Presents",
+local PresentBtn = TeleTab:Button({ Text = "Teleport Presents", Callback = getPresents })
+ReGui:SetItemTooltip(PresentBtn, function(c)
+    c:Label({Text="Pulls EVERY Present to your feet", TextColor=Color3.fromRGB(255,230,0), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="100% success rate", TextColor=Color3.fromRGB(255,255,150)})
+end)
+
+local InteractBtn = TeleTab:Button({ Text = "Teleport Interactions", Callback = getAllInteractions })
+ReGui:SetItemTooltip(InteractBtn, function(c)
+    c:Label({Text="Brings all Use prompts to you", TextColor=Color3.fromRGB(0,255,150), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="• Loadout", TextColor=Color3.fromRGB(180,255,255)})
+    c:Label({Text="• Shop terminals", TextColor=Color3.fromRGB(180,255,255)})
+    c:Label({Text="• Anything with 'Use'", TextColor=Color3.fromRGB(180,255,255)})
+end)
+
+local LoadoutBtn = TeleTab:Button({ Text = "Teleport Loadout (No More)", Callback = teleportNoMoreLoadoutToPlayer })
+ReGui:SetItemTooltip(LoadoutBtn, function(c)
+    c:Label({Text="Spawns the No More Room loadout menu", TextColor=Color3.fromRGB(255,100,255), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="Right in front of you", TextColor=Color3.fromRGB(230,180,255)})
+end)
+
+local ScrapBtn = TeleTab:Button({ Text = "Teleport Scrapmetal", Callback = teleportScrapmetalFromJunk })
+ReGui:SetItemTooltip(ScrapBtn, function(c)
+    c:Label({Text="Grabs every Scrapmetal from Junk folder", TextColor=Color3.fromRGB(0,255,150), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="Perfect for crafting", TextColor=Color3.fromRGB(220,220,220)})
+end)
+
+local ParachuteBtn = TeleTab:Button({
+    Text = "Teleport Parachute",
     Callback = function()
-        getPresents()
+        local parachute = workspace:FindFirstChild("Important") 
+            and workspace.Important:FindFirstChild("parachute")
+        if not parachute then 
+            warn("[Parachute] Not found!")
+            return 
+        end
+        local lp = Players.LocalPlayer
+        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        local targetCF = hrp.CFrame * CFrame.new(0, 2, -4)
+        pcall(function()
+            if parachute:IsA("Model") then
+                parachute:PivotTo(targetCF)
+            else
+                parachute.CFrame = targetCF
+            end
+        end)
     end
 })
 
-TeleTab:Button({
-    Text = "Teleport Interactions",
+ReGui:SetItemTooltip(ParachuteBtn, function(c)
+    c:Label({Text="TELEPORTS parachute", TextColor=Color3.fromRGB(255,150,0), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="workspace.Important.parachute → YOUR FEET", TextColor=Color3.fromRGB(255,200,150)})
+end)
+
+local SecurityBtn = TeleTab:Button({
+    Text = "Teleport Security Lever",
     Callback = function()
-        getAllInteractions()
+        local security = workspace:FindFirstChild("Important") 
+            and workspace.Important:FindFirstChild("securityLever")
+        if not security then 
+            warn("[Security] Not found!")
+            return 
+        end
+        local lp = Players.LocalPlayer
+        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        local targetCF = hrp.CFrame * CFrame.new(0, 1, -4)
+        pcall(function()
+            if security:IsA("Model") then
+                security:PivotTo(targetCF)
+            else
+                security.CFrame = targetCF
+            end
+        end)
     end
 })
 
-TeleTab:Button({
-    Text = "Teleport Loadout(No More)",
+ReGui:SetItemTooltip(SecurityBtn, function(c)
+    c:Label({Text="TELEPORTS securityLever", TextColor=Color3.fromRGB(0,200,255), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="workspace.Important.securityLever → YOUR FEET", TextColor=Color3.fromRGB(150,230,255)})
+end)
+
+local AmmoBtn = TeleTab:Button({
+    Text = "Teleport All Ammo",
     Callback = function()
-        teleportNoMoreLoadoutToPlayer()
+        local ammoFolder = workspace:FindFirstChild("Ammunition")
+        if not ammoFolder then 
+            warn("[Ammo] Ammunition folder not found!")
+            return 
+        end
+        local lp = Players.LocalPlayer
+        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        
+        local count = 0
+        for _, ammo in ipairs(ammoFolder:GetChildren()) do
+            if ammo.Parent and (ammo:IsA("BasePart") or ammo:IsA("Model")) then
+                local targetCF = hrp.CFrame * CFrame.new(
+                    math.random(-3,3),  -- random X spread
+                    1,                  -- Y height
+                    -4                  -- Z in front
+                )
+                pcall(function()
+                    if ammo:IsA("Model") and ammo.PrimaryPart then
+                        ammo:PivotTo(targetCF)
+                    elseif ammo:IsA("Model") then
+                        ammo:MoveTo(targetCF.Position)
+                    else
+                        ammo.CFrame = targetCF
+                    end
+                end)
+                count = count + 1
+            end
+        end
+        print("[Ammo] Teleported " .. count .. " ammo items")
     end
 })
 
-TeleTab:Button({
-    Text = "Teleport Scrapmetal",
+ReGui:SetItemTooltip(AmmoBtn, function(c)
+    c:Label({Text="TELEPORTS ALL AMMO", TextColor=Color3.fromRGB(255,100,100), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="workspace.Ammunition:GetChildren()", TextColor=Color3.fromRGB(255,180,180)})
+    c:Label({Text="Spreads them around your feet", TextColor=Color3.fromRGB(255,180,180)})
+end)
+
+-- Path TP
+TeleTab:Label({ Text = "Teleport by Path" })
+TeleTab:Separator({})
+
+local PathInput = TeleTab:InputText({
+    Label = "Instance Path",
+    Placeholder = "e.g. workspace.Map.LeverDoorSystem.Levers.Lever1",
+    Value = "",
+})
+
+local PathBtn = TeleTab:Button({
+    Text = "Teleport Path to Me",
     Callback = function()
-        teleportScrapmetalFromJunk()
+        local path = PathInput.Value
+        if path == "" then warn("[Path TP] Empty!") return end
+        local success, obj = pcall(function() return loadstring("return " .. path)() end)
+        if not success or not obj then warn("[Path TP] Invalid path") return end
+        
+        local lp = Players.LocalPlayer
+        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        
+        local cf = hrp.CFrame * CFrame.new(0,1,-5)
+        pcall(function()
+            if obj:IsA("Model") then obj:PivotTo(cf) else obj.CFrame = cf end
+        end)
+        
+        if string.find(string.lower(path), "lever") then task.spawn(refreshLeversList) end
     end
 })
+
+ReGui:SetItemTooltip(PathBtn, function(c)
+    c:Label({Text="Teleports Part/Models by path", TextColor=Color3.fromRGB(255,100,255), TextSize=18, Font=Enum.Font.GothamBold})
+    c:Label({Text="Examples:", TextColor=Color3.fromRGB(255,200,255)})
+    c:Label({Text="workspace.Map.Office.Safe", TextColor=Color3.fromRGB(200,255,200)})
+    c:Label({Text="workspace.Ignore.Ring", TextColor=Color3.fromRGB(200,255,200)})
+    c:Label({Text="Auto-refreshes levers list", TextColor=Color3.fromRGB(255,255,150)})
+end)
 
 -- ESP/Visuals Tab (Tracers + Color + Chams)
 local EspTab = Window:CreateTab({ Name = "Esp" })
-EspTab:Label({ Text = "Visuals" })
+EspTab:Label({ Text = "▬ Visuals ▬" })
 EspTab:Separator({})
 
 local TracersCheckbox = EspTab:Checkbox({
@@ -1930,7 +2135,7 @@ EspTab:DragColor3({
 
 -- Aimbot Tab
 local AimTab = Window:CreateTab({ Name = "Aimbot" })
-AimTab:Label({ Text = "Aimbot Controls" })
+AimTab:Label({ Text = "▬ Aimbot Controls ▬" })
 AimTab:Separator({})
 
 local AimbotCheckbox = AimTab:Checkbox({
@@ -2005,294 +2210,417 @@ AimTab:SliderInt({
 })
 
 -- Player Tab (WalkSpeed & JumpPower)
-local PlayerTab = Window:CreateTab({ Name = "Player" })
-PlayerTab:Label({ Text = "Local Player Tweaks" })
-PlayerTab:Separator({})
+-- =============================================
+-- COMBINED PLAYER & WEAPONS TAB (Replaces both Player and Weapons tabs)
+-- =============================================
+local PlayerWeaponsTab = Window:CreateTab({ Name = "Player & Weapons" })
+-- === PLAYER SECTION ===
+PlayerWeaponsTab:Label({ Text = "▬ Player Movement ▬" })
+PlayerWeaponsTab:Separator({})
 
-PlayerTab:Button({
-    Text = "Float on",
-    Callback = function()
-        startFloatLoop()
-    end
-})
-PlayerTab:Button({
-    Text = "Float off",
-    Callback = function()
-        stopFloatLoop()
-    end
-})
-
-PlayerTab:Checkbox({
-    Label = "Noclip",
-    Value = getgenv().Clip,
-    Callback = function(self, state)
-        getgenv().Clip = state
-        if state then
-            startNoclip()
-        else
-            stopNoclip()
-        end
-    end
-})
-
-PlayerTab:Button({
+PlayerWeaponsTab:Button({
     Text = "Dex Explorer",
     Callback = function()
         startDex()
     end
 })
 
-PlayerTab:Checkbox({
+PlayerWeaponsTab:Checkbox({
     Label = "WalkSpeed Loop",
     Value = getgenv().WSLoopEnabled,
     Callback = function(self, state)
         getgenv().WSLoopEnabled = state
-        if state then
-            startWSLoop()
-        else
-            stopWSLoop()
-        end
+        if state then startWSLoop() else stopWSLoop() end
     end
 })
-
-PlayerTab:SliderInt({
+PlayerWeaponsTab:SliderInt({
     Label = "WalkSpeed",
-    Minimum = 8,
+    Minimum = 16,
     Maximum = 300,
     Value = getgenv().WSpeedValue,
-    Format = "WS = %d",
+    Format = "Speed: %d",
     Callback = function(self, value)
         getgenv().WSpeedValue = value
     end
 })
 
-PlayerTab:Checkbox({
+PlayerWeaponsTab:Checkbox({
     Label = "JumpPower Loop",
     Value = getgenv().JPLoopEnabled,
     Callback = function(self, state)
         getgenv().JPLoopEnabled = state
-        if state then
-            startJPLoop()
-        else
-            stopJPLoop()
-        end
+        if state then startJPLoop() else stopJPLoop() end
     end
 })
-
-PlayerTab:SliderInt({
+PlayerWeaponsTab:SliderInt({
     Label = "JumpPower",
-    Minimum = 25,
+    Minimum = 50,
     Maximum = 300,
     Value = getgenv().JPowerValue,
-    Format = "JP = %d",
+    Format = "Jump: %d",
     Callback = function(self, value)
         getgenv().JPowerValue = value
     end
 })
 
--- Weapons Tab: Generalized weapon editor using Dear ReGui
-local WeaponTab = Window:CreateTab({ Name = "Weapons" })
-WeaponTab:Label({ Text = "Basic Button Mods" })
-WeaponTab:Separator({})
-WeaponTab:Button({
-    Text = "Mod Guns",
-    Callback = function()
-        modAllGuns()
-    end
+PlayerWeaponsTab:Separator({})
+
+-- === WEAPON MODS SECTION ===
+PlayerWeaponsTab:Label({ Text = "Quick Weapon Mods" })
+PlayerWeaponsTab:Separator({})
+
+PlayerWeaponsTab:Button({ 
+    Text = "Mod All Guns (No Recoil + Fast)", 
+    Callback = modAllGuns 
 })
-WeaponTab:Button({
-    Text = "Mod Melee",
-    Callback = function()
-        modAllMelee()
-    end
+PlayerWeaponsTab:Button({ 
+    Text = "Mod All Melee (100 Range + Fast)", 
+    Callback = modAllMelee 
 })
 
+PlayerWeaponsTab:Separator({})
 
-WeaponTab:Label({ Text = "Specific Weapon Editor" })
-WeaponTab:Separator({})
+-- === WEAPON EDITOR SECTION ===
+PlayerWeaponsTab:Label({ Text = "Advanced Weapon Editor" })
+PlayerWeaponsTab:Separator({})
 
--- Ensure we have initial list
-rebuildWeaponItems()
-
-local st = getgenv().WeaponEditorState
-local WeaponCombo
-local Dyn = { -- dynamic controls that appear/disappear per selection
-    PropertyCombo = nil,
-    SubPropertyCombo = nil,
-    ValueInput = nil,
-    BoolInput = nil,
-    ApplyButton = nil,
-    CurrentLabel = nil,
+-- State & Dynamic Controls
+getgenv().WeaponEditorState = getgenv().WeaponEditorState or {
+    weapons = {}, items = {}, selectedIndex = nil, selectedProp = nil, selectedSubProp = nil,
 }
 
-local function destroyCtrl(ctrl)
-    if not ctrl then return end
-    pcall(function() if ctrl.Destroy then ctrl:Destroy() end end)
-    pcall(function() if ctrl.Remove then ctrl:Remove() end end)
+local st = getgenv().WeaponEditorState
+local Dyn = { WeaponCombo = nil, PropertyCombo = nil, SubPropertyCombo = nil, ValueInput = nil, BoolInput = nil, ApplyButton = nil, CurrentLabel = nil }
+
+local function destroy(ctrl)
+    if ctrl and ctrl.Destroy then pcall(function() ctrl:Destroy() end) end
 end
 
 local function clearDynamic()
-    for k, v in pairs(Dyn) do
-        if v then destroyCtrl(v) end
-        Dyn[k] = nil
+    for k, v in pairs(Dyn) do destroy(v); Dyn[k] = nil end
+    st.selectedProp = nil; st.selectedSubProp = nil
+end
+
+local function scanWeaponTables()
+    local seen = {}
+    local results = {}
+    for _, obj in ipairs(getgc(true)) do
+        if type(obj) == "table" and rawget(obj, "Config") and rawget(obj, "WeaponId") then
+            local id = tostring(rawget(obj, "WeaponId"))
+            if not seen[id] then
+                seen[id] = true
+                local name = rawget(obj, "Name") or "Unknown"
+                table.insert(results, { ref = obj, name = tostring(name), id = id })
+            end
+        end
     end
-    st.selectedProp = nil
-    st.selectedSubProp = nil
+    table.sort(results, function(a,b) return a.name:lower() < b.name:lower() end)
+    return results
+end
+
+local function rebuildWeaponList()
+    st.weapons = scanWeaponTables()
+    st.items = { "(none)" }
+    for _, w in ipairs(st.weapons) do
+        table.insert(st.items, string.format("%s [ID: %s]", w.name, w.id))
+    end
+    st.selectedIndex = 1
 end
 
 local function updateCurrentValueLabel()
-    local w = getSelectedWeapon()
-    if not w or not st.selectedProp then
-        if Dyn.CurrentLabel then
-            pcall(function() if Dyn.CurrentLabel.Update then Dyn.CurrentLabel:Update({ Text = "Current: (n/a)" }) end end)
-        end
+    if not Dyn.CurrentLabel then return end
+    local weapon = getSelectedWeapon()
+    if not weapon or not st.selectedProp then
+        Dyn.CurrentLabel:Update({ Text = "Current: (n/a)" })
         return
     end
-    local val = readCurrentValue(w, st.selectedProp, st.selectedSubProp)
-    local repr
-    local t = typeof(val)
-    if t == "table" then
-        repr = "<table>"
-    elseif t == "nil" then
-        repr = "nil"
-    else
-        repr = tostring(val)
-    end
-    if Dyn.CurrentLabel then
-        pcall(function()
-            if Dyn.CurrentLabel.Update then
-                Dyn.CurrentLabel:Update({ Text = string.format("Current: %s (%s)", repr, t) })
-            end
-        end)
-    end
+    local val = readCurrentValue(weapon, st.selectedProp, st.selectedSubProp)
+    local repr = typeof(val) == "table" and "<table>" or tostring(val)
+    Dyn.CurrentLabel:Update({ Text = "Current: " .. repr .. " (" .. typeof(val) .. ")" })
 end
 
 local function rebuildValueEditors()
-    -- Destroy old editors
-    destroyCtrl(Dyn.ValueInput) ; Dyn.ValueInput = nil
-    destroyCtrl(Dyn.BoolInput) ; Dyn.BoolInput = nil
-
-    local w = getSelectedWeapon()
-    if not w or not st.selectedProp then return end
-    local expected = readCurrentValue(w, st.selectedProp, st.selectedSubProp)
-    local t = typeof(expected)
-
-    if t == "boolean" then
-        Dyn.BoolInput = WeaponTab:Checkbox({
-            Label = "New Value (bool)",
-            Value = expected == true,
-            Callback = function(self, value) end
-        })
+    destroy(Dyn.ValueInput); destroy(Dyn.BoolInput)
+    local weapon = getSelectedWeapon()
+    if not weapon or not st.selectedProp then return end
+    local val = readCurrentValue(weapon, st.selectedProp, st.selectedSubProp)
+    if typeof(val) == "boolean" then
+        Dyn.BoolInput = PlayerWeaponsTab:Checkbox({ Label = "Value", Value = val })
     else
-        Dyn.ValueInput = WeaponTab:InputText({
-            Label = "New Value (text/number)",
-            Value = expected == nil and "" or tostring(expected)
-        })
+        Dyn.ValueInput = PlayerWeaponsTab:InputText({ Label = "Value", Value = tostring(val) })
     end
-
     updateCurrentValueLabel()
 end
 
-local function onSubPropertySelected(self, subProp)
-    st.selectedSubProp = tostring(subProp)
-    rebuildValueEditors()
-end
-
-local function onPropertySelected(self, prop)
-    st.selectedProp = tostring(prop)
-
-    -- Rebuild sub-property combo depending on type
-    destroyCtrl(Dyn.SubPropertyCombo) ; Dyn.SubPropertyCombo = nil
-
-    local w = getSelectedWeapon()
-    if not w then return end
-    local cfg = getConfigTable(w)
-    if not cfg then return end
-
-    local v = cfg[st.selectedProp]
-    if type(v) == "table" then
-        local items = getSubPropertyNames(cfg, st.selectedProp)
-        Dyn.SubPropertyCombo = WeaponTab:Combo({
-            Label = "Sub-Property",
-            Items = items,
-            Callback = onSubPropertySelected
-        })
-        st.selectedSubProp = nil -- require user to pick one
-    else
-        st.selectedSubProp = nil
+local function onPropertySelected(_, prop)
+    st.selectedProp = prop
+    destroy(Dyn.SubPropertyCombo); st.selectedSubProp = nil
+    local weapon = getSelectedWeapon()
+    local cfg = weapon and getConfigTable(weapon)
+    if cfg and type(cfg[prop]) == "table" then
+        local subs = getSubPropertyNames(cfg, prop)
+        if #subs > 0 then
+            Dyn.SubPropertyCombo = PlayerWeaponsTab:Combo({
+                Label = "Sub-Prop",
+                Items = subs,
+                Callback = function(_, sub)
+                    st.selectedSubProp = sub
+                    rebuildValueEditors()
+                end
+            })
+        end
     end
-
     rebuildValueEditors()
 
-    -- Rebuild/Place Apply button and current value label
-    destroyCtrl(Dyn.ApplyButton) ; Dyn.ApplyButton = nil
-    destroyCtrl(Dyn.CurrentLabel) ; Dyn.CurrentLabel = nil
-
-    Dyn.ApplyButton = WeaponTab:Button({
-        Text = "Apply Changes",
+    destroy(Dyn.ApplyButton); destroy(Dyn.CurrentLabel)
+    Dyn.ApplyButton = PlayerWeaponsTab:Button({
+        Text = "Apply Change",
         Callback = function()
-            local w2 = getSelectedWeapon()
-            if not w2 or not st.selectedProp then return end
-
-            local expected = readCurrentValue(w2, st.selectedProp, st.selectedSubProp)
-            local textVal = (Dyn.ValueInput and Dyn.ValueInput.Value) or ""
-            local boolVal = (Dyn.BoolInput and Dyn.BoolInput.Value) or false
-            local newVal = coerceValueFromInputs(expected, textVal, boolVal)
-            local ok = applyValue(w2, st.selectedProp, st.selectedSubProp, newVal)
-            if ok then
+            local w = getSelectedWeapon()
+            if not w or not st.selectedProp then return end
+            local old = readCurrentValue(w, st.selectedProp, st.selectedSubProp)
+            local text = Dyn.ValueInput and Dyn.ValueInput.Value or ""
+            local bool = Dyn.BoolInput and Dyn.BoolInput.Value or false
+            local newVal = coerceValueFromInputs(old, text, bool)
+            if applyValue(w, st.selectedProp, st.selectedSubProp, newVal) then
                 updateCurrentValueLabel()
             end
         end
     })
-
-    Dyn.CurrentLabel = WeaponTab:Label({ Text = "Current: (n/a)" })
+    Dyn.CurrentLabel = PlayerWeaponsTab:Label({ Text = "Current: (n/a)" })
     updateCurrentValueLabel()
-
-    
 end
-WeaponTab:Label({ Text = "Instructions: Pick a weapon, then a property.\n".. "If it is a table, pick a sub-property.\n".. "Enter a value or toggle, then click Apply Changes." })
 
-WeaponTab:Button({
-    Text = "Refresh / Rescan",
-    Callback = function()
-        rebuildWeaponItems()
-        -- Try update Combo items if possible
-        if WeaponCombo and WeaponCombo.Update then
-            WeaponCombo:Update({ Items = st.items, Selected = "(none)" })
-        end
-        st.selectedItem = "(none)"
-        st.selectedIndex = nil
-        clearDynamic()
+local function onWeaponSelected(_, value)
+    for i, label in ipairs(st.items) do
+        if label == value then st.selectedIndex = i; break end
     end
-})
-
-WeaponCombo = WeaponTab:Combo({
-    Label = "Weapon",
-    Selected = st.selectedItem or "(none)",
-    Items = st.items,
-    Callback = function(self, value)
-        st.selectedItem = tostring(value)
-        -- Resolve to index
-        st.selectedIndex = nil
-        for i, label in ipairs(st.items) do
-            if label == value then
-                st.selectedIndex = i
-                break
-            end
-        end
-        clearDynamic()
-        if st.selectedIndex and st.selectedIndex > 1 then
-            local w = getSelectedWeapon()
-            if not w then return end
-            local cfg = getConfigTable(w)
-            if not cfg then return end
-
-            Dyn.PropertyCombo = WeaponTab:Combo({
+    clearDynamic()
+    if st.selectedIndex > 1 then
+        local weapon = getSelectedWeapon()
+        local cfg = weapon and getConfigTable(weapon)
+        if cfg then
+            Dyn.PropertyCombo = PlayerWeaponsTab:Combo({
                 Label = "Property",
                 Items = getPropertyNames(cfg),
                 Callback = onPropertySelected
             })
         end
+    end
+end
+
+-- Refresh + Combo
+PlayerWeaponsTab:Button({
+    Text = "Rescan Weapons (Fix Duplicates)",
+    Callback = function()
+        clearDynamic()
+        rebuildWeaponList()
+        if Dyn.WeaponCombo then destroy(Dyn.WeaponCombo) end
+        task.wait()
+        Dyn.WeaponCombo = PlayerWeaponsTab:Combo({
+            Label = "Select Weapon",
+            Items = st.items,
+            Selected = st.items[1],
+            Callback = onWeaponSelected
+        })
+    end
+})
+
+-- Initial build
+rebuildWeaponList()
+Dyn.WeaponCombo = PlayerWeaponsTab:Combo({
+    Label = "Select Weapon",
+    Items = st.items,
+    Selected = st.items[1],
+    Callback = onWeaponSelected
+})
+
+-- =============================================
+-- SAFE HINTS TAB - FULLY FIXED (NO INSERT ERROR)
+-- =============================================
+local SafeTab = Window:CreateTab({ Name = "Safe Hints" })
+
+SafeTab:Label({ Text = "▬ Safe Codes ▬" })
+SafeTab:Separator({})
+
+-- Dynamic controls (will be recreated on refresh)
+local DynSafe = {
+    RefreshBtn = nil,
+    Canvas     = nil,
+}
+
+local function refreshSafeHints()
+    -- Clear old labels
+    if DynSafe.Canvas then
+        for _, child in ipairs(DynSafe.Canvas:GetChildren()) do
+            if child:IsA("GuiObject") then
+                pcall(function() child:Destroy() end)
+            end
+        end
+    end
+
+    local cubicles1 = workspace:FindFirstChild("Map")
+        and workspace.Map:FindFirstChild("Office")
+        and workspace.Map.Office:FindFirstChild("cubicles1")
+
+    if not cubicles1 then
+        DynSafe.Canvas:Label({
+            Text = "cubicles1 not found! Map not loaded yet.",
+            TextColor = Color3.fromRGB(255,80,80)
+        })
+        return
+    end
+
+    local BRICKCOLORS = {
+        ["Daisy Orange"] = { brick = BrickColor.new("Daisy orange"), text = Color3.fromRGB(255, 225, 89) },
+        ["Olivine"]      = { brick = BrickColor.new("Olivine"),       text = Color3.fromRGB(67, 217, 125) },
+        ["Persimmon"]    = { brick = BrickColor.new("Persimmon"),     text = Color3.fromRGB(255, 70, 70) },
+        ["Steel Blue"]   = { brick = BrickColor.new("Steel blue"),    text = Color3.fromRGB(76, 132, 255) },
+    }
+
+    local found = {}
+    for _, cubicle in ipairs(cubicles1:GetChildren()) do
+        local ok, label = pcall(function()
+            return cubicle.desk.oldPC.screen.SafeHint.TextLabel
+        end)
+        if ok and label and label:IsA("TextLabel") and label.Text:match("%d") then
+            local screen = cubicle.desk.oldPC.screen
+            local frame = screen:FindFirstChildWhichIsA("Frame") or screen
+
+            for name, data in pairs(BRICKCOLORS) do
+                if frame.BrickColor == data.brick and not found[name] then
+                    found[name] = true
+                    local code = label.Text:gsub("%s+", "")
+
+                    DynSafe.Canvas:Label({
+                        Text = name .. ": " .. code,
+                        TextColor = data.text,
+                        BackgroundColor3 = data.brick.Color,
+                        BackgroundTransparency = 0.25,
+                        Size = UDim2.fromOffset(460, 56),
+                        TextSize = 32,
+                        Font = Enum.Font.GothamBold,
+                        TextXAlignment = Enum.TextXAlignment.Left
+                    })
+                    break
+                end
+            end
+        end
+    end
+
+    if next(found) == nil then
+        DynSafe.Canvas:Label({
+            Text = "No codes yet — wait 5-10 sec after round starts",
+            TextColor = Color3.fromRGB(200,200,200)
+        })
+    end
+end
+
+-- Rebuild function (same pattern as Weapons tab)
+local function rebuildSafeTab()
+    -- Destroy old stuff
+    if DynSafe.RefreshBtn and DynSafe.RefreshBtn.Destroy then pcall(DynSafe.RefreshBtn.Destroy, DynSafe.RefreshBtn) end
+    if DynSafe.Canvas     and DynSafe.Canvas.Destroy     then pcall(DynSafe.Canvas.Destroy, DynSafe.Canvas) end
+
+    task.wait() -- let ReGui clean up
+
+    -- Refresh button on top
+    DynSafe.RefreshBtn = SafeTab:Button({
+        Text = "FORCE REFRESH",
+        Callback = rebuildSafeTab
+    })
+
+    -- List below
+    DynSafe.Canvas = SafeTab:List({
+        Size = UDim2.fromOffset(480, 340),
+        Padding = 8
+    })
+
+    -- Run the actual scan
+    refreshSafeHints()
+end
+rebuildSafeTab()
+
+local TileTab = Window:CreateTab({ Name = "Tiles Sorter" })
+
+TileTab:Label({ Text = "▬ 2D Tile Grid Sorter ▬" })
+TileTab:Label({ Text = "Type order → 1532 = 1→5→3→2" })
+TileTab:Label({ Text = "Rows stack BEHIND each other:" })
+TileTab:Label({ Text = "A (front) ← B ← C ← ... ← I (back)" })
+TileTab:Label({ Text = "Step on Tiles from Right → to ← Left" })
+TileTab:Separator({})
+
+-- We'll use regular Labels + InputText directly on the tab
+local InputBoxes = {}
+local Letters = {"A","B","C","D","E","F","G","H","I"}
+
+for _, letter in ipairs(Letters) do
+    -- Fake "section" look using a bold label
+    TileTab:Label({
+        Text = "▬ " .. letter .. " Row Order ▬",
+        TextColor = Color3.fromRGB(255, 255, 100),
+        TextSize = 18,
+        Font = Enum.Font.GothamBold
+    })
+
+    InputBoxes[letter] = TileTab:InputText({
+        Placeholder = "e.g. 13524",
+        Value = "",
+        Size = UDim2.fromOffset(420, 40),
+        TextSize = 22
+    })
+end
+
+TileTab:Separator({})
+
+TileTab:Button({
+    Text = "TELEPORT 2D GRID (9×5)",
+    Callback = function()
+        local lp = game.Players.LocalPlayer
+        local char = lp.Character or lp.CharacterAdded:Wait()
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return warn("No HRP") end
+
+        local tiles = workspace:FindFirstChild("Important")
+                   and workspace.Important:FindFirstChild("tiles")
+        if not tiles then return warn("workspace.Important.tiles not found!") end
+
+        local baseCF = hrp.CFrame * CFrame.new(0, 4, -12)
+        local horizontalSpacing = 7
+        local depthSpacing = 7
+
+        for rowIdx, letter in ipairs(Letters) do
+            local input = InputBoxes[letter]
+            local order = input and tostring(input.Value):gsub("%s+", "") or ""
+            if order == "" then continue end
+
+            local folder = tiles:FindFirstChild(letter)
+            if not folder then continue end
+
+            local rowOffsetZ = (rowIdx - 1) * depthSpacing
+
+            for colIdx = 1, #order do
+                local digit = order:sub(colIdx, colIdx)
+                local partName = letter .. digit
+                local part = folder:FindFirstChild(partName)
+                if part and part:IsA("BasePart") then
+                    local offsetX = (colIdx - 1) * horizontalSpacing - (#order - 1) * horizontalSpacing / 2
+                    local targetCF = baseCF 
+                        * CFrame.new(offsetX, 0, rowOffsetZ)
+                        * CFrame.Angles(0, math.rad(180), 0)
+
+                    pcall(function()
+                        part.CFrame = targetCF
+                    end)
+                end
+            end
+        end
+
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Tiles 2D Grid";
+            Text = "All 9 rows stacked perfectly behind each other!";
+            Duration = 5;
+        })
     end
 })
 
