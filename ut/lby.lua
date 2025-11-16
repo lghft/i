@@ -2,21 +2,21 @@ print("lby?")
 repeat wait(5) until game:IsLoaded()
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.LoadingScreen.Visible == false
 print("Lby Loaded1")
-local dun = true
-local eve = false
+local dun = false
+local event = true
 local story = false
 local char = game.Players.LocalPlayer.Character
 local Players = game:GetService('Players')
 local plrAmount = #Players:GetPlayers()
---local rtele = workspace.Lobby.EventTeleporters:GetChildren()[2]["Cylinder.119"].VFX.hitbox
+local etele = workspace.Lobby.HalloweenEventLobby.EventTeleporters:GetChildren()[5]["Cylinder.119"].VFX.hitbox
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter2.Part
 local stele = workspace.Lobby.ClassicPartyTeleporters.Teleporter2
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
 wait(5)
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrAmount < 2 then
     print("=1")
-    if eve == true then
-        char:MoveTo(tele.Position)
+    if event == true then
+        char:MoveTo(etele.Position)
     elseif dtele and dun == true then
         local dunMap = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.MapName
         if dunMap.Text == "Forsaken Prison - Floor 10" then
