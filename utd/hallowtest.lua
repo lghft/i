@@ -24,7 +24,7 @@ function startMatch()
     :WaitForChild("RemoteEvents")
     :WaitForChild("PlayerVoteToStartMatch"):FireServer()
 end
-function clickButton(ClickOnPart)
+function clickguiPart(ClickOnPart)
     local vim = game:GetService("VirtualInputManager")
     local inset1, inset2 = game:GetService('GuiService'):GetGuiInset()
     local insetOffset = inset1 - inset2
@@ -43,6 +43,7 @@ function clickButton(ClickOnPart)
     task.wait(1)
     --print("Clicked: ", ClickOnPart)
 end
+
 
 function autoUpgradeTower(unitFromTable)
     spawn(function()
@@ -205,11 +206,15 @@ function autoHallow()
         getgenv().Active = false
         getgenv().Ability = false
         task.wait()
-        game:GetService("ReplicatedStorage")
-        :WaitForChild("Modules")
-        :WaitForChild("GlobalInit")
-        :WaitForChild("RemoteEvents")
-        :WaitForChild("PlayerVoteReplay"):FireServer()
+        if endGui.Continue.Visible == true then
+            game:GetService("ReplicatedStorage")
+            :WaitForChild("Modules")
+            :WaitForChild("GlobalInit")
+            :WaitForChild("RemoteEvents")
+            :WaitForChild("PlayerVoteReplay"):FireServer()
+        else
+            clickguiPart(endGui.Lobby)
+        end
     end
 end
 
