@@ -213,7 +213,11 @@ function autoHallow()
             :WaitForChild("RemoteEvents")
             :WaitForChild("PlayerVoteReplay"):FireServer()
         else
-            clickguiPart(endGui.Lobby)
+            game:GetService("ReplicatedStorage")
+            :WaitForChild("Modules")
+            :WaitForChild("GlobalInit")
+            :WaitForChild("RemoteEvents")
+            :WaitForChild("PlayerVoteReturn"):FireServer()
         end
     end
 end
