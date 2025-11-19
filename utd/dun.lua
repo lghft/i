@@ -111,12 +111,10 @@ function dungeonWave()
         clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Toolbox.Hotbar["1823601662:214394"].ToggleAuto.Button)
     end
     repeat wait() until endGui.Visible == true
-    spawn(function()
-        while task.wait(1) do
-            itemDrops.Visible = false
-            endGui.Visible = true
-        end
-    end)
+    task.wait(1)
+    itemDrops.Visible = false
+    endGui.Visible = true
+
     if endGui.Visible == true then
         if itemDrops.Visible == true then
             clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MessagesGui.FullScreen.Close.Button)
