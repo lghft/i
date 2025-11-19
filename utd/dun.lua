@@ -6,6 +6,8 @@ local twrs = workspace.EntityModels.Towers
 local endGui = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver
 local map = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.MapName
 local itemDrops = game:GetService("Players").LocalPlayer.PlayerGui.MessagesGui.FullScreen
+getgenv().Place = true
+getgenv().Active = true
 function startMatch()
     game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerVoteToStartMatch"):FireServer()
 end
@@ -38,11 +40,14 @@ function autoUpgradeTower(unitFromTable)
 end
 
 function dungeonWave()
+    getgenv().Place = true
+    getgenv().Active = true
     repeat wait() until wave.Text == "Wave 1/10" --1/20--1/10
 	if wave.Text == "Wave 1/10" then
 
         spawn(function()
-        while task.wait(1) do
+        while getgenv().Place = true do
+        task.wait(1)
         local args = {
             "1823601662:230016", --dante
             vector.create(-181.26632690429688, -296.7763671875, -405.550048828125),
@@ -66,7 +71,8 @@ function dungeonWave()
     repeat wait() until wave.Text == "Wave 2/10"
     if wave.Text == "Wave 2/10" then
         spawn(function()
-        while task.wait(1) do
+        while getgenv().Place = true do
+        task.wait(1)
         local args = {
             "1823601662:129038", -- todo
             vector.create(-187.9666290283203, -296.7759094238281, -406.39569091796875),
@@ -110,11 +116,12 @@ function dungeonWave()
         --autoRage()
         clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Toolbox.Hotbar["1823601662:214394"].ToggleAuto.Button)
     end
+    getgenv().Place = false
     repeat wait() until endGui.Visible == true
     task.wait(1)
     itemDrops.Visible = false
     endGui.Visible = true
-
+    getgenv().Active = false
     if endGui.Visible == true then
         if itemDrops.Visible == true then
             clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MessagesGui.FullScreen.Close.Button)
@@ -122,15 +129,27 @@ function dungeonWave()
         wait(1)
         if map.Text == "Forsaken Prison - Floor 10" then
             spawn(function()
-                while task.wait(1) do
-                    clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Lobby)
+                while getgenv().Active == false do
+                task.wait(1)
+                    --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Lobby)
+                    game:GetService("ReplicatedStorage")
+                    :WaitForChild("Modules")
+                    :WaitForChild("GlobalInit")
+                    :WaitForChild("RemoteEvents")
+                    :WaitForChild("PlayerVoteReturn"):FireServer()
                 end
             end)
         else
             print("Next")
             spawn(function()
-                while task.wait(1) do
-                    clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Continue)
+                while getgenv().Active == false do
+                task.wait(1)
+                    --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Continue)
+                    game:GetService("ReplicatedStorage")
+                    :WaitForChild("Modules")
+                    :WaitForChild("GlobalInit")
+                    :WaitForChild("RemoteEvents")
+                    :WaitForChild("PlayerVoteReplay"):FireServer()
                 end
             end)
         end
