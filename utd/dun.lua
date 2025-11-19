@@ -1,5 +1,7 @@
 repeat wait(4) until game:IsLoaded()
 local bulmaT = {}
+local plrs = game.Players
+local plrAmount = #plrs:GetPlayers()
 local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
 local wave = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.WaveIndex
 local twrs = workspace.EntityModels.Towers
@@ -46,7 +48,7 @@ function dungeonWave()
 	if wave.Text == "Wave 1/10" then
 
         spawn(function()
-        while getgenv().Place = true do
+        while getgenv().Place == true do
         task.wait(1)
         local args = {
             "1823601662:230016", --dante
@@ -71,30 +73,30 @@ function dungeonWave()
     repeat wait() until wave.Text == "Wave 2/10"
     if wave.Text == "Wave 2/10" then
         spawn(function()
-        while getgenv().Place = true do
-        task.wait(1)
-        local args = {
-            "1823601662:129038", -- todo
-            vector.create(-187.9666290283203, -296.7759094238281, -406.39569091796875),
-            0
-        }
-        game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
+        while getgenv().Place == true do
+            task.wait(1)
+            local args = {
+                "1823601662:129038", -- todo
+                vector.create(-187.9666290283203, -296.7759094238281, -406.39569091796875),
+                0
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
 
-        local args = {
-            "1823601662:228582",
-            vector.create(-146.5491943359375, -296.7837829589844, -391.651123046875), -- ulq
-            0
-        }
-        game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
-       local args = {
-            "1823601662:13421", --bb  1823601662:229949--ichi
-            vector.create(-172.46365356445312, -296.7765197753906, -405.2992858886719),
-            0
-        }
-        game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
-        --place ulq ichi
-        --max ulq
-        end    
+            local args = {
+                "1823601662:228582",
+                vector.create(-146.5491943359375, -296.7837829589844, -391.651123046875), -- ulq
+                0
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
+            local args = {
+                "1823601662:13421", --bb  1823601662:229949--ichi
+                vector.create(-172.46365356445312, -296.7765197753906, -405.2992858886719),
+                0
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
+            --place ulq ichi
+            --max ulq
+            end    
         end)
     end
     repeat wait() until wave.Text == "Wave 4/10"
@@ -127,34 +129,33 @@ function dungeonWave()
             clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MessagesGui.FullScreen.Close.Button)
         end
         wait(1)
-        if map.Text == "Forsaken Prison - Floor 10" then
-            spawn(function()
-                while getgenv().Active == false do
+        spawn(function()
+            while getgenv().Active == false do
+            task.wait(1)
+            if map.Text == "Forsaken Prison - Floor 10" and endGui.Visible == true then
+                --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Lobby)
+                print("return")
+                game:GetService("ReplicatedStorage"):WaitForChild("Modules")
+                :WaitForChild("GlobalInit"):WaitForChild("RemoteEvents")
+                :WaitForChild("PlayerRequestReturnLobby"):FireServer()
+            else
+                print("Next")
                 task.wait(1)
-                    --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Lobby)
-                    game:GetService("ReplicatedStorage")
-                    :WaitForChild("Modules")
-                    :WaitForChild("GlobalInit")
-                    :WaitForChild("RemoteEvents")
-                    :WaitForChild("PlayerVoteReturn"):FireServer()
-                end
-            end)
-        else
-            print("Next")
-            spawn(function()
-                while getgenv().Active == false do
-                task.wait(1)
-                    --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Continue)
-                    game:GetService("ReplicatedStorage")
-                    :WaitForChild("Modules")
-                    :WaitForChild("GlobalInit")
-                    :WaitForChild("RemoteEvents")
-                    :WaitForChild("PlayerVoteReplay"):FireServer()
-                end
-            end)
+                --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Continue)
+                game:GetService("ReplicatedStorage")
+                :WaitForChild("Modules")
+                :WaitForChild("GlobalInit")
+                :WaitForChild("RemoteEvents")
+                :WaitForChild("PlayerVoteReplay"):FireServer()
+            end
+        end)
+    end
+end
+if plrAmount == 1 then
+    while task.wait(1) do
+        if wave.Text == "Wave 0/10" then
+            dungeonWave()
         end
     end
 end
-startMatch()
-dungeonWave()
 print("dungeon auto Start")
