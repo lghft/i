@@ -44,7 +44,7 @@ end
 function dungeonWave()
     getgenv().Place = true
     getgenv().Active = true
-	print("dungeon auto Start")
+    print("dungeon auto Start")
     repeat wait() until wave.Text == "Wave 1/10" --1/20--1/10
 	if wave.Text == "Wave 1/10" then
 
@@ -156,8 +156,6 @@ if plrAmount == 1 then
     while task.wait(1) do
         if wave.Text == "Wave 0/10" then
             dungeonWave()
-			
         end
     end
 end
-
