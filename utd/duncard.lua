@@ -1,8 +1,7 @@
 repeat task.wait(0.25) until game:IsLoaded()
 
 local Players = game:GetService("Players")
-local GuiService = game:GetService("GuiService")
-local VIM = game:GetService("VirtualInputManager")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -10,26 +9,34 @@ local MainGui = PlayerGui:WaitForChild("MainGui")
 local ChallengeCardSelection = MainGui:WaitForChild("ChallengeCardSelection")
 local NormalChallengeList = ChallengeCardSelection:WaitForChild("NormalChallengeList")
 
+-- Remote to vote for a challenge card
+local VoteRemote = ReplicatedStorage
+    :WaitForChild("Modules")
+    :WaitForChild("GlobalInit")
+    :WaitForChild("RemoteEvents")
+    :WaitForChild("PlayerVoteForChallenge")
+
 -- Priority table
 local targetCards = {
-    { name = "Poison Immunity",        priority = 10 },
-    { name = "Bleed Immunity",         priority = 10 },
-    { name = "Burn Immunity",          priority = 10 },
-    { name = "Slow Immunity",          priority = 10 },
-    { name = "Timestop Immunity",      priority = 10 },
-    { name = "Single Placement Towers",priority = 10 },
-    { name = "No Selling",             priority = 10 },
-    { name = "No Refunds",             priority = 10 },
-    { name = "Useless Traits",         priority = 6  },
-    { name = "Double Boss Spawns",     priority = 6  },
-    { name = "Armored Enemies",        priority = 4  },
-    { name = "Healing Enemies",        priority = 8  },
-    { name = "Tank Enemies",           priority = 4  },
-    { name = "Explosive Enemies",      priority = 6  },
-    { name = "Stealth Enemies",        priority = 1  },
-    { name = "Elemental Enemies",      priority = 1  },
-    { name = "Degrading Towers",       priority = 0  },
-    { name = "Double Tower Costs",     priority = 1  },
+    { name = "Poison Immunity",           priority = 10 },
+    { name = "Bleed Immunity",            priority = 10 },
+    { name = "Burn Immunity",             priority = 10 },
+    { name = "Slow Immunity",             priority = 10 },
+    { name = "Timestop Immunity",         priority = 10 },
+    { name = "Farms give -50% Cash",      priority = 10 },
+    { name = "Single Placement Towers",   priority = 10 },
+    { name = "No Selling",                priority = 10 },
+    { name = "No Refunds",                priority = 10 },
+    { name = "Healing Enemies",           priority = 8  },
+    { name = "Useless Traits",            priority = 6  },
+    { name = "Double Boss Spawns",        priority = 6  },
+    { name = "Explosive Enemies",         priority = 6  },
+    { name = "Armored Enemies",           priority = 4  },
+    { name = "Tank Enemies",              priority = 4  },
+    { name = "Double Tower Costs",        priority = 1  },
+    { name = "Stealth Enemies",           priority = 1  },
+    { name = "Elemental Enemies",         priority = 1  },
+    { name = "Degrading Towers",          priority = 0  },
 }
 
 local avoidList = {
@@ -70,11 +77,8 @@ local function isAvoid(cardName)
     return avoidList[normalizeName(cardName)] == true
 end
 
--- Extract the display name and clickable instance from a card entry
+-- Extract the display name and cardNumber (from PathName.Parent.Parent.Parent.Name) from a card entry
 local function getCardInfo(cardFrame)
-    -- Expected structure:
-    -- cardFrame.CardSlot.Foreground.PathName.Text
-    -- Clickable target may be the cardFrame itself if ImageButton, or a descendant ImageButton
     if not cardFrame or not cardFrame:IsA("GuiObject") then
         return nil
     end
@@ -102,74 +106,33 @@ local function getCardInfo(cardFrame)
 
     local displayName = pathName.Text or cardFrame.Name
 
-    -- Find clickable target
-    local clickable = nil
-    if cardFrame:IsA("ImageButton") or cardFrame:IsA("TextButton") then
-        clickable = cardFrame
-    else
-        -- Search first ImageButton descendant
-        for _, d in ipairs(cardFrame:GetDescendants()) do
-            if d:IsA("ImageButton") or d:IsA("TextButton") then
-                clickable = d
-                break
-            end
-        end
-        -- Fall back to the slot if none found (will try click anyway)
-        if not clickable and slot:IsA("GuiObject") then
-            clickable = slot
-        end
+    -- Discover the cardNumber from the specified ancestry
+    local parent3 = pathName.Parent and pathName.Parent.Parent and pathName.Parent.Parent.Parent
+    local numberFromName = nil
+    if parent3 and parent3.Name then
+        numberFromName = tonumber(parent3.Name)
+    end
+
+    -- Only accept if we got a valid number for the remote
+    if not numberFromName then
+        return nil
     end
 
     return {
         name = displayName,
-        clickable = clickable,
+        cardNumber = numberFromName,
         frame = cardFrame,
         path = pathName,
     }
 end
 
-local function clickGuiObject(guiObj)
-    if not guiObj or not guiObj.Visible then
-        return false
-    end
-    -- Ensure full ancestry is visible
-    local ancestor = guiObj
-    while ancestor and ancestor ~= PlayerGui do
-        if ancestor:IsA("GuiObject") and ancestor.Visible == false then
-            return false
-        end
-        ancestor = ancestor.Parent
-    end
-
-    local insetTopLeft, insetBottomRight = GuiService:GetGuiInset()
-    local insetOffset = insetTopLeft - insetBottomRight
-
-    local absPos = guiObj.AbsolutePosition
-    local absSize = guiObj.AbsoluteSize
-    if not absPos or not absSize then
-        return false
-    end
-
-    local center = absPos + insetOffset + (absSize / 2)
-    local X = center.X
-    local Y = center.Y
-
-    VIM:SendMouseButtonEvent(X, Y, 0, true, game, 0)
-    task.wait(0.05)
-    VIM:SendMouseButtonEvent(X, Y, 0, false, game, 0)
-    return true
-end
-
-local selecting = false
-
 local function gatherCards()
     local listChildren = NormalChallengeList:GetChildren()
     local cards = {}
     for _, obj in ipairs(listChildren) do
-        -- Heuristic: accept Frames or ImageButtons that actually look like cards (have CardSlot/Foreground/PathName)
         if obj:IsA("Frame") or obj:IsA("ImageButton") or obj:IsA("TextButton") then
             local info = getCardInfo(obj)
-            if info and info.name and info.clickable then
+            if info and info.name and info.cardNumber then
                 table.insert(cards, info)
             end
         end
@@ -215,6 +178,17 @@ local function chooseBestCard(cards)
     return cards[math.random(1, #cards)]
 end
 
+local selecting = false
+
+local function voteCard(cardNumber)
+    if typeof(cardNumber) ~= "number" then return false end
+    -- Fire the remote with a single argument: the card index/number
+    local ok = pcall(function()
+        VoteRemote:FireServer(cardNumber)
+    end)
+    return ok
+end
+
 local function trySelectCard()
     if selecting then return end
     if not ChallengeCardSelection.Visible or not NormalChallengeList.Visible then
@@ -237,20 +211,10 @@ local function trySelectCard()
         return
     end
 
-    print("[CardSelect] Choosing:", chosen.name)
-    local clicked = clickGuiObject(chosen.clickable)
-    if not clicked then
-        warn("[CardSelect] Failed to click card:", chosen.name)
-        selecting = false
-        return
-    end
-
-    -- Optional: click a confirm button if your UI requires it
-    -- Adjust the path if there is a Confirm/Select button
-    local confirmBtn = ChallengeCardSelection:FindFirstChild("ConfirmButton", true)
-    if confirmBtn and confirmBtn:IsA("GuiObject") and confirmBtn.Visible then
-        task.wait(0.1)
-        clickGuiObject(confirmBtn)
+    print("[CardSelect] Voting for:", chosen.name, "(#", chosen.cardNumber, ")")
+    local ok = voteCard(chosen.cardNumber)
+    if not ok then
+        warn("[CardSelect] Failed to vote for card:", chosen.name, "(", tostring(chosen.cardNumber), ")")
     end
 
     selecting = false
