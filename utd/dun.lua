@@ -1,8 +1,8 @@
 repeat wait(4) until game:IsLoaded()
 print("hmm dun")
-local bulmaT = {}
 local plrs = game.Players
 local plrAmount = #plrs:GetPlayers()
+local bulmaT = {}
 local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
 local wave = game.Players.LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.WaveIndex
 local twrs = workspace.EntityModels.Towers
@@ -134,22 +134,23 @@ function dungeonWave()
         wait(1)
         spawn(function()
             while getgenv().Active == false do
-            task.wait(1)
-            if map.Text == "Forsaken Prison - Floor 10" and endGui.Visible == true then
-                --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Lobby)
-                print("return")
-                game:GetService("ReplicatedStorage"):WaitForChild("Modules")
-                :WaitForChild("GlobalInit"):WaitForChild("RemoteEvents")
-                :WaitForChild("PlayerRequestReturnLobby"):FireServer()
-            else
-                print("Next")
                 task.wait(1)
-                --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Continue)
-                game:GetService("ReplicatedStorage")
-                :WaitForChild("Modules")
-                :WaitForChild("GlobalInit")
-                :WaitForChild("RemoteEvents")
-                :WaitForChild("PlayerVoteReplay"):FireServer()
+                if map.Text == "Forsaken Prison - Floor 10" and endGui.Visible == true then
+                    --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Lobby)
+                    print("return")
+                    game:GetService("ReplicatedStorage"):WaitForChild("Modules")
+                    :WaitForChild("GlobalInit"):WaitForChild("RemoteEvents")
+                    :WaitForChild("PlayerRequestReturnLobby"):FireServer()
+                else
+                    print("Next")
+                    task.wait(1)
+                    --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Continue)
+                    game:GetService("ReplicatedStorage")
+                    :WaitForChild("Modules")
+                    :WaitForChild("GlobalInit")
+                    :WaitForChild("RemoteEvents")
+                    :WaitForChild("PlayerVoteReplay"):FireServer()
+                end
             end
         end)
     end
