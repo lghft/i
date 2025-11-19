@@ -155,7 +155,8 @@ if plrAmount == 1 then
     while task.wait(1) do
         if wave.Text == "Wave 0/10" then
             dungeonWave()
+			print("dungeon auto Start")
         end
     end
 end
-print("dungeon auto Start")
+
