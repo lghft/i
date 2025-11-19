@@ -1,5 +1,5 @@
 repeat task.wait(0.25) until game:IsLoaded()
-
+print("cardstuff")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
