@@ -1,4 +1,5 @@
 repeat wait(4) until game:IsLoaded()
+print("hmm dun")
 local bulmaT = {}
 local plrs = game.Players
 local plrAmount = #plrs:GetPlayers()
