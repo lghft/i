@@ -135,7 +135,7 @@ function dungeonWave()
         spawn(function()
             while getgenv().Active == false do
                 task.wait(1)
-                if map.Text == "Forsaken Prison - Floor 10" and endGui.Visible == true then
+                if map.Text == "Forsaken Prison - Floor 1" then
                     --clickButton(game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Lobby)
                     print("return")
                     game:GetService("ReplicatedStorage"):WaitForChild("Modules")
