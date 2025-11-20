@@ -35,7 +35,7 @@ local targetCards = {
     { name = "Tank Enemies",              priority = 4  },
     { name = "Double Tower Costs",        priority = 1  },
     { name = "Stealth Enemies",           priority = 1  },
-    { name = "Elemental Enemies",         priority = 1  },
+    { name = "Elemental Enemies",         priority = 0  },
     { name = "Degrading Towers",          priority = 0  },
 }
 
