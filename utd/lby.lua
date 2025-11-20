@@ -19,7 +19,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         char:MoveTo(etele.Position)
     elseif dtele and dun == true then
         local dunMap = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.MapName
-        if dunMap.Text == "Forsaken Prison - Floor 9" then
+        if dunMap.Text == "Forsaken Prison - Floor 10" dunMap.Text == "Forsaken Prison - Floor 9" or dunMap.Text == "Desolate Crypt - Floor 11" then
             game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerClaimDungeonReward"):FireServer()
             print("YESSS")
         end
