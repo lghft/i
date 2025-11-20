@@ -14,15 +14,17 @@ local stele = workspace.Lobby.ClassicPartyTeleporters.Teleporter2
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
 wait(5)
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrAmount < 2 then
-    print("=1")
+    print("=1 plr")
     if event == true then
         char:MoveTo(etele.Position)
     elseif dtele and dun == true then
+        task.wait()
         local dunMap = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.MapName
-        if dunMap.Text == "Forsaken Prison - Floor 10" dunMap.Text == "Forsaken Prison - Floor 9" or dunMap.Text == "Desolate Crypt - Floor 11" then
+        if dunMap.Text == "Forsaken Prison - Floor 10" or dunMap.Text == "Forsaken Prison - Floor 9" or dunMap.Text == "Desolate Crypt - Floor 11" then
             game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerClaimDungeonReward"):FireServer()
-            print("YESSS")
+            print("YESSS Collected...")
         end
+        task.wait()
         print("=1 dun")
         char.PrimaryPart.CFrame = CFrame.new(-17.5384903, 10.3119678, 3940.68262, -0.766061664, 0, 0.642767608, 0, 1, 0, -0.642767608, 0, -0.766061664)
         --char:MoveTo()
