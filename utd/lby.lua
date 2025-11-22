@@ -2,8 +2,8 @@ print("lby?")
 repeat wait(5) until game:IsLoaded()
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.LoadingScreen.Visible == false
 print("Lby Loaded! \r yeah")
-local dun = true
-local event = false
+local dun = false
+local event = true
 local story = false
 local char = game.Players.LocalPlayer.Character
 local Players = game:GetService('Players')
