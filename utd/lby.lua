@@ -2,9 +2,7 @@ print("lby?")
 repeat wait(5) until game:IsLoaded()
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.LoadingScreen.Visible == false
 print("Lby Loaded! \r yeah")
-local dun = true
-local event = false
-local story = false
+
 local char = game.Players.LocalPlayer.Character
 local Players = game:GetService('Players')
 local plrAmount = #Players:GetPlayers()
@@ -15,9 +13,9 @@ local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Mai
 wait(5)
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrAmount < 2 then
     print("=1 plr")
-    if event == true then
+    if getgenv().Active == "event" then
         char:MoveTo(etele.Position)
-    elseif dtele and dun == true then
+    elseif dtele and getgenv().Active == "dun" then
         task.wait()
         local dunMap = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.MapName
         if dunMap.Text == "Forsaken Prison - Floor 10" or dunMap.Text == "Forsaken Prison - Floor 9" or dunMap.Text == "Desolate Crypt - Floor 11" then
@@ -35,7 +33,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         local strt = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.StartButton
         firesignal(strt.Activated)
         clickButton(strt)
-    elseif stele and story == true then
+    elseif stele and getgenv().Active == "story" then
         print("=1 story")
         wait()
         char.PrimaryPart.CFrame = CFrame.new(-269, 34, -135)
