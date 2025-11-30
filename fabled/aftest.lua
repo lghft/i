@@ -1,15 +1,17 @@
 --[[
-    Roblox Autofarm Script with GUI and robust config
-    - Fixes config file reading (preserves existing values, fills missing keys, avoids overwriting on read errors)
-    - Adds Orbit toggle (default OFF). When OFF: hover above enemy and look down (top-down). When ON: orbit around enemy.
-    - Keeps autofarm and autospell running across death/respawn by re-binding character parts.
-    - Removed dodging logic related to Hitbox/indicator entirely.
+    Roblox Autofarm Script
+    - Robust config read/write (no default-only issue)
+    - Orbit toggle (default OFF) placed under Autospell; when OFF: top-down hover
+    - Persist across death/respawn
+    - Remove dodge/hitbox logic
+    - Anti-fling stabilization similar to sbtdAutoKarate.lua
+    - Draggable GUI
+    - Karate-style traveling (hybrid velocity steering + micro tweens + waypoint hops)
 
-    Synapse config path: /fabledAutoTest/config.json
-    Place as a LocalScript (e.g., StarterPlayerScripts)
---]]
+    Drop-in path: /other/fabled leg/eneMac.lua
+]]
 
--- Synapse X file functions
+-- Synapse X file functions (assumed environment)
 local writefile = writefile
 local readfile = readfile
 local isfile = isfile
@@ -18,13 +20,14 @@ local isfolder = isfolder
 
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local PathfindingService = game:GetService("PathfindingService")
 
 local player = Players.LocalPlayer
 
+-- ============================ Config ============================
 local CONFIG_FOLDER = "fabledAutoTest"
 local CONFIG_PATH = CONFIG_FOLDER.."/config.json"
 
@@ -34,7 +37,7 @@ local DEFAULT_CONFIG = {
     heightAboveEnemy = 10,
     orbitRadius = 6,
     orbitSpeed = 1.5,
-    orbitEnabled = false, -- new option
+    orbitEnabled = false, -- default OFF
 }
 
 local function deepCopy(tbl)
@@ -46,7 +49,6 @@ local function deepCopy(tbl)
 end
 
 local function mergeDefaults(parsed, defaults)
-    -- Merge defaults into parsed in-place for missing keys only.
     for k, v in pairs(defaults) do
         if parsed[k] == nil then
             parsed[k] = v
@@ -56,355 +58,556 @@ local function mergeDefaults(parsed, defaults)
 end
 
 local function atomicWrite(path, content)
-    -- Best-effort atomic save: write to temp then replace
     local tmp = path..".tmp"
-    local ok1, err1 = pcall(writefile, tmp, content)
-    if ok1 then
-        -- overwrite real file
+    local ok = pcall(writefile, tmp, content)
+    if ok then
         pcall(writefile, path, content)
     else
-        -- fallback to direct write
         pcall(writefile, path, content)
     end
 end
 
 local function saveConfig(config)
-    local ok, json = pcall(function()
-        return HttpService:JSONEncode(config)
-    end)
-    if ok and json then
-        atomicWrite(CONFIG_PATH, json)
-    end
+    local ok, json = pcall(HttpService.JSONEncode, HttpService, config)
+    if ok and json then atomicWrite(CONFIG_PATH, json) end
 end
 
 local function loadConfig()
-    if not isfolder(CONFIG_FOLDER) then
-        pcall(makefolder, CONFIG_FOLDER)
-    end
-
+    if not isfolder(CONFIG_FOLDER) then pcall(makefolder, CONFIG_FOLDER) end
     if not isfile(CONFIG_PATH) then
         local cfg = deepCopy(DEFAULT_CONFIG)
         saveConfig(cfg)
         return cfg
     end
-
     local okRead, data = pcall(readfile, CONFIG_PATH)
     if not okRead or type(data) ~= "string" or #data == 0 then
-        -- Do not overwrite user's bad file immediately; use defaults in-memory and save a merged fixed file
         local cfg = deepCopy(DEFAULT_CONFIG)
         saveConfig(cfg)
         return cfg
     end
-
-    local okParse, parsed = pcall(function()
-        return HttpService:JSONDecode(data)
-    end)
-
+    local okParse, parsed = pcall(HttpService.JSONDecode, HttpService, data)
     if not okParse or type(parsed) ~= "table" then
-        -- Keep user's file content by creating a fixed default config alongside (but overwrite to get script working)
         local cfg = deepCopy(DEFAULT_CONFIG)
         saveConfig(cfg)
         return cfg
     end
-
-    -- Merge missing keys without clobbering existing ones
     local merged = mergeDefaults(parsed, DEFAULT_CONFIG)
-
-    -- Save back only if something changed (missing keys were filled)
     local needSave = false
-    for k, v in pairs(DEFAULT_CONFIG) do
-        if parsed[k] == nil then
-            needSave = true
-            break
-        end
+    for k, _ in pairs(DEFAULT_CONFIG) do
+        if parsed[k] == nil then needSave = true break end
     end
-    if needSave then
-        saveConfig(merged)
-    end
-
+    if needSave then saveConfig(merged) end
     return merged
 end
 
--- Load config at start
 local config = loadConfig()
 
--- Services/objects that depend on character; we will rebind on respawn
-local character
-local humanoid
-local humanoidRootPart
+-- ====================== Character Bindings ======================
+local character, humanoid, root
+local currentTweens = {}
+
+local function stopAllTweens()
+    for twe, _ in pairs(currentTweens) do
+        pcall(function()
+            twe:Cancel()
+        end)
+    end
+    currentTweens = {}
+end
 
 local function bindCharacter(char)
     character = char
     humanoid = character:WaitForChild("Humanoid")
-    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    root = character:WaitForChild("HumanoidRootPart")
 end
 
--- Initial bind (handles if character not ready yet)
 bindCharacter(player.Character or player.CharacterAdded:Wait())
-
--- Rebind on respawn and keep loops running
 player.CharacterAdded:Connect(function(char)
     bindCharacter(char)
+    -- small delay to ensure physics is stable then defling
+    task.delay(0.1, function()
+        if root then
+            -- brief stabilization after respawn
+            local _ = nil
+        end
+    end)
 end)
 
--- Game objects
-local enemiesFolder = Workspace:WaitForChild("Enemies")
-
--- Spells
-local SPELLS = {"Q", "E"}
-local SPELL_INTERVAL = 1 -- seconds between spell casts
-local TELEPORT_TIME = 0.5 -- seconds for tween teleport
-
--- Health thresholds
-local SAFE_HEALTH_THRESHOLD = 0.50
-local LOW_HEALTH_THRESHOLD = 0.45
-
--- Temp platform settings
-local TEMP_PLATFORM_SIZE = Vector3.new(12, 1, 12)
-local TEMP_PLATFORM_OFFSET = Vector3.new(0, 50, 0) -- 50 studs above current position
-
--- State (from config)
-local autofarmActive = config.autofarmActive
-local autospellActive = config.autospellActive
-local heightAboveEnemy = config.heightAboveEnemy
-local orbitRadius = config.orbitRadius
-local orbitSpeed = config.orbitSpeed
-local orbitEnabled = config.orbitEnabled -- new
-
--- GUI Setup
+-- ============================ GUI ==============================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutofarmGUI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 250, 0, 335)
+frame.Size = UDim2.new(0, 260, 0, 345)
 frame.Position = UDim2.new(0, 20, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.Parent = screenGui
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 0, 0, 0)
+title.Size = UDim2.new(1, -40, 0, 32)
+title.Position = UDim2.new(0, 10, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "Autofarm Controls"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 20
+title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = frame
 
-local autofarmToggle = Instance.new("TextButton")
-autofarmToggle.Size = UDim2.new(0, 110, 0, 30)
-autofarmToggle.Position = UDim2.new(0, 10, 0, 40)
-autofarmToggle.BackgroundColor3 = autofarmActive and Color3.fromRGB(50, 100, 50) or Color3.fromRGB(100, 50, 50)
-autofarmToggle.Text = "Autofarm: " .. (autofarmActive and "ON" or "OFF")
-autofarmToggle.TextColor3 = Color3.new(1,1,1)
-autofarmToggle.Font = Enum.Font.SourceSans
-autofarmToggle.TextSize = 18
-autofarmToggle.Parent = frame
+-- Drag handle on title bar
+do
+    local dragging = false
+    local dragStart, startPos
+    local inputConn, renderConn
 
-local autospellToggle = Instance.new("TextButton")
-autospellToggle.Size = UDim2.new(0, 110, 0, 30)
-autospellToggle.Position = UDim2.new(0, 130, 0, 40)
-autospellToggle.BackgroundColor3 = autospellActive and Color3.fromRGB(50, 50, 100) or Color3.fromRGB(100, 50, 50)
-autospellToggle.Text = "Autospell: " .. (autospellActive and "ON" or "OFF")
-autospellToggle.TextColor3 = Color3.new(1,1,1)
-autospellToggle.Font = Enum.Font.SourceSans
-autospellToggle.TextSize = 18
-autospellToggle.Parent = frame
+    local function update(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
 
--- Orbit toggle (placed under Autospell as requested)
-local orbitToggle = Instance.new("TextButton")
-orbitToggle.Size = UDim2.new(0, 230, 0, 30)
-orbitToggle.Position = UDim2.new(0, 10, 0, 80)
-orbitToggle.BackgroundColor3 = orbitEnabled and Color3.fromRGB(50, 100, 50) or Color3.fromRGB(100, 50, 50)
-orbitToggle.Text = "Orbit: " .. (orbitEnabled and "ON" or "OFF")
-orbitToggle.TextColor3 = Color3.new(1,1,1)
-orbitToggle.Font = Enum.Font.SourceSans
-orbitToggle.TextSize = 18
-orbitToggle.Parent = frame
+    title.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
 
-local heightLabel = Instance.new("TextLabel")
-heightLabel.Size = UDim2.new(0, 120, 0, 25)
-heightLabel.Position = UDim2.new(0, 10, 0, 120)
-heightLabel.BackgroundTransparency = 1
-heightLabel.Text = "Height Above Enemy:"
-heightLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-heightLabel.Font = Enum.Font.SourceSans
-heightLabel.TextSize = 16
-heightLabel.TextXAlignment = Enum.TextXAlignment.Left
-heightLabel.Parent = frame
+            inputConn = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    if renderConn then renderConn:Disconnect() renderConn = nil end
+                    if inputConn then inputConn:Disconnect() inputConn = nil end
+                end
+            end)
 
-local heightBox = Instance.new("TextBox")
-heightBox.Size = UDim2.new(0, 50, 0, 25)
-heightBox.Position = UDim2.new(0, 140, 0, 120)
-heightBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-heightBox.Text = tostring(heightAboveEnemy)
-heightBox.TextColor3 = Color3.new(1,1,1)
-heightBox.Font = Enum.Font.SourceSans
-heightBox.TextSize = 16
-heightBox.ClearTextOnFocus = false
-heightBox.Parent = frame
+            renderConn = RunService.RenderStepped:Connect(function()
+                if dragging then
+                    local mouse = game:GetService("UserInputService"):GetMouseLocation()
+                    local fakeInput = { Position = mouse }
+                    update(fakeInput)
+                end
+            end)
+        end
+    end)
+end
 
-local orbitRadiusLabel = Instance.new("TextLabel")
-orbitRadiusLabel.Size = UDim2.new(0, 120, 0, 25)
-orbitRadiusLabel.Position = UDim2.new(0, 10, 0, 150)
-orbitRadiusLabel.BackgroundTransparency = 1
-orbitRadiusLabel.Text = "Orbit Radius:"
-orbitRadiusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-orbitRadiusLabel.Font = Enum.Font.SourceSans
-orbitRadiusLabel.TextSize = 16
-orbitRadiusLabel.TextXAlignment = Enum.TextXAlignment.Left
-orbitRadiusLabel.Parent = frame
-
-local orbitRadiusBox = Instance.new("TextBox")
-orbitRadiusBox.Size = UDim2.new(0, 50, 0, 25)
-orbitRadiusBox.Position = UDim2.new(0, 140, 0, 150)
-orbitRadiusBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-orbitRadiusBox.Text = tostring(orbitRadius)
-orbitRadiusBox.TextColor3 = Color3.new(1,1,1)
-orbitRadiusBox.Font = Enum.Font.SourceSans
-orbitRadiusBox.TextSize = 16
-orbitRadiusBox.ClearTextOnFocus = false
-orbitRadiusBox.Parent = frame
-
--- Orbit Speed Label and Box
-local orbitSpeedLabel = Instance.new("TextLabel")
-orbitSpeedLabel.Size = UDim2.new(0, 120, 0, 25)
-orbitSpeedLabel.Position = UDim2.new(0, 10, 0, 180)
-orbitSpeedLabel.BackgroundTransparency = 1
-orbitSpeedLabel.Text = "Orbit Speed:"
-orbitSpeedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-orbitSpeedLabel.Font = Enum.Font.SourceSans
-orbitSpeedLabel.TextSize = 16
-orbitSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-orbitSpeedLabel.Parent = frame
-
-local orbitSpeedBox = Instance.new("TextBox")
-orbitSpeedBox.Size = UDim2.new(0, 50, 0, 25)
-orbitSpeedBox.Position = UDim2.new(0, 140, 0, 180)
-orbitSpeedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-orbitSpeedBox.Text = tostring(orbitSpeed)
-orbitSpeedBox.TextColor3 = Color3.new(1,1,1)
-orbitSpeedBox.Font = Enum.Font.SourceSans
-orbitSpeedBox.TextSize = 16
-orbitSpeedBox.ClearTextOnFocus = false
-orbitSpeedBox.Parent = frame
-
-local statsLabel = Instance.new("TextLabel")
-statsLabel.Size = UDim2.new(1, -20, 0, 60)
-statsLabel.Position = UDim2.new(0, 10, 0, 215)
-statsLabel.BackgroundTransparency = 1
-statsLabel.Text = ""
-statsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-statsLabel.Font = Enum.Font.SourceSans
-statsLabel.TextSize = 16
-statsLabel.TextXAlignment = Enum.TextXAlignment.Left
-statsLabel.TextYAlignment = Enum.TextYAlignment.Top
-statsLabel.TextWrapped = true
-statsLabel.Parent = frame
-
-local healthStatusLabel = Instance.new("TextLabel")
-healthStatusLabel.Size = UDim2.new(1, -20, 0, 20)
-healthStatusLabel.Position = UDim2.new(0, 10, 0, 285)
-healthStatusLabel.BackgroundTransparency = 1
-healthStatusLabel.Text = ""
-healthStatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-healthStatusLabel.Font = Enum.Font.SourceSansBold
-healthStatusLabel.TextSize = 16
-healthStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-healthStatusLabel.Parent = frame
-
--- Open/Close GUI Button (right side)
 local openCloseBtn = Instance.new("TextButton")
-openCloseBtn.Size = UDim2.new(0, 40, 0, 40)
-openCloseBtn.Position = UDim2.new(1, -50, 0, 10)
-openCloseBtn.AnchorPoint = Vector2.new(0, 0)
+openCloseBtn.Size = UDim2.new(0, 32, 0, 32)
+openCloseBtn.Position = UDim2.new(1, -36, 0, 0)
 openCloseBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 openCloseBtn.Text = "⏷"
 openCloseBtn.TextColor3 = Color3.new(1,1,1)
 openCloseBtn.Font = Enum.Font.SourceSansBold
-openCloseBtn.TextSize = 28
-openCloseBtn.Parent = screenGui
+openCloseBtn.TextSize = 20
+openCloseBtn.Parent = frame
+
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, -20, 1, -44)
+content.Position = UDim2.new(0, 10, 0, 40)
+content.BackgroundTransparency = 1
+content.Parent = frame
 
 local guiOpen = true
 local function setGuiOpen(open)
     guiOpen = open
-    frame.Visible = open
+    for _, inst in ipairs(content:GetChildren()) do
+        inst.Visible = open
+    end
     openCloseBtn.Text = open and "⏷" or "⏶"
 end
+openCloseBtn.MouseButton1Click:Connect(function() setGuiOpen(not guiOpen) end)
 setGuiOpen(true)
-openCloseBtn.MouseButton1Click:Connect(function()
-    setGuiOpen(not guiOpen)
-end)
 
--- Player count restriction logic
-local function isSinglePlayer()
-    return #Players:GetPlayers() == 1
+-- Controls
+local function makeButton(text, pos, size)
+    local b = Instance.new("TextButton")
+    b.Size = size or UDim2.new(0, 110, 0, 30)
+    b.Position = pos
+    b.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    b.Text = text
+    b.TextColor3 = Color3.new(1,1,1)
+    b.Font = Enum.Font.SourceSans
+    b.TextSize = 18
+    b.Parent = content
+    return b
 end
 
-local function setTogglesInteractable(state)
-    autofarmToggle.AutoButtonColor = state
-    autofarmToggle.BackgroundColor3 = (autofarmActive and state) and Color3.fromRGB(50, 100, 50)
-        or (state and Color3.fromRGB(100, 50, 50) or Color3.fromRGB(60, 60, 60))
-    autospellToggle.AutoButtonColor = state
-    autospellToggle.BackgroundColor3 = (autospellActive and state) and Color3.fromRGB(50, 50, 100)
-        or (state and Color3.fromRGB(100, 50, 50) or Color3.fromRGB(60, 60, 60))
-    orbitToggle.AutoButtonColor = state
-    orbitToggle.BackgroundColor3 = (orbitEnabled and state) and Color3.fromRGB(50, 100, 50)
-        or (state and Color3.fromRGB(100, 50, 50) or Color3.fromRGB(60, 60, 60))
+local function makeLabel(text, pos)
+    local l = Instance.new("TextLabel")
+    l.Size = UDim2.new(0, 200, 0, 25)
+    l.Position = pos
+    l.BackgroundTransparency = 1
+    l.Text = text
+    l.TextColor3 = Color3.fromRGB(200, 200, 200)
+    l.Font = Enum.Font.SourceSans
+    l.TextSize = 16
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Parent = content
+    return l
+end
+
+local function makeBox(text, pos)
+    local t = Instance.new("TextBox")
+    t.Size = UDim2.new(0, 50, 0, 25)
+    t.Position = pos
+    t.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    t.Text = text
+    t.TextColor3 = Color3.new(1,1,1)
+    t.Font = Enum.Font.SourceSans
+    t.TextSize = 16
+    t.ClearTextOnFocus = false
+    t.Parent = content
+    return t
+end
+
+-- State from config
+local autofarmActive = config.autofarmActive
+local autospellActive = config.autospellActive
+local heightAboveEnemy = config.heightAboveEnemy
+local orbitRadius = config.orbitRadius
+local orbitSpeed = config.orbitSpeed
+local orbitEnabled = config.orbitEnabled
+
+local autofarmToggle = makeButton("Autofarm: " .. (autofarmActive and "ON" or "OFF"), UDim2.new(0, 0, 0, 0))
+local autospellToggle = makeButton("Autospell: " .. (autospellActive and "ON" or "OFF"), UDim2.new(0, 120, 0, 0))
+local orbitToggle = makeButton("Orbit: " .. (orbitEnabled and "ON" or "OFF"), UDim2.new(0, 0, 0, 40), UDim2.new(0, 230, 0, 30))
+
+local heightLabel = makeLabel("Height Above Enemy:", UDim2.new(0, 0, 0, 80))
+local heightBox = makeBox(tostring(heightAboveEnemy), UDim2.new(0, 150, 0, 80))
+
+local radiusLabel = makeLabel("Orbit Radius:", UDim2.new(0, 0, 0, 110))
+local radiusBox = makeBox(tostring(orbitRadius), UDim2.new(0, 150, 0, 110))
+
+local speedLabel = makeLabel("Orbit Speed:", UDim2.new(0, 0, 0, 140))
+local speedBox = makeBox(tostring(orbitSpeed), UDim2.new(0, 150, 0, 140))
+
+local infoLabel = makeLabel("", UDim2.new(0, 0, 0, 175))
+infoLabel.Size = UDim2.new(1, -10, 0, 50)
+
+local healthLabel = makeLabel("", UDim2.new(0, 0, 0, 230))
+healthLabel.TextColor3 = Color3.fromRGB(255, 120, 120)
+healthLabel.Font = Enum.Font.SourceSansBold
+
+-- Enable/disable interactivity if multiplayer
+local function isSinglePlayer() return #Players:GetPlayers() == 1 end
+local function refreshButtons()
+    local enabledColor = Color3.fromRGB(50, 100, 50)
+    local disabledColor = Color3.fromRGB(100, 50, 50)
+    autofarmToggle.BackgroundColor3 = autofarmActive and enabledColor or disabledColor
+    autospellToggle.BackgroundColor3 = autospellActive and Color3.fromRGB(50, 50, 100) or disabledColor
+    orbitToggle.BackgroundColor3 = orbitEnabled and enabledColor or disabledColor
 
     autofarmToggle.Text = "Autofarm: " .. (autofarmActive and "ON" or "OFF")
     autospellToggle.Text = "Autospell: " .. (autospellActive and "ON" or "OFF")
     orbitToggle.Text = "Orbit: " .. (orbitEnabled and "ON" or "OFF")
 end
+refreshButtons()
 
-local function setTextboxesInteractable(state)
-    heightBox.TextEditable = state
-    heightBox.BackgroundColor3 = state and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(60, 60, 60)
-    orbitRadiusBox.TextEditable = state
-    orbitRadiusBox.BackgroundColor3 = state and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(60, 60, 60)
-    orbitSpeedBox.TextEditable = state
-    orbitSpeedBox.BackgroundColor3 = state and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(60, 60, 60)
+-- ==================== Anti-Fling Utilities =====================
+local DEFling = {
+    DampTime = 0.55, -- seconds to damp velocities
+    PlatformTime = 0.25, -- portion of DampTime to hold PlatformStand true
+    LinearDecay = 0.85, -- per-frame multiplier
+    AngularDecay = 0.82, -- per-frame multiplier
+}
+
+local function deflingStabilize()
+    if not root or not humanoid then return end
+    stopAllTweens()
+
+    -- cache states
+    local oldPS = humanoid.PlatformStand
+    local start = tick()
+    humanoid.PlatformStand = true
+
+    -- zero network ownership spikes by nudging CFrame slightly
+    pcall(function()
+        root.CFrame = root.CFrame + Vector3.new(0, 0.001, 0)
+    end)
+
+    local con
+    con = RunService.Heartbeat:Connect(function(dt)
+        if not root then return end
+        -- smooth damp velocities
+        local lv = root.AssemblyLinearVelocity
+        local av = root.AssemblyAngularVelocity
+        root.AssemblyLinearVelocity = lv * math.clamp(DEFling.LinearDecay ^ (dt*60), 0, 1)
+        root.AssemblyAngularVelocity = av * math.clamp(DEFling.AngularDecay ^ (dt*60), 0, 1)
+
+        -- small clamp for safety
+        if root.AssemblyLinearVelocity.Magnitude < 0.5 then
+            root.AssemblyLinearVelocity = Vector3.new()
+        end
+        if root.AssemblyAngularVelocity.Magnitude < 0.5 then
+            root.AssemblyAngularVelocity = Vector3.new()
+        end
+
+        -- release PlatformStand after portion
+        if tick() - start > DEFling.PlatformTime then
+            humanoid.PlatformStand = false
+        end
+        if tick() - start > DEFling.DampTime then
+            con:Disconnect()
+        end
+    end)
+end
+
+-- ==================== Movement / Traveling =====================
+-- Hybrid travel like karate: frame-steered velocity with optional micro-tweens and Y lock.
+local Travel = {
+    MaxStep = 60,            -- max distance before using waypoints hops
+    SnapDist = 2.0,          -- snap when within this distance
+    MicroTweenTime = 0.12,   -- micro tween duration
+    HorizontalSpeed = 65,    -- studs/sec
+    VerticalFollow = true,
+    YSmooth = 12,            -- vertical smoothing towards target Y
+    WaypointStep = 55,       -- size of hops when far
+}
+
+local function microTween(cf, dur)
+    if not root then return end
+    local t = TweenService:Create(root, TweenInfo.new(dur, Enum.EasingStyle.Linear), { CFrame = cf })
+    currentTweens[t] = true
+    t:Play()
+    t.Completed:Wait()
+    currentTweens[t] = nil
+end
+
+local function steerTowards(pos, dt)
+    if not root then return end
+    local current = root.Position
+    local delta = pos - current
+    local horiz = Vector3.new(delta.X, 0, delta.Z)
+    local dir = horiz.Magnitude > 0 and horiz.Unit or Vector3.new()
+
+    -- horizontal steering
+    local desiredVel = dir * Travel.HorizontalSpeed
+    local newVel = Vector3.new(desiredVel.X, root.AssemblyLinearVelocity.Y, desiredVel.Z)
+
+    -- vertical smoothing to target height
+    if Travel.VerticalFollow then
+        local yVel = (pos.Y - current.Y) * math.clamp(Travel.YSmooth * dt, 0, 1) * 60 / 3
+        newVel = Vector3.new(newVel.X, yVel, newVel.Z)
+    end
+
+    root.AssemblyLinearVelocity = newVel
+    -- face target
+    if horiz.Magnitude > 0.1 then
+        root.CFrame = CFrame.new(current, current + Vector3.new(dir.X, 0, dir.Z))
+    end
+end
+
+local function karateTravelTo(targetPos, hover)
+    if not root then return end
+    -- Use waypoint hops if far
+    local pos0 = root.Position
+    local dist = (targetPos - pos0).Magnitude
+
+    local function runToPoint(pt)
+        local reached = false
+        local timeout = tick() + 6
+        while root and (root.Position - pt).Magnitude > Travel.SnapDist do
+            local dt = RunService.RenderStepped:Wait()
+            steerTowards(pt, dt)
+            if tick() > timeout then break end
+        end
+        -- micro snap to final CFrame (top-down look if hover)
+        local lookPoint = hover and (pt + Vector3.new(0, -1, 0)) or pt + Vector3.new(0, 0, -1)
+        microTween(CFrame.new(pt, lookPoint), Travel.MicroTweenTime)
+        reached = true
+        return reached
+    end
+
+    if dist > Travel.MaxStep then
+        -- hop in increments
+        local dirUnit = (targetPos - pos0).Unit
+        local steps = math.ceil(dist / Travel.WaypointStep)
+        for i = 1, steps do
+            local stepTarget
+            if i < steps then
+                stepTarget = pos0 + dirUnit * (i * Travel.WaypointStep)
+                -- preserve desired hover Y
+                stepTarget = Vector3.new(stepTarget.X, targetPos.Y, stepTarget.Z)
+            else
+                stepTarget = targetPos
+            end
+            runToPoint(stepTarget)
+        end
+    else
+        runToPoint(targetPos)
+    end
+end
+
+-- ===================== Enemy/Combat Logic ======================
+local enemiesFolder = Workspace:FindFirstChild("Enemies") or Workspace:WaitForChild("Enemies")
+
+local function getAliveEnemies()
+    local alive = {}
+    for _, m in ipairs(enemiesFolder:GetChildren()) do
+        local h = m:FindFirstChild("Humanoid")
+        local hrp = m:FindFirstChild("HumanoidRootPart")
+        if h and hrp and h.Health > 0 then table.insert(alive, m) end
+    end
+    return alive
+end
+
+local function getNearestEnemy()
+    if not root then return nil end
+    local nearest, dmin = nil, math.huge
+    for _, e in ipairs(getAliveEnemies()) do
+        local hrp = e.HumanoidRootPart
+        local d = (root.Position - hrp.Position).Magnitude
+        if d < dmin then dmin, nearest = d, e end
+    end
+    return nearest
+end
+
+-- ===================== Health and Platform =====================
+local SAFE_HEALTH_THRESHOLD = 0.50
+local LOW_HEALTH_THRESHOLD = 0.45
+
+local tempPlatform
+local TEMP_PLATFORM_SIZE = Vector3.new(12, 1, 12)
+local TEMP_PLATFORM_OFFSET = Vector3.new(0, 50, 0)
+
+local function createTempPlatform()
+    if tempPlatform and tempPlatform.Parent then return tempPlatform end
+    tempPlatform = Instance.new("Part")
+    tempPlatform.Name = "SafePlatform"
+    tempPlatform.Anchored = true
+    tempPlatform.CanCollide = true
+    tempPlatform.Transparency = 0.2
+    tempPlatform.Size = TEMP_PLATFORM_SIZE
+    tempPlatform.Color = Color3.fromRGB(100, 200, 255)
+    tempPlatform.Position = (root and (root.Position + TEMP_PLATFORM_OFFSET)) or Vector3.new(0, 200, 0)
+    tempPlatform.Parent = Workspace
+    return tempPlatform
+end
+
+local function removeTempPlatform()
+    if tempPlatform then tempPlatform:Destroy() tempPlatform = nil end
+end
+
+local function moveToTempPlatform()
+    if not root then return end
+    local platform = createTempPlatform()
+    local above = platform.Position + Vector3.new(0, 4, 0)
+    stopAllTweens()
+    root.CFrame = CFrame.new(above)
+end
+
+local function shouldPauseForHealth()
+    if not humanoid or humanoid.MaxHealth == 0 then return false end
+    return humanoid.Health / humanoid.MaxHealth < LOW_HEALTH_THRESHOLD
+end
+local function shouldResumeForHealth()
+    if not humanoid or humanoid.MaxHealth == 0 then return true end
+    return humanoid.Health / humanoid.MaxHealth > SAFE_HEALTH_THRESHOLD
+end
+
+-- ========================= Behavior ============================
+local SPELLS = {"Q", "E"}
+local SPELL_INTERVAL = 1
+
+local function tweenToCFrame(cf, duration)
+    if not root then return end
+    local t = TweenService:Create(root, TweenInfo.new(duration or 0.4, Enum.EasingStyle.Linear), { CFrame = cf })
+    currentTweens[t] = true
+    t:Play()
+    t.Completed:Wait()
+    currentTweens[t] = nil
+end
+
+-- Non-orbit behavior: hover above enemy and look straight down
+local function hoverTopDown(enemy, height)
+    while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 do
+        if not autofarmActive then break end
+        if not humanoid or not root then break end
+        local dt = RunService.RenderStepped:Wait()
+        local targetPos = enemy.HumanoidRootPart.Position + Vector3.new(0, height, 0)
+        -- karate travel steering style each frame
+        steerTowards(targetPos, dt)
+        -- fix orientation to look down when close
+        local dist = (root.Position - targetPos).Magnitude
+        if dist < 2.0 then
+            root.CFrame = CFrame.new(targetPos, targetPos + Vector3.new(0, -1, 0))
+        end
+    end
+end
+
+-- Orbit behavior
+local function orbitAroundEnemy(enemy, height, radius, speed)
+    if not root then return end
+    local angle = math.random() * math.pi * 2
+    while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 do
+        if not autofarmActive then break end
+        if not root then break end
+        local dt = RunService.RenderStepped:Wait()
+        angle += speed * dt
+        local base = enemy.HumanoidRootPart.Position
+        local offset = Vector3.new(math.cos(angle) * radius, height, math.sin(angle) * radius)
+        local targetPos = base + offset
+        steerTowards(targetPos, dt)
+        root.CFrame = CFrame.new(root.Position, base)
+    end
+end
+
+-- ======================= GUI Interaction =======================
+local function lockControls(lock)
+    local colorOff = Color3.fromRGB(60, 60, 60)
+    local function setBtn(b, enabled)
+        b.AutoButtonColor = enabled
+        if not enabled then b.BackgroundColor3 = colorOff end
+    end
+    local allow = isSinglePlayer() and not lock
+    setBtn(autofarmToggle, allow)
+    setBtn(autospellToggle, allow)
+    setBtn(orbitToggle, allow)
+    heightBox.TextEditable = allow
+    radiusBox.TextEditable = allow
+    speedBox.TextEditable = allow
 end
 
 local function enforceSinglePlayer()
     if isSinglePlayer() then
-        setTogglesInteractable(true)
-        setTextboxesInteractable(true)
-        healthStatusLabel.Text = ""
+        healthLabel.Text = ""
+        lockControls(false)
     else
-        -- Auto-disable toggles and lock them
-        autofarmActive = false
+        -- disable features in multiplayer
+        if autofarmActive then
+            autofarmActive = false
+            config.autofarmActive = false
+            saveConfig(config)
+            deflingStabilize()
+        end
         autospellActive = false
-        setTogglesInteractable(false)
-        setTextboxesInteractable(false)
-        healthStatusLabel.Text = "Disabled: More than 1 player in game!"
-        -- Save config with toggles off
-        config.autofarmActive = false
         config.autospellActive = false
         saveConfig(config)
+        refreshButtons()
+        lockControls(true)
+        healthLabel.Text = "Disabled in multi-player"
     end
 end
-
--- Initial enforce
 enforceSinglePlayer()
-
--- Listen for player join/leave
 Players.PlayerAdded:Connect(enforceSinglePlayer)
-Players.PlayerRemoving:Connect(function()
-    task.wait(0.1)
-    enforceSinglePlayer()
-end)
+Players.PlayerRemoving:Connect(function() task.wait(0.1) enforceSinglePlayer() end)
 
--- GUI Logic
 autofarmToggle.MouseButton1Click:Connect(function()
     if not isSinglePlayer() then return end
     autofarmActive = not autofarmActive
     config.autofarmActive = autofarmActive
     saveConfig(config)
-    setTogglesInteractable(true)
+    refreshButtons()
+    if not autofarmActive then
+        deflingStabilize()
+    end
 end)
 
 autospellToggle.MouseButton1Click:Connect(function()
@@ -412,7 +615,7 @@ autospellToggle.MouseButton1Click:Connect(function()
     autospellActive = not autospellActive
     config.autospellActive = autospellActive
     saveConfig(config)
-    setTogglesInteractable(true)
+    refreshButtons()
 end)
 
 orbitToggle.MouseButton1Click:Connect(function()
@@ -420,262 +623,109 @@ orbitToggle.MouseButton1Click:Connect(function()
     orbitEnabled = not orbitEnabled
     config.orbitEnabled = orbitEnabled
     saveConfig(config)
-    setTogglesInteractable(true)
+    refreshButtons()
 end)
 
 heightBox.FocusLost:Connect(function()
     if not isSinglePlayer() then
-        heightBox.Text = tostring(heightAboveEnemy)
-        return
+        heightBox.Text = tostring(heightAboveEnemy); return
     end
-    local val = tonumber(heightBox.Text)
-    if val and val >= 0 then
-        heightAboveEnemy = val
-        config.heightAboveEnemy = val
+    local v = tonumber(heightBox.Text)
+    if v and v >= 0 then
+        heightAboveEnemy = v
+        config.heightAboveEnemy = v
         saveConfig(config)
-        heightBox.Text = tostring(val)
-    else
-        heightBox.Text = tostring(heightAboveEnemy)
     end
+    heightBox.Text = tostring(heightAboveEnemy)
 end)
 
-orbitRadiusBox.FocusLost:Connect(function()
+radiusBox.FocusLost:Connect(function()
     if not isSinglePlayer() then
-        orbitRadiusBox.Text = tostring(orbitRadius)
-        return
+        radiusBox.Text = tostring(orbitRadius); return
     end
-    local val = tonumber(orbitRadiusBox.Text)
-    if val and val >= 1 then
-        orbitRadius = val
-        config.orbitRadius = val
+    local v = tonumber(radiusBox.Text)
+    if v and v >= 1 then
+        orbitRadius = v
+        config.orbitRadius = v
         saveConfig(config)
-        orbitRadiusBox.Text = tostring(val)
-    else
-        orbitRadiusBox.Text = tostring(orbitRadius)
     end
+    radiusBox.Text = tostring(orbitRadius)
 end)
 
-orbitSpeedBox.FocusLost:Connect(function()
+speedBox.FocusLost:Connect(function()
     if not isSinglePlayer() then
-        orbitSpeedBox.Text = tostring(orbitSpeed)
-        return
+        speedBox.Text = tostring(orbitSpeed); return
     end
-    local val = tonumber(orbitSpeedBox.Text)
-    if val and val > 0 then
-        orbitSpeed = val
-        config.orbitSpeed = val
+    local v = tonumber(speedBox.Text)
+    if v and v > 0 then
+        orbitSpeed = v
+        config.orbitSpeed = v
         saveConfig(config)
-        orbitSpeedBox.Text = tostring(val)
-    else
-        orbitSpeedBox.Text = tostring(orbitSpeed)
     end
+    speedBox.Text = tostring(orbitSpeed)
 end)
 
--- Helper functions
-local function getAliveEnemies()
-    local alive = {}
-    for _, enemy in ipairs(enemiesFolder:GetChildren()) do
-        if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy:FindFirstChild("HumanoidRootPart") then
-            if enemy.Humanoid.Health > 0 then
-                table.insert(alive, enemy)
-            end
-        end
-    end
-    return alive
-end
+-- ========================= Main Loops ==========================
+local currentTarget
+local pausedForHealth = false
 
-local function getNearestEnemy()
-    if not humanoidRootPart then return nil end
-    local alive = getAliveEnemies()
-    local nearest, minDist = nil, math.huge
-    for _, enemy in ipairs(alive) do
-        local dist = (humanoidRootPart.Position - enemy.HumanoidRootPart.Position).Magnitude
-        if dist < minDist then
-            minDist = dist
-            nearest = enemy
-        end
-    end
-    return nearest
-end
-
-local function tweenToCFrame(cf, duration)
-    if not humanoidRootPart then return end
-    humanoidRootPart.Anchored = false
-    local tween = TweenService:Create(
-        humanoidRootPart,
-        TweenInfo.new(duration or TELEPORT_TIME, Enum.EasingStyle.Linear),
-        { CFrame = cf }
-    )
-    tween:Play()
-    tween.Completed:Wait()
-end
-
-local function tweenAboveEnemy(enemy, height)
-    local enemyPos = enemy.HumanoidRootPart.Position
-    local cf = CFrame.new(enemyPos + Vector3.new(0, height, 0))
-    tweenToCFrame(cf, TELEPORT_TIME)
-end
-
--- Non-orbit behavior: hold above enemy and face downwards
-local function hoverTopDown(enemy, height)
-    -- We do not anchor permanently; just gently correct position and orientation
-    while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 do
-        if not autofarmActive then break end
-        if not humanoid or not humanoidRootPart then break end
-        -- Health pause handled outside
-        local enemyPos = enemy.HumanoidRootPart.Position + Vector3.new(0, height, 0)
-        -- Face straight downward (top-down look) while keeping position above enemy
-        -- Construct CFrame that looks downward; we can keep XZ orientation stable by using -Y vector
-        local lookDown = Vector3.new(0, -1, 0)
-        local currentPos = humanoidRootPart.Position
-        local moveNeeded = (currentPos - enemyPos).Magnitude > 1.5
-        if moveNeeded then
-            tweenToCFrame(CFrame.new(enemyPos, enemyPos + lookDown), 0.2)
-        else
-            -- Just adjust orientation to look down
-            humanoidRootPart.CFrame = CFrame.new(enemyPos, enemyPos + lookDown)
-        end
-        RunService.RenderStepped:Wait()
-    end
-end
-
--- Orbit logic
-local function orbitAroundEnemy(enemy, height, radius, speed)
-    if not humanoidRootPart then return end
-    local angle = math.random() * math.pi * 2
-    while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 do
-        if not autofarmActive then break end
-        if not humanoid or not humanoidRootPart then break end
-        local dt = RunService.RenderStepped:Wait()
-        angle = angle + speed * dt
-        local enemyPos = enemy.HumanoidRootPart.Position
-        local offset = Vector3.new(math.cos(angle) * radius, height, math.sin(angle) * radius)
-        local targetPos = enemyPos + offset
-        humanoidRootPart.CFrame = CFrame.new(targetPos, enemyPos)
-    end
-end
-
--- Temp platform logic
-local tempPlatform = nil
-local function createTempPlatform()
-    if tempPlatform and tempPlatform.Parent then return tempPlatform end
-    tempPlatform = Instance.new("Part")
-    tempPlatform.Name = "SafePlatform"
-    tempPlatform.Size = TEMP_PLATFORM_SIZE
-    tempPlatform.Anchored = true
-    tempPlatform.CanCollide = true
-    tempPlatform.Transparency = 0.2
-    tempPlatform.Color = Color3.fromRGB(100, 200, 255)
-    tempPlatform.Position = humanoidRootPart and (humanoidRootPart.Position + TEMP_PLATFORM_OFFSET) or Vector3.new(0, 200, 0)
-    tempPlatform.Parent = Workspace
-    return tempPlatform
-end
-
-local function removeTempPlatform()
-    if tempPlatform and tempPlatform.Parent then
-        tempPlatform:Destroy()
-        tempPlatform = nil
-    end
-end
-
-local function moveToTempPlatform()
-    if not humanoidRootPart then return end
-    local platform = createTempPlatform()
-    local above = platform.Position + Vector3.new(0, 4, 0)
-    humanoidRootPart.Anchored = false
-    humanoidRootPart.CFrame = CFrame.new(above)
-end
-
--- Health monitor flags
-local autofarmPausedForHealth = false
-
-local function shouldPauseForHealth()
-    if not humanoid or not humanoid.MaxHealth or humanoid.MaxHealth == 0 then return false end
-    return humanoid.Health / humanoid.MaxHealth < LOW_HEALTH_THRESHOLD
-end
-
-local function shouldResumeForHealth()
-    if not humanoid or not humanoid.MaxHealth or humanoid.MaxHealth == 0 then return true end
-    return humanoid.Health / humanoid.MaxHealth > SAFE_HEALTH_THRESHOLD
-end
-
--- Autofarm loop
-local currentTarget = nil
+-- Autofarm main
 task.spawn(function()
     while true do
-        -- Rebind guards (in case character became nil between respawns)
-        if not character or not character.Parent then
-            -- Wait for character added handled via event; small delay to avoid busy loop
+        if not root or not humanoid then
             task.wait(0.2)
-        end
-
-        -- Health check
-        if shouldPauseForHealth() and not autofarmPausedForHealth then
-            autofarmPausedForHealth = true
-            healthStatusLabel.Text = "Low HP! Waiting to heal..."
-            moveToTempPlatform()
-        end
-
-        while autofarmPausedForHealth do
-            moveToTempPlatform()
-            if shouldResumeForHealth() then
-                autofarmPausedForHealth = false
-                healthStatusLabel.Text = ""
-                removeTempPlatform()
+        else
+            if shouldPauseForHealth() and not pausedForHealth then
+                pausedForHealth = true
+                healthLabel.Text = "Low HP! Healing..."
+                moveToTempPlatform()
             end
-            task.wait(0.5)
-        end
 
-        if autofarmActive and isSinglePlayer() then
-            local enemy = getNearestEnemy()
-            currentTarget = enemy
-            if enemy and humanoidRootPart then
-                tweenAboveEnemy(enemy, heightAboveEnemy)
-                -- gently approach above point
-                while enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not autofarmPausedForHealth and isSinglePlayer() do
-                    if shouldPauseForHealth() then
-                        autofarmPausedForHealth = true
-                        healthStatusLabel.Text = "Low HP! Waiting to heal..."
-                        moveToTempPlatform()
-                        break
-                    end
-                    if not humanoidRootPart then break end
-                    local targetPos = enemy.HumanoidRootPart.Position + Vector3.new(0, heightAboveEnemy, 0)
-                    local dist = (humanoidRootPart.Position - targetPos).Magnitude
-                    if dist <= 1.5 then
-                        break
-                    end
-                    tweenToCFrame(CFrame.new(targetPos), 0.2)
-                    task.wait(0.2)
+            while pausedForHealth do
+                moveToTempPlatform()
+                if shouldResumeForHealth() then
+                    pausedForHealth = false
+                    healthLabel.Text = ""
+                    removeTempPlatform()
+                    deflingStabilize()
                 end
+                task.wait(0.25)
+            end
 
-                if enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not autofarmPausedForHealth and isSinglePlayer() then
-                    if orbitEnabled then
-                        orbitAroundEnemy(enemy, heightAboveEnemy, orbitRadius, orbitSpeed)
-                    else
-                        hoverTopDown(enemy, heightAboveEnemy)
+            if autofarmActive and isSinglePlayer() then
+                local enemy = getNearestEnemy()
+                currentTarget = enemy
+                if enemy then
+                    local goal = enemy.HumanoidRootPart.Position + Vector3.new(0, heightAboveEnemy, 0)
+                    karateTravelTo(goal, true)
+
+                    if enemy and enemy.Parent == enemiesFolder and enemy.Humanoid.Health > 0 and autofarmActive and not pausedForHealth then
+                        if orbitEnabled then
+                            orbitAroundEnemy(enemy, heightAboveEnemy, orbitRadius, orbitSpeed)
+                        else
+                            hoverTopDown(enemy, heightAboveEnemy)
+                        end
                     end
+                else
+                    task.wait(0.4)
                 end
             else
-                task.wait(0.5)
+                currentTarget = nil
+                task.wait(0.4)
             end
-        else
-            currentTarget = nil
-            task.wait(0.5)
         end
     end
 end)
 
--- Auto spell loop (persists across respawn)
+-- Auto spells
 task.spawn(function()
+    local RS = game:GetService("ReplicatedStorage")
+    local remote = RS:FindFirstChild("useSpell")
     while true do
-        if autospellActive and not autofarmPausedForHealth and isSinglePlayer() then
-            for _, spell in ipairs(SPELLS) do
-                if autospellActive and not autofarmPausedForHealth and isSinglePlayer() then
-                    pcall(function()
-                        ReplicatedStorage:WaitForChild("useSpell"):FireServer(spell)
-                    end)
-                end
+        if autospellActive and remote and isSinglePlayer() and not pausedForHealth then
+            for _, key in ipairs(SPELLS) do
+                if not autospellActive or pausedForHealth then break end
+                pcall(function() remote:FireServer(key) end)
                 task.wait(SPELL_INTERVAL)
             end
         else
@@ -684,20 +734,28 @@ task.spawn(function()
     end
 end)
 
--- Stats update loop
+-- Stats update
 task.spawn(function()
     while true do
         local targetName = currentTarget and currentTarget.Name or "None"
-        statsLabel.Text = string.format(
-            "Target: %s\nAutofarm: %s\nAutospell: %s\nOrbit: %s\nHeight: %d\nOrbit Radius: %d\nOrbit Speed: %.2f",
+        infoLabel.Text = string.format(
+            "Target: %s\nAutofarm: %s | Autospell: %s | Orbit: %s\nHeight:%d Rad:%d Speed:%.2f",
             targetName,
             autofarmActive and "ON" or "OFF",
             autospellActive and "ON" or "OFF",
             orbitEnabled and "ON" or "OFF",
-            heightAboveEnemy,
-            orbitRadius,
-            orbitSpeed
+            heightAboveEnemy, orbitRadius, orbitSpeed
         )
         task.wait(0.2)
     end
+end)
+
+-- Safety: also defling when toggling orbit states rapidly
+orbitToggle.MouseButton1Click:Connect(function()
+    if not autofarmActive then deflingStabilize() end
+end)
+
+-- On respawn finalization defling
+player.CharacterAdded:Connect(function()
+    task.delay(0.2, deflingStabilize)
 end)
