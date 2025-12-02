@@ -6,15 +6,18 @@ print("Lby Loaded! \r yeah")
 local char = game.Players.LocalPlayer.Character
 local Players = game:GetService('Players')
 local plrAmount = #Players:GetPlayers()
-local etele = workspace.Lobby.AnniversaryLobby.EventTeleporters:GetChildren()[4]["Cylinder.119"].VFX.hitbox
+local eHtele = workspace.Lobby.AnniversaryLobby.EventTeleporters:GetChildren()[4]["Cylinder.119"].VFX.hitbox
+local eRtele = workspace.Lobby.AnniversaryLobby.EventTeleporters.BossTeleporter["Cylinder.119"].VFX.hitbox
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter2.Part
 local stele = workspace.Lobby.ClassicPartyTeleporters.Teleporter2
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
 wait(5)
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrAmount < 2 then
     print("=1 plr")
-    if getgenv().Active == "event" then
-        char:MoveTo(etele.Position)
+    if getgenv().Active == "eventhard" then
+        char:MoveTo(eHtele.Position)
+    elseif getgenv().Active == "eventRaid" then
+        char:MoveTo(eRtele.Position)
     elseif dtele and getgenv().Active == "dun" then
         task.wait()
         local dunMap = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.MapName
