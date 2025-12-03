@@ -8,7 +8,7 @@ local Players = game:GetService('Players')
 local plrAmount = #Players:GetPlayers()
 local eHtele = workspace.Lobby.AnniversaryLobby.EventTeleporters:GetChildren()[4]["Cylinder.119"].VFX.hitbox
 local eRtele = workspace.Lobby.AnniversaryLobby.EventTeleporters.BossTeleporter["Cylinder.119"].VFX.hitbox
-local dtele = workspace.Lobby.DungeonTeleporters.Teleporter2.Part
+local dtele = workspace.Lobby.DungeonTeleporters.Teleporter1.Teleport.DisplayPart
 local stele = workspace.Lobby.ClassicPartyTeleporters.Teleporter2
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
 wait()
@@ -28,7 +28,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         task.wait()
         print("=1 dun")
         wait()
-        char.PrimaryPart.CFrame = CFrame.new(-17.5384903, 10.3119678, 3940.68262, -0.766061664, 0, 0.642767608, 0, 1, 0, -0.642767608, 0, -0.766061664)
+        char.PrimaryPart.CFrame = CFrame.new(43.3874359, -23.1395016, 4058.01099, -0.766061664, 0, 0.642767608, 0, 1, 0, -0.642767608, 0, -0.766061664)
         char:MoveTo(dtele.Position)
         repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.Visible == true
         local hard = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.HardcoreButton
