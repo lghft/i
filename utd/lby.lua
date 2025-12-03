@@ -1,5 +1,5 @@
 print("lby?")
-repeat wait(5) until game:IsLoaded()
+repeat wait(4) until game:IsLoaded()
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.LoadingScreen.Visible == false
 print("Lby Loaded! \r yeah")
 
@@ -11,7 +11,7 @@ local eRtele = workspace.Lobby.AnniversaryLobby.EventTeleporters.BossTeleporter[
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter2.Part
 local stele = workspace.Lobby.ClassicPartyTeleporters.Teleporter2
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
-wait(5)
+wait(2)
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrAmount < 2 then
     print("=1 plr")
     if getgenv().Active == "eventhard" then
