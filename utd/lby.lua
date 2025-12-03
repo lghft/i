@@ -29,7 +29,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         print("=1 dun")
         wait()
         char.PrimaryPart.CFrame = CFrame.new(43.3874359, -23.1395016, 4058.01099, -0.766061664, 0, 0.642767608, 0, 1, 0, -0.642767608, 0, -0.766061664)
-        char:MoveTo(dtele.Position)
+        --char:MoveTo(dtele.Position)
         repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.Visible == true
         local hard = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.HardcoreButton
         firesignal(hard.Activated)
