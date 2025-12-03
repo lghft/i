@@ -157,7 +157,7 @@ function autoHallow()--hallow 2025
     end
     task.spawn(function()
         while getgenv().Ability == true do
-            task.wait(4)
+            task.wait(0.1)
             for _,v in pairs(workspace.EntityModels.Towers:GetDescendants()) do
                 if v.Name == "rukia-sword" then
                     useAbility(v.Parent)
@@ -311,7 +311,7 @@ function autoAnniHard() -- anniversary 2025
     end
     task.spawn(function()
         while getgenv().Ability == true do
-            task.wait(4)
+            task.wait(1)
             for _,v in pairs(workspace.EntityModels.Towers:GetDescendants()) do
                 if v.Name == "rukia-sword" then
                     useAbility(v.Parent)
@@ -392,6 +392,7 @@ function autoAnniRaid()
     getgenv().Active = true
     getgenv().Active2 = true
     getgenv().Place = true 
+    getgenv().Ability = true
     getgenv().Sacrifice = true
     getgenv().Sacrifice2 = true
     getgenv().dragos = true
@@ -570,6 +571,7 @@ function autoAnniRaid()
             if allMaxed then
                 print("All priority units are fully upgraded!")
                 getgenv().Active2 = false
+                break
             end
 
             task.wait(1) -- small delay before next full check
@@ -609,7 +611,7 @@ function autoAnniRaid()
     end
     
     --turn off around wave 14
-    repeat wait() until wave.Text == "Wave 11/30"
+    repeat wait() until wave.Text == "Wave 12/30"
     --toggle skip off
     getgenv().Skip = false
     if autoskipCheck.Visible == true then
@@ -623,6 +625,16 @@ function autoAnniRaid()
                     if v.SpecialMesh.TextureId == "rbxassetid://121927500929396" then
                         useAbility(v.Parent)
                     end
+                end
+            end
+        end
+    end)
+    task.spawn(function()--rukia ability2
+        while getgenv().Ability == true do
+            task.wait(0.1)
+            for _,v in pairs(workspace.EntityModels.Towers:GetDescendants()) do
+                if v.Name == "rukia-sword" then
+                    useAbility(v.Parent)
                 end
             end
         end
