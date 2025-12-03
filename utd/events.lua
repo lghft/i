@@ -629,6 +629,10 @@ function autoAnniRaid()
     end)
     repeat wait() until wave.Text == "Wave 20/30"
     getgenv().Active = true
+    wait(4)
+    if autoskipCheck.Visible == false then
+        firesignal(autoskipBtn.Activated)
+    end
     --[[
     for _,v in pairs(workspace.EntityModels.Towers:GetChildren()) do
         if v:IsA("Model") then
@@ -648,9 +652,7 @@ function autoAnniRaid()
     ]]
 
     repeat wait() until wave.Text == "Wave 21/30"
-    if autoskipCheck.Visible == false then
-        firesignal(autoskipBtn.Activated)
-    end
+    
     task.spawn(function() --aizen ability
         task.wait(4)
         for _,v in pairs(workspace.EntityModels.Towers:GetDescendants()) do
@@ -677,19 +679,9 @@ function autoAnniRaid()
         getgenv().Sacrifice = false
 
         task.wait()
-        if endGui.Continue.Visible == true then
-            game:GetService("ReplicatedStorage")
-            :WaitForChild("Modules")
-            :WaitForChild("GlobalInit")
-            :WaitForChild("RemoteEvents")
-            :WaitForChild("PlayerVoteReplay"):FireServer()
-        elseif endGui.Visible == false then
-            game:GetService("ReplicatedStorage")
-            :WaitForChild("Modules")
-            :WaitForChild("GlobalInit")
-            :WaitForChild("RemoteEvents")
-            :WaitForChild("PlayerVoteReturn"):FireServer()
-        end
+        game:GetService("ReplicatedStorage"):WaitForChild("Modules")
+        :WaitForChild("GlobalInit"):WaitForChild("RemoteEvents")
+        :WaitForChild("PlayerRequestReturnLobby"):FireServer()
     end
 end
 
