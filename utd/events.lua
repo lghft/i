@@ -1,4 +1,5 @@
-repeat wait(4) until game:IsLoaded()
+repeat wait(1) until game:IsLoaded()
+repeat wait(1) until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.LoadingScreen.Visible == false
 print("loaded evnts")
 local bulmaT = {}
 local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActivateTowerAbility
