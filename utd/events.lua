@@ -15,6 +15,7 @@ local pathbtn = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.Upgrade
 local paths = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.UpgradePathSelection
 local unitManagerFrames = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.UnitManager.Frame.ScrollingFrame
 local autoskipBtn = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.AutoSkip
+local autoskipCheck = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.AutoSkip.Checkmark
 local plrs = game.Players
 local plrAmount = #plrs:GetPlayers()
 getgenv().Active = true
@@ -477,7 +478,9 @@ function autoAnniRaid()
 
     repeat wait() until #twrs:GetChildren() == 4
     getgenv().Skip = true
-    firesignal(autoskipBtn.Activated)
+    if autoskipCheck.Visible == false then
+        firesignal(autoskipBtn.Activated)
+    end
     task.spawn(function() -- skip waves
         while getgenv().Skip == true do
             task.wait(0.1)
@@ -606,10 +609,12 @@ function autoAnniRaid()
     end
     
     --turn off around wave 14
-    repeat wait() until wave.Text == "Wave 14/30"
+    repeat wait() until wave.Text == "Wave 11/30"
     --toggle skip off
     getgenv().Skip = false
-    firesignal(autoskipBtn.Activated)
+    if autoskipCheck.Visible == true then
+        firesignal(autoskipBtn.Activated)
+    end
     task.spawn(function()--sacrifice
         while getgenv().Sacrifice2 == true do
             task.wait(4)
@@ -643,6 +648,9 @@ function autoAnniRaid()
     ]]
 
     repeat wait() until wave.Text == "Wave 21/30"
+    if autoskipCheck.Visible == false then
+        firesignal(autoskipBtn.Activated)
+    end
     task.spawn(function() --aizen ability
         task.wait(4)
         for _,v in pairs(workspace.EntityModels.Towers:GetDescendants()) do
