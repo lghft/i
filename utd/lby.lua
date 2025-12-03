@@ -19,7 +19,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
     elseif getgenv().Active == "eventRaid" then
         char:MoveTo(eRtele.Position)
     elseif dtele and getgenv().Active == "dun" then
-        task.wait()
+        task.wait(1)
         local dunMap = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.MapName
         if dunMap.Text == "Forsaken Prison - Floor 10" or dunMap.Text == "Forsaken Prison - Floor 9" or dunMap.Text == "Desolate Crypt - Floor 11" then
             game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerClaimDungeonReward"):FireServer()
@@ -27,8 +27,9 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         end
         task.wait()
         print("=1 dun")
+        wait()
         char.PrimaryPart.CFrame = CFrame.new(-17.5384903, 10.3119678, 3940.68262, -0.766061664, 0, 0.642767608, 0, 1, 0, -0.642767608, 0, -0.766061664)
-        --char:MoveTo()
+        char:MoveTo(dtele.Position)
         repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.Visible == true
         local hard = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.Buttons.HardcoreButton
         firesignal(hard.Activated)
