@@ -1,4 +1,5 @@
 repeat wait(4) until game:IsLoaded()
+print("loaded evnts")
 local bulmaT = {}
 local remote = game.ReplicatedStorage.Modules.GlobalInit.RemoteEvents.PlayerActivateTowerAbility
 local remote2 = game:GetService("ReplicatedStorage"):WaitForChild("GenericModules"):WaitForChild("Service"):WaitForChild("Network"):WaitForChild("PlayerUpgradeTower")
@@ -14,7 +15,6 @@ local pathbtn = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.Upgrade
 local paths = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.UpgradePathSelection
 local unitManagerFrames = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.UnitManager.Frame.ScrollingFrame
 local autoskipBtn = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.AutoSkip
-firesignal(autoskipBtn.Activated)
 local plrs = game.Players
 local plrAmount = #plrs:GetPlayers()
 getgenv().Active = true
@@ -688,6 +688,7 @@ end
 if plrAmount == 1 then
     while task.wait(1) do
         if wave.text == "Wave 0/30" then
+            print("evntsstarting?")
             autoAnniRaid()
         end
     end
