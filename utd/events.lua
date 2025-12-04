@@ -497,7 +497,7 @@ function autoAnniRaid()
                 while getgenv().dragos == true do
                     task.wait(4)
                     local args = {
-                        "1823601662:214394",
+                        "1823601662:214394",--red:1823601662:214394 green:1823601662:48456
                         vector.create(10089.8515625, 22.843599319458008, -78.88304138183594)
                     }
                     game:GetService("ReplicatedStorage")
@@ -611,7 +611,7 @@ function autoAnniRaid()
         autoUpgradeTower(tower)
     end
     
-    --turn off around wave 14
+    --turn off around wave 12
     repeat wait() until wave.Text == "Wave 12/30"
     --toggle skip off
     getgenv().Skip = false
@@ -702,7 +702,8 @@ if plrAmount == 1 then
     while task.wait(1) do
         if wave.text == "Wave 0/30" then
             print("evntsstarting?")
-            autoAnniRaid()
+            --autoAnniRaid()
+            autoAnniHard()
         end
     end
 end
