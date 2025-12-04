@@ -700,9 +700,11 @@ end
 
 if plrAmount == 1 then
     while task.wait(1) do
-        if wave.text == "Wave 0/30" then
+        if wave.text == "Wave 0/30"  then
             print("evntsstarting?")
             --autoAnniRaid()
+        elseif wave.text == "Wave 0/25" then
+            print("evsvemthard???>S?/nSle;")
             autoAnniHard()
         end
     end
