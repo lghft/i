@@ -2831,7 +2831,7 @@ function RayfieldLibrary:CreateWindow(Settings)
 				
 						task.delay(0.1, function()
 							pcall(function()
-								SearchInput:CaptureFocus()
+								--SearchInput:CaptureFocus()
 							end)
 						end)
 					end
