@@ -3121,6 +3121,48 @@ function RayfieldLibrary:CreateWindow(Settings)
 			end)
 			-- end FILTER (ADDED)
 
+			do
+				local UIS = game:GetService("UserInputService")
+				local dragging = false
+				local dragStartY = 0
+				local startCanvasY = 0
+			
+				Dropdown.List.InputBegan:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 then
+						local mousePos = UIS:GetMouseLocation()
+						local framePos = Dropdown.List.AbsolutePosition
+						local frameSize = Dropdown.List.AbsoluteSize
+			
+						-- right side = scrollbar zone
+						if mousePos.X >= framePos.X + frameSize.X - 10 and mousePos.X <= framePos.X + frameSize.X then
+							dragging = true
+							dragStartY = mousePos.Y
+							startCanvasY = Dropdown.List.CanvasPosition.Y
+						end
+					end
+				end)
+			
+				UIS.InputEnded:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 then
+						dragging = false
+					end
+				end)
+			
+				UIS.InputChanged:Connect(function(input)
+					if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+						local mousePos = UIS:GetMouseLocation()
+						local delta = mousePos.Y - dragStartY
+			
+						local scrollRatio = Dropdown.List.AbsoluteCanvasSize.Y / Dropdown.List.AbsoluteSize.Y
+						local newY = startCanvasY + (delta * scrollRatio)
+			
+						Dropdown.List.CanvasPosition = Vector2.new(
+							0,
+							math.clamp(newY, 0, math.max(0, Dropdown.List.AbsoluteCanvasSize.Y - Dropdown.List.AbsoluteSize.Y))
+						)
+					end
+				end)
+			end
 			return DropdownSettings
 		end
 
