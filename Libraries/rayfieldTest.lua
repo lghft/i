@@ -2760,60 +2760,111 @@ function RayfieldLibrary:CreateWindow(Settings)
 			-- end SEARCH (ADDED)
 
 			Dropdown.Interact.MouseButton1Click:Connect(function()
-				TweenService:Create(Dropdown, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundColor3 = SelectedTheme.ElementBackgroundHover}):Play()
-				TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
-				task.wait(0.1)
-				TweenService:Create(Dropdown, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundColor3 = SelectedTheme.ElementBackground}):Play()
-				TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
-				if Debounce then return end
-				if Dropdown.List.Visible then
-					Debounce = true
-					TweenService:Create(Dropdown, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, -10, 0, 45)}):Play()
-					for _, DropdownOpt in ipairs(Dropdown.List:GetChildren()) do
-						if DropdownOpt.ClassName == "Frame" and DropdownOpt.Name ~= "Placeholder" then
-							TweenService:Create(DropdownOpt, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-							TweenService:Create(DropdownOpt.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
-							TweenService:Create(DropdownOpt.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+			TweenService:Create(Dropdown, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundColor3 = SelectedTheme.ElementBackgroundHover}):Play()
+			TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+			task.wait(0.1)
+			TweenService:Create(Dropdown, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundColor3 = SelectedTheme.ElementBackground}):Play()
+			TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
+		
+			if Debounce then return end
+		
+			if Dropdown.List.Visible then
+				Debounce = true
+		
+				TweenService:Create(Dropdown, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {
+					Size = UDim2.new(1, -10, 0, 45)
+				}):Play()
+		
+				for _, DropdownOpt in ipairs(Dropdown.List:GetChildren()) do
+					if DropdownOpt.ClassName == "Frame" and DropdownOpt.Name ~= "Placeholder" then
+						TweenService:Create(DropdownOpt, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {
+							BackgroundTransparency = 1
+						}):Play()
+		
+						if DropdownOpt:FindFirstChild("UIStroke") then
+							TweenService:Create(DropdownOpt.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {
+								Transparency = 1
+							}):Play()
+						end
+		
+						if DropdownOpt:FindFirstChild("Title") then
+							TweenService:Create(DropdownOpt.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {
+								TextTransparency = 1
+							}):Play()
 						end
 					end
-					TweenService:Create(Dropdown.List, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ScrollBarImageTransparency = 1}):Play()
-					TweenService:Create(Dropdown.Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Rotation = 180}):Play()	
-					task.wait(0.35)
-					Dropdown.List.Visible = false
-
-					-- SEARCH CLOSE (ADDED)
+				end
+		
+				TweenService:Create(Dropdown.List, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {
+					ScrollBarImageTransparency = 1
+				}):Play()
+		
+				TweenService:Create(Dropdown.Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {
+					Rotation = 180
+				}):Play()
+		
+				task.wait(0.35)
+		
+				Dropdown.List.Visible = false
+		
+				-- SEARCH CLOSE
+				if DropdownSearch then
 					DropdownSearch.Visible = false
-					-- end SEARCH CLOSE (ADDED)
-
-					Debounce = false
-				else
-					TweenService:Create(Dropdown, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, -10, 0, 180)}):Play()
-					Dropdown.List.Visible = true
-
-					-- SEARCH OPEN (ADDED)
+				end
+		
+				Debounce = false
+			else
+				TweenService:Create(Dropdown, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {
+					Size = UDim2.new(1, -10, 0, 180)
+				}):Play()
+		
+				Dropdown.List.Visible = true
+		
+				-- SEARCH OPEN
+				if DropdownSearch then
 					DropdownSearch.Visible = true
 					DropdownSearch.Input.Text = ""
-					-- Auto-focus the search input (best-effort)
+		
 					task.delay(0.1, function()
 						pcall(function()
 							DropdownSearch.Input:CaptureFocus()
 						end)
 					end)
-					-- end SEARCH OPEN (ADDED)
-
-					TweenService:Create(Dropdown.List, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ScrollBarImageTransparency = 0.7}):Play()
-					TweenService:Create(Dropdown.Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Rotation = 0}):Play()	
-					for _, DropdownOpt in ipairs(Dropdown.List:GetChildren()) do
-						if DropdownOpt.ClassName == "Frame" and DropdownOpt.Name ~= "Placeholder" then
-							if DropdownOpt.Name ~= Dropdown.Selected.Text then
-								TweenService:Create(DropdownOpt.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
+				end
+		
+				TweenService:Create(Dropdown.List, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {
+					ScrollBarImageTransparency = 0.7
+				}):Play()
+		
+				TweenService:Create(Dropdown.Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {
+					Rotation = 0
+				}):Play()
+		
+				for _, DropdownOpt in ipairs(Dropdown.List:GetChildren()) do
+					if DropdownOpt.ClassName == "Frame" and DropdownOpt.Name ~= "Placeholder" then
+		
+						if DropdownOpt.Name ~= Dropdown.Selected.Text then
+							if DropdownOpt:FindFirstChild("UIStroke") then
+								TweenService:Create(DropdownOpt.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {
+									Transparency = 0
+								}):Play()
 							end
-							TweenService:Create(DropdownOpt, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-							TweenService:Create(DropdownOpt.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+						end
+		
+						TweenService:Create(DropdownOpt, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {
+							BackgroundTransparency = 0
+						}):Play()
+		
+						if DropdownOpt:FindFirstChild("Title") then
+							TweenService:Create(DropdownOpt.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {
+								TextTransparency = 0
+							}):Play()
 						end
 					end
 				end
-			end)
+			end
+		end)
+
 
 			Dropdown.MouseEnter:Connect(function()
 				if not Dropdown.List.Visible then
