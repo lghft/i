@@ -3081,15 +3081,26 @@ function RayfieldLibrary:CreateWindow(Settings)
 				--SaveConfiguration()
 			end
 
-			function DropdownSettings:Refresh(optionsTable: table) -- updates a dropdown with new options from optionsTable
+			function DropdownSettings:Refresh(optionsTable: table)
 				DropdownSettings.Options = optionsTable
+			
 				for _, option in Dropdown.List:GetChildren() do
-					if option.ClassName == "Frame" and option.Name ~= "Placeholder" then
+					if option.ClassName == "Frame"
+						and option.Name ~= "Placeholder"
+						and option.Name ~= "DropdownSearch" then
+			
 						option:Destroy()
 					end
 				end
+			
 				SetDropdownOptions()
+			
+				-- Make sure search is still visible if dropdown is open
+				if Dropdown.List.Visible and DropdownSearch then
+					DropdownSearch.Visible = true
+				end
 			end
+
 
 			if Settings.ConfigurationSaving then
 				if Settings.ConfigurationSaving.Enabled and DropdownSettings.Flag then
