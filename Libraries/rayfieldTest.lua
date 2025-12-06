@@ -2823,14 +2823,20 @@ function RayfieldLibrary:CreateWindow(Settings)
 				-- SEARCH OPEN
 				if DropdownSearch then
 					DropdownSearch.Visible = true
-					DropdownSearch.Input.Text = ""
-		
-					task.delay(0.1, function()
-						pcall(function()
-							DropdownSearch.Input:CaptureFocus()
+				
+					local SearchInput = DropdownSearch:FindFirstChild("Input", true)
+				
+					if SearchInput and SearchInput:IsA("TextBox") then
+						SearchInput.Text = ""
+				
+						task.delay(0.1, function()
+							pcall(function()
+								SearchInput:CaptureFocus()
+							end)
 						end)
-					end)
+					end
 				end
+
 		
 				TweenService:Create(Dropdown.List, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {
 					ScrollBarImageTransparency = 0.7
