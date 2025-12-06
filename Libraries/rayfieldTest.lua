@@ -3082,6 +3082,59 @@ function RayfieldLibrary:CreateWindow(Settings)
 			end
 
 			function DropdownSettings:Refresh(optionsTable: table)
+				-- Was the dropdown open before refreshing?
+				local wasOpen = Dropdown.List.Visible
+			
+				----------------------------------------------------
+				-- CLOSE FIRST (if open)
+				----------------------------------------------------
+				if wasOpen then
+					TweenService:Create(Dropdown, TweenInfo.new(0.25, Enum.EasingStyle.Exponential), {
+						Size = UDim2.new(1, -10, 0, 45)
+					}):Play()
+			
+					for _, DropdownOpt in ipairs(Dropdown.List:GetChildren()) do
+						if DropdownOpt.ClassName == "Frame" and DropdownOpt.Name ~= "Placeholder" then
+			
+							TweenService:Create(DropdownOpt, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {
+								BackgroundTransparency = 1
+							}):Play()
+			
+							if DropdownOpt:FindFirstChild("UIStroke") then
+								TweenService:Create(DropdownOpt.UIStroke, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {
+									Transparency = 1
+								}):Play()
+							end
+			
+							if DropdownOpt:FindFirstChild("Title") then
+								TweenService:Create(DropdownOpt.Title, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {
+									TextTransparency = 1
+								}):Play()
+							end
+						end
+					end
+			
+					TweenService:Create(Dropdown.List, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {
+						ScrollBarImageTransparency = 1
+					}):Play()
+			
+					TweenService:Create(Dropdown.Toggle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {
+						Rotation = 180
+					}):Play()
+			
+					task.wait(0.25)
+			
+					Dropdown.List.Visible = false
+			
+					-- Hide search bar too
+					if DropdownSearch then
+						DropdownSearch.Visible = false
+					end
+				end
+			
+				----------------------------------------------------
+				-- ACTUAL REFRESH
+				----------------------------------------------------
 				DropdownSettings.Options = optionsTable
 			
 				for _, option in Dropdown.List:GetChildren() do
@@ -3095,11 +3148,56 @@ function RayfieldLibrary:CreateWindow(Settings)
 			
 				SetDropdownOptions()
 			
-				-- Make sure search is still visible if dropdown is open
-				if Dropdown.List.Visible and DropdownSearch then
-					DropdownSearch.Visible = true
+				----------------------------------------------------
+				-- RE-OPEN (if it was open before)
+				----------------------------------------------------
+				if wasOpen then
+					task.wait(0.1)
+			
+					TweenService:Create(Dropdown, TweenInfo.new(0.25, Enum.EasingStyle.Exponential), {
+						Size = UDim2.new(1, -10, 0, 180)
+					}):Play()
+			
+					Dropdown.List.Visible = true
+			
+					if DropdownSearch then
+						DropdownSearch.Visible = true
+					end
+			
+					TweenService:Create(Dropdown.List, TweenInfo.new(0.25, Enum.EasingStyle.Exponential), {
+						ScrollBarImageTransparency = 0.7
+					}):Play()
+			
+					TweenService:Create(Dropdown.Toggle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {
+						Rotation = 0
+					}):Play()
+			
+					for _, DropdownOpt in ipairs(Dropdown.List:GetChildren()) do
+						if DropdownOpt.ClassName == "Frame" and DropdownOpt.Name ~= "Placeholder" then
+			
+							TweenService:Create(DropdownOpt, TweenInfo.new(0.25, Enum.EasingStyle.Exponential), {
+								BackgroundTransparency = 0
+							}):Play()
+			
+							if DropdownOpt:FindFirstChild("Title") then
+								TweenService:Create(DropdownOpt.Title, TweenInfo.new(0.25, Enum.EasingStyle.Exponential), {
+									TextTransparency = 0
+								}):Play()
+							end
+			
+							if DropdownOpt:FindFirstChild("UIStroke")
+				
+								and DropdownOpt.Name ~= Dropdown.Selected.Text then
+			
+								TweenService:Create(DropdownOpt.UIStroke, TweenInfo.new(0.25, Enum.EasingStyle.Exponential), {
+									Transparency = 0
+								}):Play()
+							end
+						end
+					end
 				end
 			end
+--end
 
 
 			if Settings.ConfigurationSaving then
