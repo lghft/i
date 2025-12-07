@@ -17,7 +17,9 @@ local paths = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.UpgradePa
 local unitManagerFrames = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.UnitManager.Frame.ScrollingFrame
 local autoskipBtn = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.AutoSkip
 local autoskipCheck = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.AutoSkip.Checkmark
+local TeleportService = game:GetService("TeleportService") :: TeleportService
 local plrs = game.Players
+local LPlayer = (game:GetService("Players") :: Players).LocalPlayer
 local plrAmount = #plrs:GetPlayers()
 getgenv().Active = true
 getgenv().Active2 = true
@@ -26,6 +28,12 @@ getgenv().Ability = true
 getgenv().Sacrifice = true
 getgenv().Sacrifice2 = true
 getgenv().dragos = true
+
+
+GuiService.ErrorMessageChanged:Connect(function()
+	TeleportService:Teleport(game.PlaceId, LPlayer)
+end)
+
 function startMatch()
     game:GetService("ReplicatedStorage")
     :WaitForChild("Modules")
