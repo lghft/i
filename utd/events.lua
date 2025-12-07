@@ -18,6 +18,7 @@ local unitManagerFrames = game:GetService("Players").LocalPlayer.PlayerGui.MainG
 local autoskipBtn = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.AutoSkip
 local autoskipCheck = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.Wave.AutoSkip.Checkmark
 local TeleportService = game:GetService("TeleportService") :: TeleportService
+local GuiService = game:GetService("GuiService") :: GuiService
 local plrs = game.Players
 local LPlayer = (game:GetService("Players") :: Players).LocalPlayer
 local plrAmount = #plrs:GetPlayers()
