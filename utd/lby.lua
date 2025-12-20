@@ -6,8 +6,8 @@ print("Lby Loaded! \r yeah")
 local char = game.Players.LocalPlayer.Character
 local Players = game:GetService('Players')
 local plrAmount = #Players:GetPlayers()
-local eHtele = workspace.Lobby.AnniversaryLobby.EventTeleporters:GetChildren()[4]["Cylinder.119"].VFX.hitbox
-local eRtele = workspace.Lobby.AnniversaryLobby.EventTeleporters.BossTeleporter["Cylinder.119"].VFX.hitbox
+local eHtele = workspace.Lobby.ChristmasEventLobby.EventTeleporters:GetChildren()[2]["Cylinder.119"].VFX.hitbox
+local eRtele = workspace.Lobby.ChristmasEventLobby.EventTeleporters:GetChildren()[3]["Cylinder.119"].VFX.hitbox
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter1.Teleport.DisplayPart
 local stele = workspace.Lobby.ClassicPartyTeleporters.Teleporter2
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
