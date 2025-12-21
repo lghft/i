@@ -11,6 +11,8 @@ local eRtele = workspace.Lobby.ChristmasEventLobby.EventTeleporters:GetChildren(
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter1.Teleport.DisplayPart
 local stele = workspace.Lobby.ClassicPartyTeleporters.Teleporter2
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
+getgenv().Active = true
+
 wait()
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrAmount < 2 then
     print("=1 plr")
@@ -21,16 +23,19 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         char:MoveTo(eRtele.Position)
         wait(20)
         if plrAmount == 1 then
-            local humanoidRoot = char:FindFirstChild("HumanoidRootPart")
-            local targetPos = eRtele.Position
-            if not humanoidRoot then break end
-            
-            local distance = (humanoidRoot.Position - targetPos).Magnitude
-            
-            if distance <= proximityThreshold then
-                break
-            else
-                char:MoveTo(Vector3.new(11249, 23, 90))
+            while getgenv().Active == true do
+                local humanoidRoot = char:FindFirstChild("HumanoidRootPart")
+                local targetPos = eRtele.Position
+                if not humanoidRoot then break end
+                
+                local distance = (humanoidRoot.Position - targetPos).Magnitude
+                
+                if distance <= proximityThreshold then
+                    getgenv().Active = false
+                    break
+                else
+                    char:MoveTo(Vector3.new(11249, 23, 90))
+                end
             end
         end
     elseif dtele and getgenv().Active == "dun" then
