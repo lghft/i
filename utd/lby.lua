@@ -24,6 +24,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         wait(20)
         if plrAmount == 1 then
             while getgenv().Active == true do
+                task.wait(1)
                 local humanoidRoot = char:FindFirstChild("HumanoidRootPart")
                 local targetPos = eRtele.Position
                 if not humanoidRoot then break end
