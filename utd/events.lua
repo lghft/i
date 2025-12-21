@@ -333,3 +333,6 @@ if plrAmount == 1 then
         end
     end
 end
+
+
+--game:GetService("Players").LocalPlayer.PlayerGui:GetChildren()[28].Frame["3"].ItemSlot.FullSlot.Portrait.Display.Amount
