@@ -2,7 +2,7 @@ print("lby?")
 getgenv().IsLDLD = true
 repeat wait(4) until game:IsLoaded()
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.LoadingScreen.Visible == false
-print("Lby Loaded! \r yeah")
+print("Lby Loaded! \h yeah")
 
 local char = game.Players.LocalPlayer.Character
 local Players = game:GetService('Players')
@@ -12,8 +12,8 @@ local eRtele = workspace.Lobby.ChristmasEventLobby.EventTeleporters:GetChildren(
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter1.Teleport.DisplayPart
 local stele = workspace.Lobby.ClassicPartyTeleporters.Teleporter2
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
-getgenv().Active = true
-
+getgenv().TeleLoop = true
+getgenv().Active = "eventraid"
 wait()
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrAmount < 2 then
     print("=1 plr")
@@ -25,7 +25,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         char:MoveTo(eRtele.Position)
         wait(20)
         if plrAmount == 1 then
-            while getgenv().Active == true do
+            while getgenv().TeleLoop == true do
                 task.wait(1)
                 local humanoidRoot = char:FindFirstChild("HumanoidRootPart")
                 local targetPos = eRtele.Position
@@ -34,7 +34,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
                 local distance = (humanoidRoot.Position - targetPos).Magnitude
                 
                 if distance <= proximityThreshold then
-                    getgenv().Active = false
+                    getgenv().TeleLoop = false
                     break
                 else
                     char:MoveTo(Vector3.new(11249, 23, 90))
