@@ -1,5 +1,5 @@
 print("lby?")
-getgenv().IsLDLD
+getgenv().IsLDLD = true
 repeat wait(4) until game:IsLoaded()
 repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.LoadingScreen.Visible == false
 print("Lby Loaded! \r yeah")
