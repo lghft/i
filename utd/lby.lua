@@ -12,6 +12,7 @@ local eRtele = workspace.Lobby.ChristmasEventLobby.EventTeleporters:GetChildren(
 local dtele = workspace.Lobby.DungeonTeleporters.Teleporter1.Teleport.DisplayPart
 local stele = workspace.Lobby.ClassicPartyTeleporters.Teleporter2
 local ptyFind = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.HUD.Main2.PartyFinder
+local proximityThreshold = 50
 getgenv().TeleLoop = true
 wait()
 if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrAmount < 2 then
@@ -20,26 +21,27 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         char:MoveTo(eHtele.Position)
     elseif getgenv().Active == "eventraid" then
         print("YEAH RAIDING!!!!#@(#?")
-        local proximityThreshold = 10
         char:MoveTo(eRtele.Position)
         wait(20)
         if plrAmount == 1 then
-            while getgenv().TeleLoop == true do
-                task.wait(1)
-                local humanoidRoot = char:FindFirstChild("HumanoidRootPart")
-                local targetPos = eRtele.Position
-                if not humanoidRoot then break end
-                
-                local distance = (humanoidRoot.Position - targetPos).Magnitude
-                
-                if distance <= proximityThreshold then
-                    getgenv().TeleLoop = false
-                    print("telsse Loop Breeak!?#")
-                    break
-                else
-                    char:MoveTo(Vector3.new(11249, 23, 90))
+            spawn(function()
+                while getgenv().TeleLoop == true do
+                    task.wait(1)
+                    local humanoidRoot = char:FindFirstChild("HumanoidRootPart")
+                    local targetPos = eRtele.Position
+                    if not humanoidRoot then break end
+                    
+                    local distance = (humanoidRoot.Position - targetPos).Magnitude
+                    
+                    if distance <= proximityThreshold then
+                        getgenv().TeleLoop = false
+                        print("telsse Loop Breeak!?#")
+                        break
+                    else
+                        char:MoveTo(Vector3.new(11249, 23, 90))
+                    end
                 end
-            end
+            end)
         end
     elseif dtele and getgenv().Active == "dun" then
         task.wait(1)
