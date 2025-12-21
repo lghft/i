@@ -20,6 +20,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
     if getgenv().Active == "eventhard" then
         char:MoveTo(eHtele.Position)
     elseif getgenv().Active == "eventraid" then
+        print("YEAH RAIDING!!!!#@(#?")
         local proximityThreshold = 10
         char:MoveTo(eRtele.Position)
         wait(20)
