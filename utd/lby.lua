@@ -18,6 +18,11 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         char:MoveTo(eHtele.Position)
     elseif getgenv().Active == "eventraid" then
         char:MoveTo(eRtele.Position)
+        wait(20)
+        if plrAmount == 1 then
+            char:MoveTo(eRtele.Position)
+            char:MoveTo(eRtele.Position)
+        end
     elseif dtele and getgenv().Active == "dun" then
         task.wait(1)
         local dunMap = game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.FloorSelection.SelectedMap.MapName
