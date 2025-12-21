@@ -34,6 +34,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
                 
                 if distance <= proximityThreshold then
                     getgenv().TeleLoop = false
+                    print("telsse Loop Breeak!?#")
                     break
                 else
                     char:MoveTo(Vector3.new(11249, 23, 90))
