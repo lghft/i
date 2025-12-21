@@ -22,6 +22,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
         wait(20)
         if plrAmount == 1 then
             local humanoidRoot = char:FindFirstChild("HumanoidRootPart")
+            local targetPos = eRtele.Position
             if not humanoidRoot then break end
             
             local distance = (humanoidRoot.Position - targetPos).Magnitude
