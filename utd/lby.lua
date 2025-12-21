@@ -16,7 +16,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
     print("=1 plr")
     if getgenv().Active == "eventhard" then
         char:MoveTo(eHtele.Position)
-    elseif getgenv().Active == "eventRaid" then
+    elseif getgenv().Active == "eventraid" then
         char:MoveTo(eRtele.Position)
     elseif dtele and getgenv().Active == "dun" then
         task.wait(1)
