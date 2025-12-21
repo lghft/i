@@ -17,11 +17,20 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
     if getgenv().Active == "eventhard" then
         char:MoveTo(eHtele.Position)
     elseif getgenv().Active == "eventraid" then
+        local proximityThreshold = 10
         char:MoveTo(eRtele.Position)
         wait(20)
         if plrAmount == 1 then
-            char:MoveTo(eRtele.Position)
-            char:MoveTo(eRtele.Position)
+            local humanoidRoot = char:FindFirstChild("HumanoidRootPart")
+            if not humanoidRoot then break end
+            
+            local distance = (humanoidRoot.Position - targetPos).Magnitude
+            
+            if distance <= proximityThreshold then
+                break
+            else
+                char:MoveTo(Vector3.new(11249, 23, 90))
+            end
         end
     elseif dtele and getgenv().Active == "dun" then
         task.wait(1)
