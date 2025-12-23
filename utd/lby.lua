@@ -22,7 +22,7 @@ if plrAmount == 1 and game.Players.LocalPlayer and game.Workspace.Lobby and plrA
     elseif getgenv().Active == "eventraid" then
         print("YEAH RAIDING!!!!#@(#?")
         char:MoveTo(eRtele.Position)
-        wait(20)
+        task.wait(60)
         if plrAmount == 1 then
             spawn(function()
                 while getgenv().TeleLoop == true do
