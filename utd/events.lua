@@ -295,7 +295,7 @@ function autoChristmasRaid()
         :WaitForChild("Network")
         :WaitForChild("PlayerPlaceTower"):FireServer(unpack(args))
     end)
-    task.wait(3.75)
+    task.wait(6.75)
 
     task.spawn(function()--aizen ability2
         while getgenv().Ability == true do
