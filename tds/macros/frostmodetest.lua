@@ -7,8 +7,8 @@ _G.AutoSkip = false
 _G.AutoSnowballs = true
 
 -- [[ WEBHOOK SETTINGS ]]
-_G.SendWebhook = false -- Set to true to enable notifications
-_G.Webhook = "YOUR-WEBHOOK-URL-HERE" 
+_G.SendWebhook = true -- Set to true to enable notifications
+_G.Webhook = "" 
 
 -- [[ INITIALIZE LIBRARY ]]
 local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/tds/RsourceLibrary.lua"))()
