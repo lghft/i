@@ -18,7 +18,8 @@ TDS:Loadout("Cowboy", "Accelerator", "Ranger", "Engineer", "Dj Booth")
 TDS:Mode("Frost")
 TDS:GameInfo("U-Turn", {})
 
-
+TDS:UnlockTimeScale()
+TDS:TimeScale(2)
 task.wait(1.68)
 TDS:VoteSkip()
 task.wait(1.67)
