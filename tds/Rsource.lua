@@ -1,14 +1,11 @@
---[[
-	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
-]]
 -- [[ CONFIGURATION ]]
 _G.AutoStrat = true
 _G.AutoSkip = false
 _G.AutoSnowballs = true
 
 -- [[ WEBHOOK SETTINGS ]]
-_G.SendWebhook = false -- Set to true to enable notifications
-_G.Webhook = "YOUR-WEBHOOK-URL-HERE" 
+_G.SendWebhook = true -- Set to true to enable notifications
+_G.Webhook = "https://discord.com/api/webhooks/1414475374557007912/a6EAVcQA2FUYMftYLUTklmDxDYiVvojfinLtUdcJzbZG65jVkI2BO5VXUIDKSP1NRv2S" 
 
 -- [[ INITIALIZE LIBRARY ]]
 local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/tds/RsourceLibrary.lua"))()
