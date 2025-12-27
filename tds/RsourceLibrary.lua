@@ -51,7 +51,9 @@ local ItemNames = {
     ["18443277308"] = "Low Grade Consumable Crate(s)",
     ["136180382135048"] = "Santa Radio(s)",
     ["18443277106"] = "Mid Grade Consumable Crate(s)",
+    ["18443277591"] = "High Grade Consumable Crate(s)"
     ["132155797622156"] = "Christmas Tree(s)",
+    ["139414922355803"] = "Present Cluster Bomb(s)"
     ["124065875200929"] = "Fruit Cake(s)",
     ["17429541513"] = "Barricade(s)",
 }
