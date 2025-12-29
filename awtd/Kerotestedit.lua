@@ -337,8 +337,9 @@ task.spawn(function()
     while task.wait(0.5) do
         local eff = Workspace:FindFirstChild("Effect")
         local gameover = eff and eff:FindFirstChild("Gameover")
+        local endUI = game:GetService("Players").LocalPlayer.PlayerGui.EndUI.UI
 
-        if gameover then
+        if gameover or endUI.Position == UDim2.new(0.5, 0, 0.5, 0) then
             print("Game OVER")
             waitingForReplay = true
             isPlaying = false
