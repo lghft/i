@@ -347,12 +347,12 @@ task.spawn(function()
                 firesignal(getUiButton("Restart").Activated)
             elseif Options.AutoNext.Value then
                 --firebutton(getUiButton("Next"))
-                clickButton(getUiofButton("Next"))
-                --firesignal(getUiButton("Next"))
+                --clickButton(getUiofButton("Next"))
+                --firesignal(getUiButton("Next").Activated)
             elseif Options.AutoLeave.Value then
                 --firebutton(getUiButton("Back"))
-                clickButton(getUiofButton("Back"))
-                --firesignal(getUiButton("Back"))
+                --clickButton(getUiofButton("Back"))
+                --firesignal(getUiButton("Back").Activated)
             end
             
             task.wait(0.5)
