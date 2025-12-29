@@ -102,6 +102,7 @@ local function firebutton(Button)
     task.wait(0.05)
     
     GuiService.GuiNavigationEnabled = oldNav
+    GuiService.SelectedObject = nil
     -- Remove this line entirely:
     -- GuiService.SelectedObject = oldSel
 end
