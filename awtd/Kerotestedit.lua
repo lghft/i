@@ -83,19 +83,21 @@ local function getUiOfButton(name)
 end
 
 local function firebutton(Button)
-    if not Button then return end
+    if not Button or not Button:IsA("GuiButton") then return end
+
     local oldNav = GuiService.GuiNavigationEnabled
-    local oldSel = GuiService.SelectedObject
 
     GuiService.GuiNavigationEnabled = true
-    GuiService.SelectedObject = Button
+    GuiService.SelectedObject = Button  -- This should work fine if Button is valid/selectable
     
-    VirtualInputManager:SendKeyEvent(true, "Return", false, nil)
-    VirtualInputManager:SendKeyEvent(false, "Return", false, nil)
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
     
     task.wait(0.05)
+    
     GuiService.GuiNavigationEnabled = oldNav
-    GuiService.SelectedObject = oldSel
+    -- Remove this line entirely:
+    -- GuiService.SelectedObject = oldSel
 end
 
 local function clickButton(ClickOnPart)
