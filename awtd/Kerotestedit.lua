@@ -295,7 +295,19 @@ Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
 
 function playMacro()
-    if #currentMacroData == 0 then return end
+    if #currentMacroData == 0 then
+        Fluent:Notify({Title="Error", Content="No macro loaded!", Duration=3})
+        Options.PlayToggle:SetValue(false)  -- Auto-turn off toggle
+        return
+    end
+
+    local Remotes = ReplicatedStorage:FindFirstChild("Remote")
+    if not Remotes then
+        Fluent:Notify({Title="Error", Content="Remotes not loaded yet!", Duration=3})
+        Options.PlayToggle:SetValue(false)
+        return
+    end
+
     isPlaying = true
     speedUp()
     task.wait(0.1)
@@ -371,15 +383,12 @@ task.spawn(function()
             if Options.AutoRestart.Value then
                 firebutton(getUiButton("Restart"))
                 --clickButton(getUiofButton("Restart"))
-                --firesignal(getUiButton("Restart").Activated)
             elseif Options.AutoNext.Value then
                 --firebutton(getUiButton("Next"))
                 --clickButton(getUiofButton("Next"))
-                --firesignal(getUiButton("Next").Activated)
             elseif Options.AutoLeave.Value then
                 --firebutton(getUiButton("Back"))
                 --clickButton(getUiofButton("Back"))
-                --firesignal(getUiButton("Back").Activated)
             end
             
             task.wait(0.5)
@@ -389,9 +398,11 @@ task.spawn(function()
                 print("Waiting For Replaying")
                 waitingForReplay = false
                 
-                if Options.PlayToggle.Value then
-                    playMacro()
-                end
+                task.delay(0.5, function()
+                    if Options.PlayToggle.Value then
+                        playMacro()
+                    end
+                end)
             end
         end
     end
