@@ -298,6 +298,8 @@ function playMacro()
     if #currentMacroData == 0 then return end
     isPlaying = true
     speedUp()
+    task.wait(0.1)
+    speedUp()
     task.spawn(function()
         UpdateStatus("Starting...", "Match Start")
         local startT = tick()
