@@ -11,6 +11,7 @@ task.spawn(function()
         endUI.Position = UDim2.new(0.5, 0, 2, 0)
     end
 end)
+
 local Window = Fluent:CreateWindow({
     Title = "AWTD",
     SubTitle = "Made By Kero:33",
@@ -69,6 +70,18 @@ local function findUnitByCFrame(targetCFrame)
         if root and (root.Position - targetCFrame.Position).Magnitude < 1.5 then return unit end
     end
     return nil
+end
+
+local function speedUp()
+    if workspace.TimeSpeed.Value == 1 then
+        game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("x2Event"):FireServer()
+        wait(0.5)
+        game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("x2Event"):FireServer()
+    end
+    if workspace.TimeSpeed.Value == 2 then
+        game:GetService("ReplicatedStorage"):WaitForChild("Remote"):WaitForChild("x2Event"):FireServer()
+        wait(0.5)
+    end
 end
 
 local function getUiButton(name)
@@ -284,6 +297,7 @@ SaveManager:LoadAutoloadConfig()
 function playMacro()
     if #currentMacroData == 0 then return end
     isPlaying = true
+    speedUp()
     task.spawn(function()
         UpdateStatus("Starting...", "Match Start")
         local startT = tick()
