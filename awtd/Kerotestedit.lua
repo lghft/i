@@ -338,16 +338,17 @@ task.spawn(function()
         local eff = Workspace:FindFirstChild("Effect")
         local gameover = eff and eff:FindFirstChild("Gameover")
         local endUI = game:GetService("Players").LocalPlayer.PlayerGui.EndUI.UI
+        
 
-        if gameover or endUI.Position == UDim2.new(0.5, 0, 0.5, 0) then
+        if gameover or endUI.Position == UDim2.new(0.5, 0, 0.5, 0) and workspace.Day.Value >= 1 then
             print("Game OVER")
             waitingForReplay = true
             isPlaying = false
 
             if Options.AutoRestart.Value then
-                --firebutton(getUiButton("Restart"))
+                firebutton(getUiButton("Restart"))
                 --clickButton(getUiofButton("Restart"))
-                firesignal(getUiButton("Restart").Activated)
+                --firesignal(getUiButton("Restart").Activated)
             elseif Options.AutoNext.Value then
                 --firebutton(getUiButton("Next"))
                 --clickButton(getUiofButton("Next"))
