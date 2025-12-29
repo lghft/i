@@ -309,9 +309,6 @@ function playMacro()
     end
 
     isPlaying = true
-    speedUp()
-    task.wait(0.1)
-    speedUp()
     task.spawn(function()
         UpdateStatus("Starting...", "Match Start")
         local startT = tick()
@@ -325,6 +322,7 @@ function playMacro()
         }
 
         while isPlaying do
+            speedUp()
             local eff = Workspace:FindFirstChild("Effect")
             if eff and eff:FindFirstChild("Gameover") then
                 isPlaying = false
