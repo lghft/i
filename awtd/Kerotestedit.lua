@@ -337,7 +337,7 @@ task.spawn(function()
         local gameover = eff and eff:FindFirstChild("Gameover")
 
         if gameover then
-            Print("Game Is OVER")
+            print("Game OVER")
             waitingForReplay = true
             isPlaying = false
 
