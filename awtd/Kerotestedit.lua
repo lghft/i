@@ -343,8 +343,8 @@ task.spawn(function()
 
             if Options.AutoRestart.Value then
                 --firebutton(getUiButton("Restart"))
-                clickButton(getUiofButton("Restart"))
-                --firesignal(getUiButton("Restart"))
+                --clickButton(getUiofButton("Restart"))
+                firesignal(getUiButton("Restart"))
             elseif Options.AutoNext.Value then
                 --firebutton(getUiButton("Next"))
                 clickButton(getUiofButton("Next"))
@@ -357,7 +357,9 @@ task.spawn(function()
             
             task.wait(0.5)
         else
+            print("Not GameOver")
             if waitingForReplay then
+                print("Waiting For Replaying")
                 waitingForReplay = false
                 
                 if Options.PlayToggle.Value then
