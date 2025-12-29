@@ -400,6 +400,7 @@ task.spawn(function()
                 
                 task.delay(0.5, function()
                     if Options.PlayToggle.Value then
+                        speedUp()
                         playMacro()
                     end
                 end)
