@@ -342,14 +342,17 @@ task.spawn(function()
             isPlaying = false
 
             if Options.AutoRestart.Value then
-                firebutton(getUiButton("Restart"))
-                clickButton(getUiButton("Restart"))
+                --firebutton(getUiButton("Restart"))
+                clickButton(getUiofButton("Restart"))
+                --firesignal(getUiButton("Restart"))
             elseif Options.AutoNext.Value then
-                firebutton(getUiButton("Next"))
-                clickButton(getUiButton("Next"))
+                --firebutton(getUiButton("Next"))
+                clickButton(getUiofButton("Next"))
+                --firesignal(getUiButton("Next"))
             elseif Options.AutoLeave.Value then
-                firebutton(getUiButton("Back"))
-                clickButton(getUiButton("Back"))
+                --firebutton(getUiButton("Back"))
+                clickButton(getUiofButton("Back"))
+                --firesignal(getUiButton("Back"))
             end
             
             task.wait(0.5)
