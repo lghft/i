@@ -344,7 +344,7 @@ task.spawn(function()
             if Options.AutoRestart.Value then
                 --firebutton(getUiButton("Restart"))
                 --clickButton(getUiofButton("Restart"))
-                firesignal(getUiButton("Restart"))
+                firesignal(getUiButton("Restart").Activated)
             elseif Options.AutoNext.Value then
                 --firebutton(getUiButton("Next"))
                 clickButton(getUiofButton("Next"))
