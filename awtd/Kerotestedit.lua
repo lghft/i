@@ -5,11 +5,12 @@ local HttpService = game:GetService("HttpService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local GuiService = game:GetService("GuiService")
 
-if game:GetService("Players").LocalPlayer.PlayerGui.EndUI.UI then
-    local endUI = game:GetService("Players").LocalPlayer.PlayerGui.EndUI.UI
-    endUI.Position = UDim2.new(0.5, 0, 2, 0)
-end
-
+task.spawn(function()
+    if game:GetService("Players").LocalPlayer.PlayerGui.EndUI.UI then
+        local endUI = game:GetService("Players").LocalPlayer.PlayerGui.EndUI.UI
+        endUI.Position = UDim2.new(0.5, 0, 2, 0)
+    end
+end)
 local Window = Fluent:CreateWindow({
     Title = "AWTD",
     SubTitle = "Made By Kero:33",
