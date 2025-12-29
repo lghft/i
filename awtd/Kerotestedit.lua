@@ -393,7 +393,7 @@ task.spawn(function()
             
             task.wait(0.5)
         else
-            print("Not GameOver")
+            --print("Not GameOver")
             if waitingForReplay then
                 print("Waiting For Replaying")
                 waitingForReplay = false
