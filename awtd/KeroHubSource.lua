@@ -87,6 +87,7 @@ local currentMacroData = {}
 local currentMacroName = "" 
 local startTime = 0
 local playbackMode = "Hybrid" 
+local AutoSkillConnections = {} 
 
 local AllowedRemotes = { ["SpawnUnit"]=true, ["SellUnit"]=true, ["UpgradeUnit"]=true, ["UnitAbility"]=true, ["BuyMeat"]=true, ["FeedAll"]=true, ["SkipEvent"]=true, ["x2Event"]=true }
 if not isfolder(MACRO_FOLDER) then makefolder(MACRO_FOLDER) end
@@ -109,6 +110,42 @@ local function SaveCurrentMacro() if currentMacroName=="" then return end; local
 local function LoadMacro(n) if not isfile(MACRO_FOLDER.."/"..n..".json") then return end; local c=readfile(MACRO_FOLDER.."/"..n..".json"); local d=HttpService:JSONDecode(c); currentMacroData={}; for _,a in ipairs(d) do if a.CFrame then a.CFrame=TableToCFrame(a.CFrame) end; table.insert(currentMacroData,a) end; currentMacroName=n end
 local function GetMacroFiles() local f=listfiles(MACRO_FOLDER); local n={}; for _,v in ipairs(f) do local nm=v:match("([^/]+)%.json$"); if nm then table.insert(n,nm) end end; return n end
 
+-- // LOGIC MỚI: THEO DÕI NÚT AUTO SKILL KHI RECORD //
+local function MonitorUnitAutoSkill(unit)
+    if not unit then return end
+    task.spawn(function()
+        local info = unit:WaitForChild("Info", 5)
+        if info then
+            local autoVal = info:WaitForChild("AutoAbility", 5)
+            if autoVal and autoVal:IsA("BoolValue") then
+                local conn = autoVal.Changed:Connect(function(newVal)
+                    if isRecording then
+                        local currentTime = tick() - startTime
+                        if unit.PrimaryPart then
+                            table.insert(currentMacroData, {
+                                Action = "AutoSkill", 
+                                Time = currentTime,
+                                Cost = 0,
+                                CFrame = unit.PrimaryPart.CFrame,
+                                State = newVal 
+                            })
+                            -- Đã bỏ dòng Notify theo yêu cầu
+                        end
+                    end
+                end)
+                table.insert(AutoSkillConnections, conn)
+            end
+        end
+    end)
+end
+
+local function CleanupAutoSkillConnections()
+    for _, conn in pairs(AutoSkillConnections) do
+        if conn then conn:Disconnect() end
+    end
+    AutoSkillConnections = {}
+end
+
 -- // HOOK NAMECALL //
 local mt = getrawmetatable(game)
 local oldNamecall = mt.__namecall
@@ -122,10 +159,24 @@ mt.__namecall = newcclosure(function(self, ...)
         task.spawn(function() pcall(function()
             local currentTime = tick() - startTime
             local preCash = getCash()
-            if rName == "SpawnUnit" then task.wait(CALC_DELAY); table.insert(currentMacroData, {Action="Place", Time=currentTime, Cost=math.max(0, preCash - getCash()), UnitName=args[1], CFrame=args[2], Slot=args[3], Data=args[4]}); Fluent:Notify({Title="Rec", Content="Place", Duration=1})
+            if rName == "SpawnUnit" then 
+                task.wait(CALC_DELAY)
+                table.insert(currentMacroData, {Action="Place", Time=currentTime, Cost=math.max(0, preCash - getCash()), UnitName=args[1], CFrame=args[2], Slot=args[3], Data=args[4]})
+                Fluent:Notify({Title="Rec", Content="Place", Duration=1})
             elseif rName == "SellUnit" then local u=args[1]; if u and u.PrimaryPart then table.insert(currentMacroData, {Action="Sell", Time=currentTime, Cost=0, CFrame=u.PrimaryPart.CFrame}); Fluent:Notify({Title="Rec", Content="Sell", Duration=1}) end
             elseif rName == "UpgradeUnit" then task.wait(CALC_DELAY); local u=args[1]; if u and u.PrimaryPart then table.insert(currentMacroData, {Action="Upgrade", Time=currentTime, Cost=math.max(0, preCash - getCash()), CFrame=u.PrimaryPart.CFrame}); Fluent:Notify({Title="Rec", Content="Upgrade", Duration=1}) end
-            elseif rName == "UnitAbility" then local u=args[2]; if u and u.PrimaryPart then table.insert(currentMacroData, {Action="Ability", Time=currentTime, Cost=0, SkillName=args[1], CFrame=u.PrimaryPart.CFrame}) end
+            elseif rName == "UnitAbility" then 
+                local u = args[2]
+                if u and u.PrimaryPart then 
+                    table.insert(currentMacroData, {
+                        Action="Ability", 
+                        Time=currentTime, 
+                        Cost=0, 
+                        SkillName=args[1], 
+                        CFrame=u.PrimaryPart.CFrame,
+                        AbilityData=args[3] 
+                    }) 
+                end
             elseif rName == "BuyMeat" then task.wait(CALC_DELAY); table.insert(currentMacroData, {Action="BuyMeat", Time=currentTime, Cost=math.max(0, preCash - getCash()), Args=args}); Fluent:Notify({Title="Rec", Content="Buy Meat", Duration=1})
             elseif rName == "FeedAll" then table.insert(currentMacroData, {Action="FeedAll", Time=currentTime, Cost=0})
             elseif rName == "SkipEvent" then table.insert(currentMacroData, {Action="SkipWave", Time=currentTime, Cost=0})
@@ -161,14 +212,34 @@ Tabs.Macro:AddButton({Title = "Create New File", Callback = function() local n=O
 Tabs.Macro:AddDropdown("FileSelect", {Title = "Select File", Values = GetMacroFiles(), Default = 1, Callback = function(v) if v then LoadMacro(v) end end})
 task.delay(1, function() local f=GetMacroFiles(); if #f>0 then LoadMacro(f[1]); Options.FileSelect:SetValue(f[1]) end end)
 Tabs.Macro:AddButton({Title = "Refresh / Delete", Callback = function() if currentMacroName~="" and isfile(MACRO_FOLDER.."/"..currentMacroName..".json") then delfile(MACRO_FOLDER.."/"..currentMacroName..".json"); currentMacroName=""; currentMacroData={}; Options.FileSelect:SetValues(GetMacroFiles()); Options.FileSelect:SetValue(nil) else Options.FileSelect:SetValues(GetMacroFiles()) end end})
-Tabs.Macro:AddToggle("RecordToggle", {Title = "Record", Default = false }):OnChanged(function(v) if v then isPlaying=false; isRecording=true; currentMacroData={}; startTime=tick(); UpdateStatus("Recording", "Started...") else isRecording=false; SaveCurrentMacro(); UpdateStatus("Stopped", "Saved.") end end)
+
+-- BUTTON RECORD
+Tabs.Macro:AddToggle("RecordToggle", {Title = "Record", Default = false }):OnChanged(function(v) 
+    if v then 
+        isPlaying=false; isRecording=true; currentMacroData={}; startTime=tick(); 
+        UpdateStatus("Recording", "Started...") 
+        
+        CleanupAutoSkillConnections()
+        if Workspace:FindFirstChild("Units") then
+            for _, u in pairs(Workspace.Units:GetChildren()) do MonitorUnitAutoSkill(u) end
+            local spawnConn = Workspace.Units.ChildAdded:Connect(MonitorUnitAutoSkill)
+            table.insert(AutoSkillConnections, spawnConn)
+        end
+        
+    else 
+        isRecording=false; 
+        CleanupAutoSkillConnections() 
+        SaveCurrentMacro(); 
+        UpdateStatus("Stopped", "Saved.") 
+    end 
+end)
+
 Tabs.Macro:AddDropdown("ModeSelect", {Title = "Mode", Values = {"Time", "Money", "Hybrid"}, Default = "Hybrid", Callback = function(v) playbackMode = v end})
 Tabs.Macro:AddToggle("PlayToggle", {Title = "Play", Default = getgenv().AutoResumeState}):OnChanged(function(v) getgenv().AutoResumeState = v; if v then isRecording=false; playMacro() else isPlaying=false; UpdateStatus("Stopped", "User Cancelled") end end)
 
 -- // ABILITY MANAGER //
 Tabs.Ability:AddToggle("AutoUraraToggle", {Title = "Auto Urara Ability", Default = false }):OnChanged(function(Value)
     getgenv().AutoUrara = Value
-    
     if Value then
         task.spawn(function()
             while getgenv().AutoUrara do
@@ -179,10 +250,7 @@ Tabs.Ability:AddToggle("AutoUraraToggle", {Title = "Auto Urara Ability", Default
                             if unit.Name == "Urara" then
                                 local owner = unit:FindFirstChild("Owner")
                                 if owner and owner.Value == LocalPlayer then
-                                    local args = {
-                                        [1] = "Kannonbiraki Benihime Aratame",
-                                        [2] = unit
-                                    }
+                                    local args = {[1] = "Kannonbiraki Benihime Aratame", [2] = unit}
                                     ReplicatedStorage:WaitForChild("Remote"):WaitForChild("UnitAbility"):FireServer(unpack(args))
                                 end
                             end
@@ -295,7 +363,24 @@ function playMacro()
                     if act.Action == "Place" and Rem.Spawn then SmartFire(Rem.Spawn, {act.UnitName, act.CFrame, act.Slot, act.Data})
                     elseif act.Action == "Upgrade" and Rem.Upgrade then local u=findUnitByCFrame(act.CFrame); if u then SmartFire(Rem.Upgrade, {u}) end
                     elseif act.Action == "Sell" and Rem.Sell then local u=findUnitByCFrame(act.CFrame); if u then SmartFire(Rem.Sell, {u}) end
-                    elseif act.Action == "Ability" and Rem.Ability then local u=findUnitByCFrame(act.CFrame); if u then SmartFire(Rem.Ability, {act.SkillName, u}) end
+                    
+                    -- PLAYBACK AUTO SKILL
+                    elseif act.Action == "AutoSkill" then
+                        local u = findUnitByCFrame(act.CFrame)
+                        if u and u:FindFirstChild("Info") then
+                            local autoVal = u.Info:FindFirstChild("AutoAbility")
+                            if autoVal and autoVal:IsA("BoolValue") then
+                                autoVal.Value = act.State 
+                            end
+                        end
+                    -- END
+
+                    elseif act.Action == "Ability" and Rem.Ability then 
+                        local u=findUnitByCFrame(act.CFrame); 
+                        if u then 
+                            if act.AbilityData then SmartFire(Rem.Ability, {act.SkillName, u, act.AbilityData})
+                            else SmartFire(Rem.Ability, {act.SkillName, u}) end
+                        end 
                     elseif act.Action == "BuyMeat" and Rem.BuyMeat then SmartFire(Rem.BuyMeat, act.Args or {}) 
                     elseif act.Action == "FeedAll" and Rem.FeedAll then SmartFire(Rem.FeedAll, {})
                     elseif act.Action == "SkipEvent" and Rem.Skip then SmartFire(Rem.Skip, {})
