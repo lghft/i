@@ -1,8 +1,8 @@
 -- Cloneref support (adds support for JJsploit/Temple/Electron and other sploits that don't have cloneref or really shit versions of it.)
-loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/dex/clnrf.lua", true))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/dex/d1/clnrf.lua", true))()
 
 -- Dex Bypasses
-loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/dex/b.lua", true))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/dex/d1/b.lua", true))()
 
 -- Dex with CloneRef Support (made as global)
 getgenv().Bypassed_Dex = game:GetObjects("rbxassetid://9352453730")[1]
