@@ -14,7 +14,7 @@ local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/r
 TDS:Loadout("Mercenary Base", "Military Base", "Ranger", "Accelerator", "Engineer")
 TDS:Mode("Hardcore")
 TDS:GameInfo("Wrecked Battlefield", {})
-
+print("Started STRATEGY???")
 -- [[ START STRATEGY ]]
 TDS:Place("Military Base", 0.706409454, 1.86269307, 42.2678223, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- 1
 TDS:Upgrade(1)
@@ -197,7 +197,7 @@ TDS:Upgrade(29)
 TDS:Upgrade(29)
 TDS:Upgrade(29)
 TDS:Upgrade(29)
-
+print("Should've Swapped To New Towers")
 TDS:Equip("Pursuit")
 TDS:Equip("Commander")
 TDS:Equip("DJ Booth")
