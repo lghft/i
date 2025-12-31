@@ -62,7 +62,12 @@ local ItemNames = {
 -- // tower management core
 local TDS = {
     placed_towers = {},
-    active_strat = true
+    active_strat = true,
+    matchmaking_map = {
+        ["Hardcore"] = "hardcore",
+        ["Pizza Party"] = "halloween",
+        ["Polluted"] = "polluted"
+    }
 }
 
 local upgrade_history = {}
@@ -615,28 +620,24 @@ function TDS:Mode(difficulty)
     local res
         repeat
             local ok, result = pcall(function()
-                if difficulty == "Hardcore" then
-                    return remote:InvokeServer("Multiplayer", "v2:start", {
-                        mode = "hardcore",
+                local mode = TDS.matchmaking_map[difficulty]
+
+                local payload
+
+                if mode then
+                    payload = {
+                        mode = mode,
                         count = 1
-                    })
-                elseif difficulty == "Pizza Party" then
-                    return remote:InvokeServer("Multiplayer", "v2:start", {
-                        mode = "halloween",
-                        count = 1
-                    })
-                elseif difficulty == "Polluted" then
-                    return remote:InvokeServer("Multiplayer", "v2:start", {
-                        mode = "polluted",
-                        count = 1
-                    })
+                    }
                 else
-                    return remote:InvokeServer("Multiplayer", "v2:start", {
+                    payload = {
                         difficulty = difficulty,
                         mode = "survival",
                         count = 1
-                    })
+                    }
                 end
+
+                return remote:InvokeServer("Multiplayer", "v2:start", payload)
             end)
 
             if ok and check_res_ok(result) then
@@ -653,7 +654,25 @@ end
 
 function TDS:Loadout(...)
     if game_state ~= "LOBBY" then
-        return false
+        local towers = {...}
+        local remote = game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction")
+        for _, tower_name in ipairs(towers) do
+            if tower_name and tower_name ~= "" then
+                local success = false
+                repeat
+                    local ok = pcall(function()
+                        remote:InvokeServer("Inventory", "Equip", "tower", tower_name)
+                    end)
+                    if ok then
+                        success = true
+                    else
+                        task.wait(0.2)
+                    end
+                until success
+                task.wait(0.4)
+            end
+        end
+        return true
     end
 
     local lobby_hud = player_gui:WaitForChild("ReactLobbyHud", 30)
@@ -684,9 +703,6 @@ function TDS:Loadout(...)
 end
 
 function TDS:Addons()
-    if game_state ~= "GAME" then
-        return false
-    end
     local url = "https://api.junkie-development.de/api/v1/luascripts/public/57fe397f76043ce06afad24f07528c9f93e97730930242f57134d0b60a2d250b/download"
     local success, code = pcall(game.HttpGet, game, url)
 
@@ -696,7 +712,7 @@ function TDS:Addons()
 
     loadstring(code)()
 
-    while not TDS.Equip do
+    while not (TDS.Equip and TDS.MultiMode and TDS.Multiplayer) do
         task.wait(0.1)
     end
 
@@ -708,11 +724,31 @@ function TDS:TeleportToLobby()
     send_to_lobby()
 end
 
-function TDS:VoteSkip(req_wave)
-    if req_wave then
-        repeat task.wait(0.5) until get_current_wave() >= req_wave
-    end
-    run_vote_skip()
+function TDS:VoteSkip(start_wave, end_wave)
+    task.spawn(function()
+        end_wave = end_wave or start_wave
+
+        for wave = start_wave, end_wave do
+            repeat
+                task.wait(0.5)
+            until get_current_wave() >= wave
+
+            local skip_done = false
+            while not skip_done do
+                local skip_visible = player_gui:FindFirstChild("ReactOverridesVote")
+                    and player_gui.ReactOverridesVote:FindFirstChild("Frame")
+                    and player_gui.ReactOverridesVote.Frame:FindFirstChild("votes")
+                    and player_gui.ReactOverridesVote.Frame.votes:FindFirstChild("vote")
+
+                if skip_visible then
+                    run_vote_skip()
+                    skip_done = true
+                else
+                    task.wait(0.2)
+                end
+            end
+        end
+    end)
 end
 
 function TDS:GameInfo(name, list)
@@ -754,7 +790,14 @@ function TDS:RestartGame()
     trigger_restart()
 end
 
-function TDS:Place(t_name, px, py, pz)
+function TDS:Place(t_name, px, py, pz, ...)
+    local args = {...}
+    local stack = false
+
+    if args[#args] == "stack" or args[#args] == true then
+        py = 95
+    end
+
     if game_state ~= "GAME" then
         return false 
     end
@@ -828,23 +871,25 @@ function TDS:Sell(idx, req_wave)
 end
 
 function TDS:SellAll(req_wave)
-    if req_wave then
-        repeat task.wait(0.5) until get_current_wave() >= req_wave
-    end
+    task.spawn(function()
+        if req_wave then
+            repeat task.wait(0.5) until get_current_wave() >= req_wave
+        end
 
-    local towers_copy = {unpack(self.placed_towers)}
-    for idx, t in ipairs(towers_copy) do
-        if do_sell_tower(t) then
-            for i, orig_t in ipairs(self.placed_towers) do
-                if orig_t == t then
-                    table.remove(self.placed_towers, i)
-                    break
+        local towers_copy = {unpack(self.placed_towers)}
+        for idx, t in ipairs(towers_copy) do
+            if do_sell_tower(t) then
+                for i, orig_t in ipairs(self.placed_towers) do
+                    if orig_t == t then
+                        table.remove(self.placed_towers, i)
+                        break
+                    end
                 end
             end
         end
-    end
 
-    return true
+        return true
+    end)
 end
 
 function TDS:Ability(idx, name, data, loop)
