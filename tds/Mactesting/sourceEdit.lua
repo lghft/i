@@ -67,6 +67,9 @@ local TDS = {
 
 -- === NEW TDS:Equip FUNCTION ===
 function TDS:Equip(tower_input)
+    if game_state ~= "GAME" then
+        return false
+    end
     local tower_table = type(tower_input) == "string" and {tower_input} or tower_input
     
     if type(tower_table) ~= "table" then
