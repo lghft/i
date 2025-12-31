@@ -8,29 +8,12 @@ _G.SendWebhook = true -- Set to true to enable notifications
 _G.Webhook = "https://discord.com/api/webhooks/1414475374557007912/a6EAVcQA2FUYMftYLUTklmDxDYiVvojfinLtUdcJzbZG65jVkI2BO5VXUIDKSP1NRv2S" 
 
 -- [[ INITIALIZE LIBRARY ]]
-local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Library.lua"))()
+local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/tds/Mactesting/sourceEdit.lua"))()
 --TDS:Addons()
-
-local regtwrTable = {"Mercenary Base", "Military Base", "Ranger", "Accelerator", "Engineer"}
-local switchedTable = {"Pursuit", "Commander", "DJ Booth", "Turret"}
 
 TDS:Loadout("Mercenary Base", "Military Base", "Ranger", "Accelerator", "Engineer")
 TDS:Mode("Hardcore")
 TDS:GameInfo("Wrecked Battlefield", {})
-
-local function equipper(table)
-	for i, towers in pairs(table) do
-	local args = {
-	"Inventory",
-	"Equip",
-	"tower",
-	table[i]
-        }
-        game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
-	task.wait(0.5)
-	end
-end
-
 
 -- [[ START STRATEGY ]]
 TDS:Place("Military Base", 0.706409454, 1.86269307, 42.2678223, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- 1
@@ -214,14 +197,11 @@ TDS:Upgrade(29)
 TDS:Upgrade(29)
 TDS:Upgrade(29)
 TDS:Upgrade(29)
---[[
+
 TDS:Equip("Pursuit")
 TDS:Equip("Commander")
 TDS:Equip("DJ Booth")
 TDS:Equip("Turret")
-]]
-
-equipper(switchedTable)
 
 TDS:Place("Commander", 3.82446861, 5.29999352, 0.992941856, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- 30
 TDS:Upgrade(30)
@@ -289,4 +269,3 @@ TDS:Upgrade(40)
 TDS:Upgrade(40)
 TDS:Upgrade(40)
 TDS:Upgrade(40)
-equipper(regtwrTable)
