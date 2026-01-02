@@ -26,6 +26,8 @@ if not send_request then
 end
 
 -- // services & main refs
+local teleport_service = game:GetService("TeleportService")
+local marketplace_service = game:GetService("MarketplaceService")
 local replicated_storage = game:GetService("ReplicatedStorage")
 local remote_func = replicated_storage:WaitForChild("RemoteFunction")
 local remote_event = replicated_storage:WaitForChild("RemoteEvent")
@@ -66,6 +68,7 @@ local TDS = {
     matchmaking_map = {
         ["Hardcore"] = "hardcore",
         ["Pizza Party"] = "halloween",
+        ["Badlands"] = "badlands",
         ["Polluted"] = "polluted"
     }
 }
@@ -377,8 +380,13 @@ local function lobby_ready_up()
     end)
 end
 
-local function select_map_override(map_id)
-    remote_func:InvokeServer("LobbyVoting", "Override", map_id)
+local function select_map_override(map_id, ...)
+    local args = {...}
+
+    if args[#args] == "vip" then
+        remote_func:InvokeServer("LobbyVoting", "Override", map_id)
+    end
+
     task.wait(3)
     cast_map_vote(map_id, Vector3.new(12.59, 10.64, 52.01))
     task.wait(1)
@@ -398,6 +406,44 @@ local function cast_modifier_vote(mods_table)
     pcall(function()
         bulk_modifiers:InvokeServer(selected_mods)
     end)
+end
+
+local function is_map_available(name)
+    for _, g in ipairs(workspace:GetDescendants()) do
+        if g:IsA("SurfaceGui") and g.Name == "MapDisplay" then
+            local t = g:FindFirstChild("Title")
+            if t and t.Text == name then return true end
+        end
+    end
+
+    repeat
+        remote_event:FireServer("LobbyVoting", "Veto")
+        wait(1)
+
+        local found = false
+        for _, g in ipairs(workspace:GetDescendants()) do
+            if g:IsA("SurfaceGui") and g.Name == "MapDisplay" then
+                local t = g:FindFirstChild("Title")
+                if t and t.Text == name then
+                    found = true
+                    break
+                end
+            end
+        end
+
+        local total_player = #players_service:GetChildren()
+        local veto_text = player_gui:WaitForChild("ReactGameIntermission"):WaitForChild("Frame"):WaitForChild("buttons"):WaitForChild("veto"):WaitForChild("value").Text
+        
+    until found or veto_text == "Veto ("..total_player.."/"..total_player..")"
+
+    for _, g in ipairs(workspace:GetDescendants()) do
+        if g:IsA("SurfaceGui") and g.Name == "MapDisplay" then
+            local t = g:FindFirstChild("Title")
+            if t and t.Text == name then return true end
+        end
+    end
+
+    return false
 end
 
 -- // timescale logic
@@ -712,7 +758,7 @@ function TDS:Addons()
 
     loadstring(code)()
 
-    while not (TDS.Equip and TDS.MultiMode and TDS.Multiplayer) do
+    while not TDS.Equip and TDS.MultiMode and TDS.Multiplayer do
         task.wait(0.1)
     end
 
@@ -726,28 +772,49 @@ end
 
 function TDS:VoteSkip(start_wave, end_wave)
     task.spawn(function()
+        print("VoteSkip started")
+
+        local current_wave = get_current_wave()
+        print("Current wave:", current_wave)
+
+        start_wave = current_wave or start_wave
         end_wave = end_wave or start_wave
 
+        print("Start wave:", start_wave, "End wave:", end_wave)
+
         for wave = start_wave, end_wave do
+            print("Waiting for wave:", wave)
+
             repeat
                 task.wait(0.5)
             until get_current_wave() >= wave
+
+            print("Wave reached:", wave)
 
             local skip_done = false
             while not skip_done do
                 local skip_visible = player_gui:FindFirstChild("ReactOverridesVote")
                     and player_gui.ReactOverridesVote:FindFirstChild("Frame")
                     and player_gui.ReactOverridesVote.Frame:FindFirstChild("votes")
-                    and player_gui.ReactOverridesVote.Frame.votes:FindFirstChild("vote")
+                    and player_gui.ReactOverridesVote.Frame.votes:FindFirstChild("vote", true)
 
                 if skip_visible then
+                    print("Vote UI found, position:", skip_visible.Position)
+                end
+
+                if skip_visible and skip_visible.Position == UDim2.new(0.5, 0, 0.5, 0) then
+                    print("Running vote skip on wave:", wave)
                     run_vote_skip()
                     skip_done = true
                 else
                     task.wait(0.2)
                 end
             end
+
+            print("Skip completed for wave:", wave)
         end
+
+        print("VoteSkip finished")
     end)
 end
 
@@ -756,10 +823,16 @@ function TDS:GameInfo(name, list)
     if game_state ~= "GAME" then return false end
 
     local vote_gui = player_gui:WaitForChild("ReactGameIntermission", 30)
+    if not (vote_gui and vote_gui.Enabled and vote_gui:WaitForChild("Frame", 5)) then return end
 
-    if vote_gui and vote_gui.Enabled and vote_gui:WaitForChild("Frame", 5) then
-        cast_modifier_vote(list)
+    cast_modifier_vote(list)
+
+    if marketplace_service:UserOwnsGamePassAsync(local_player.UserId, 10518590) then
+        select_map_override(name, "vip")
+    elseif is_map_available(name) then
         select_map_override(name)
+    else
+        teleport_service:Teleport(3260590327, local_player)
     end
 end
 
@@ -797,7 +870,6 @@ function TDS:Place(t_name, px, py, pz, ...)
     if args[#args] == "stack" or args[#args] == true then
         py = 95
     end
-
     if game_state ~= "GAME" then
         return false 
     end
@@ -864,7 +936,6 @@ function TDS:Sell(idx, req_wave)
     end
     local t = self.placed_towers[idx]
     if t and do_sell_tower(t) then
-        table.remove(self.placed_towers, idx)
         return true
     end
     return false
