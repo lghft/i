@@ -1185,29 +1185,28 @@ local function start_auto_skip()
 end
 
 local function start_claim_rewards()
-    if auto_claim_rewards or not _G.ClaimRewards then return end
+    if auto_claim_rewards or not _G.ClaimRewards or game_state ~= "LOBBY" then 
+        return 
+    end
+    
     auto_claim_rewards = true
 
-    local spintickets = player_gui:FindFirstChild("Interface") 
-        and player_gui.Interface.Root:FindFirstChild("Frame")
-    
-    local playtime_items = player_gui:FindFirstChild("ReactLobbyPlaytime") 
-        and player_gui.ReactLobbyPlaytime:FindFirstChild("Frame") 
-        and player_gui.ReactLobbyPlaytime.Frame:FindFirstChild("Items")
-
-    while _G.ClaimRewards and game_state == "LOBBY" do
-        if spintickets then
-            for _, child in ipairs(spintickets:GetChildren()) do
-                if child.Name == "Currency" and child:FindFirstChild("Icon") then
-                    if child.Icon.Image == "rbxassetid://18493073533" then
-                        game:GetService("ReplicatedStorage").Network.DailySpin["RF:RedeemSpin"]:InvokeServer(game:GetService("ReplicatedStorage").Client.Modules.Lobby.Controllers.DailySpinController)
-                    end
-                end
-            end
+    local player = game:GetService("Players").LocalPlayer
+    local network = game:GetService("ReplicatedStorage"):WaitForChild("Network")
+        
+    local tickets = player.SpinTickets.Value
+    if tickets > 0 then
+        for i = 1, tickets do
+            network:WaitForChild("DailySpin"):WaitForChild("RF:RedeemSpin"):InvokeServer()
+            task.wait(0.5)
         end
-        task.wait(0.5)
     end
 
+    for i = 1, 6 do
+        local args = { i }
+        network:WaitForChild("PlaytimeRewards"):WaitForChild("RF:ClaimReward"):InvokeServer(unpack(args))
+        task.wait(0.5)
+    end
     auto_claim_rewards = false
 end
 
@@ -1423,10 +1422,6 @@ task.spawn(function()
         if _G.AutoDJ and not auto_dj_running then
             start_auto_dj_booth()
         end
-
-        if _G.ClaimRewards and not auto_claim_rewards then
-            start_claim_rewards()
-        end
         
         if _G.AntiLag and not anti_lag_running then
             start_anti_lag()
@@ -1435,6 +1430,10 @@ task.spawn(function()
         task.wait(1)
     end
 end)
+
+if _G.ClaimRewards and not auto_claim_rewards then
+    start_claim_rewards()
+end
 
 start_back_to_lobby()
 start_anti_afk()
