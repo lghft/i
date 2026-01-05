@@ -366,7 +366,7 @@ local function handle_post_match()
 
     pcall(function()
         send_request({
-            Url = _G.Webhook,
+            Url = _G.WebhookURL,
             Method = "POST",
             Headers = { ["Content-Type"] = "application/json" },
             Body = game:GetService("HttpService"):JSONEncode(post_data)
@@ -380,8 +380,8 @@ end
 
 local function log_match_start()
     if not _G.SendWebhook then return end
-    if type(_G.Webhook) ~= "string" or _G.Webhook == "" then return end
-    if _G.Webhook:find("YOUR%-WEBHOOK") then return end
+    if type(_G.WebhookURL) ~= "string" or _G.WebhookURL == "" then return end
+    if _G.WebhookURL:find("YOUR%-WEBHOOK") then return end
     
     local start_payload = {
         username = "TDS AutoStrat",
@@ -413,7 +413,7 @@ local function log_match_start()
 
     pcall(function()
         send_request({
-            Url = _G.Webhook,
+            Url = _G.WebhookURL,
             Method = "POST",
             Headers = { ["Content-Type"] = "application/json" },
             Body = game:GetService("HttpService"):JSONEncode(start_payload)
@@ -806,28 +806,18 @@ function TDS:Mode(difficulty)
     return true
 end
 
+local args = {
+	"Inventory",
+	"Unequip",
+	"tower",
+	""
+}
+game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
+
+
 function TDS:Loadout(...)
     if game_state ~= "LOBBY" then
-        local towers = {...}
-        local remote = game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction")
-        for _, tower_name in ipairs(towers) do
-            if tower_name and tower_name ~= "" then
-                local success = false
-                repeat
-                    local ok = pcall(function()
-                        remote:InvokeServer("Inventory", "Equip", "tower", tower_name)
-                        log("Equipped tower: " .. tower_name, "green")
-                    end)
-                    if ok then
-                        success = true
-                    else
-                        task.wait(0.2)
-                    end
-                until success
-                task.wait(0.4)
-            end
-        end
-        return true
+        return
     end
 
     local lobby_hud = player_gui:WaitForChild("ReactLobbyHud", 30)
@@ -844,6 +834,7 @@ function TDS:Loadout(...)
                 local ok = pcall(function()
                     remote:InvokeServer("Inventory", "Equip", "tower", tower_name)
                     log("Equipped tower: " .. tower_name, "green")
+                    task.wait(0.5)
                 end)
                 if ok then
                     success = true
@@ -854,6 +845,8 @@ function TDS:Loadout(...)
             task.wait(0.4)
         end
     end
+
+    task.wait(0.5)
 
     return true
 end
@@ -868,8 +861,15 @@ function TDS:Addons()
 
     loadstring(code)()
 
-    while not TDS.Equip and TDS.MultiMode and TDS.Multiplayer do
+    while not (TDS.MultiMode and TDS.Multiplayer) do
         task.wait(0.1)
+    end
+
+    local original_equip = TDS.Equip
+    TDS.Equip = function(...)
+        if game_state == "GAME" then
+            return original_equip(...)
+        end
     end
 
     return true
@@ -1194,11 +1194,19 @@ local function start_claim_rewards()
     local player = game:GetService("Players").LocalPlayer
     local network = game:GetService("ReplicatedStorage"):WaitForChild("Network")
         
-    local tickets = player.SpinTickets.Value
-    if tickets > 0 then
-        for i = 1, tickets do
-            network:WaitForChild("DailySpin"):WaitForChild("RF:RedeemSpin"):InvokeServer()
-            task.wait(0.5)
+    local spin_tickets = player:WaitForChild("SpinTickets", 15)
+    
+    if spin_tickets and spin_tickets.Value > 0 then
+        local ticket_count = spin_tickets.Value
+        
+        local daily_spin = network:WaitForChild("DailySpin", 5)
+        local redeem_remote = daily_spin and daily_spin:WaitForChild("RF:RedeemSpin", 5)
+    
+        if redeem_remote then
+            for i = 1, ticket_count do
+                redeem_remote:InvokeServer()
+                task.wait(0.5)
+            end
         end
     end
 
