@@ -1215,6 +1215,8 @@ local function start_claim_rewards()
         network:WaitForChild("PlaytimeRewards"):WaitForChild("RF:ClaimReward"):InvokeServer(unpack(args))
         task.wait(0.5)
     end
+    
+    game:GetService("ReplicatedStorage").Network.DailySpin["RF:RedeemReward"]:InvokeServer()
     auto_claim_rewards = false
 end
 
