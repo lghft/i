@@ -8,6 +8,7 @@ local file_name = "Strat.txt"
 local placement_count = 0
 local last_action_time = tick()
 local towers_list = {} 
+local pending_placement = nil
 _G.record_strat = false
 
 local screen_gui = Instance.new("ScreenGui")
@@ -129,24 +130,33 @@ end
 
 local function record_action(command_str)
     if not _G.record_strat then return end
-    local current_time = tick()
-    local time_diff = current_time - last_action_time
-    last_action_time = current_time
     
-    local wait_line = string.format("task.wait(%.2f)\n", time_diff)
     if appendfile then
-        appendfile(file_name, wait_line .. command_str .. "\n")
+        appendfile(file_name, command_str .. "\n")
     end
 end
 
 workspace_service.Towers.ChildAdded:Connect(function(tower)
     if not _G.record_strat then return end
-    task.wait(0.1) 
-    placement_count = placement_count + 1
-    towers_list[tower] = placement_count
-    tower.Name = tostring(placement_count) 
-end)
+    
+    local owner_val = tower:WaitForChild("Owner", 15)
+    
+    if owner_val and owner_val:IsA("NumberValue") then
+        if tonumber(owner_val.Value) == player.UserId then
+            placement_count = placement_count + 1
+            towers_list[tower] = placement_count
+            tower.Name = tostring(placement_count) 
 
+            if pending_placement then
+                local p = pending_placement
+                record_action(string.format("TDS:Place(\"%s\", %.2f, %.2f, %.2f)", p.Type, p.Pos.X, p.Pos.Y, p.Pos.Z))
+                add_log("placed: " .. p.Type .. " (ID: " .. placement_count .. ")")
+                pending_placement = nil
+            end
+        end
+    end
+end)
+-- METAMETHOD HOOK
 local old_namecall
 old_namecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
@@ -161,9 +171,10 @@ old_namecall = hookmetamethod(game, "__namecall", function(self, ...)
             local place_data = args[3]
             
             if type(place_data) == "table" and place_data.Position then
-                local pos = place_data.Position
-                record_action(string.format("TDS:Place(\"%s\", %.2f, %.2f, %.2f)", tower_type, pos.X, pos.Y, pos.Z))
-                task.spawn(function() add_log("placed: " .. tower_type) end)
+                pending_placement = {
+                    Type = tower_type,
+                    Pos = place_data.Position
+                }
             end
 
         -- UPGRADE
@@ -279,17 +290,36 @@ start_btn.MouseButton1Click:Connect(function()
     
     add_log("--- recording started ---")
     if writefile then 
-        writefile(file_name, "-- strat recorded\n\n") 
+        local config_content = [[-- CONFIGURATION 
+-- INITIALIZE LIBRARY 
+local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Library.lua"))()
+
+-- START STRATEGY 
+TDS:Loadout("Mercenary Base", "Military Base", "Engineer", "Ranger", "Accelerator") -- Change this to the loadout you are using
+TDS:Mode("Hardcore") -- Change this to the gamemode you're playing
+TDS:GameInfo("Wrecked Battlefield", {}) -- Change this to the Map you want
+
+-- START STRATEGY
+]]
+
+        writefile(file_name, config_content)
     end
 end)
 
 stop_btn.MouseButton1Click:Connect(function()
     _G.record_strat = false
+    
+    towers_list = {}
+    placement_count = 0
+    pending_placement = nil
     add_log("--- recording stopped ---")
 end)
 
 close_btn.MouseButton1Click:Connect(function()
     _G.record_strat = false
+    
+    towers_list = {}
+    placement_count = 0
     screen_gui:Destroy()
 end)
 
