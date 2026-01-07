@@ -26,6 +26,8 @@ if not send_request then
 end
 
 -- // services & main refs
+local teleport_service = game:GetService("TeleportService")
+local marketplace_service = game:GetService("MarketplaceService")
 local replicated_storage = game:GetService("ReplicatedStorage")
 local remote_func = replicated_storage:WaitForChild("RemoteFunction")
 local remote_event = replicated_storage:WaitForChild("RemoteEvent")
@@ -36,7 +38,17 @@ local player_gui = local_player:WaitForChild("PlayerGui")
 local back_to_lobby_running = false
 local auto_pickups_running = false
 local auto_skip_running = false
+local auto_claim_rewards = false
 local anti_lag_running = false
+local auto_chain_running = false
+local auto_dj_running = false
+
+local ColorMap = {
+    green = "#2BFFAE",
+    red = "#FF3A3A",
+    orange = "#FFA500",
+    yellow = "#FFF300",
+}
 
 -- // icon item ids ill add more soon arghh
 local ItemNames = {
@@ -62,54 +74,109 @@ local ItemNames = {
 -- // tower management core
 local TDS = {
     placed_towers = {},
-    active_strat = true
+    active_strat = true,
+    matchmaking_map = {
+        ["Hardcore"] = "hardcore",
+        ["Pizza Party"] = "halloween",
+        ["Badlands"] = "badlands",
+        ["Polluted"] = "polluted"
+    }
 }
-
--- === NEW TDS:Equip FUNCTION ===
-function TDS:Equip(tower_input)
-    if game_state ~= "GAME" then
-        return false
-    end
-    local tower_table = type(tower_input) == "string" and {tower_input} or tower_input
-    
-    if type(tower_table) ~= "table" then
-        warn("[TDS] Equip: Invalid input - expected string or table")
-        return
-    end
-
-    for _, tower_name in ipairs(tower_table) do
-        if tower_name == "" then continue end
-        
-        local args = {
-            "Inventory",
-            "Equip",
-            "tower",
-            tower_name
-        }
-        
-        local success, result = pcall(function()
-            return remote_func:InvokeServer(unpack(args))
-        end)
-        
-        if success then
-            if result == true or (type(result) == "table" and result.Success) or (typeof(result) == "Instance" and result:IsA("Model")) then
-                print("[TDS] Successfully equipped: " .. tower_name)
-            else
-                warn("[TDS] Failed to equip: " .. tower_name .. " (remote returned false/nil)")
-            end
-        else
-            warn("[TDS] Error equipping " .. tower_name .. ": " .. tostring(result))
-        end
-        
-        task.wait(0.5) -- Prevent rate limiting
-    end
-end
--- ===============================
 
 local upgrade_history = {}
 
 -- // shared for addons
 shared.TDS_Table = TDS
+
+-- // ui
+loadstring(game:HttpGet("https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Sources/GuiSource.lua"))()
+local Console = shared.AutoStratGUI.Console
+
+shared.AutoStratGUI.Status(tostring(game_state))
+
+local log_table = {}
+local max_logs = 100
+
+-- // console
+local function classify_color(text)
+    local t = text:lower()
+
+    if t:find("error")
+        or t:find("failed")
+        or t:find("invalid")
+        or t:find("missing")
+        or t:find("cannot")
+        or t:find("nil")
+        or t:find("no ") then
+        return "red"
+    end
+
+    if t:find("warning")
+        or t:find("issue")
+        or t:find("retry")
+        or t:find("skipped")
+        or t:find("delay") then
+        return "orange"
+    end
+
+    if t:find("loaded")
+        or t:find("detected")
+        or t:find("updated")
+        or t:find("adjusted")
+        or t:find("processing") then
+        return "yellow"
+    end
+
+    return "green"
+end
+
+-- // console logging
+local function log(text, color)
+    local console_scrolling = shared.AutoStratGUI and shared.AutoStratGUI.Console
+    if not console_scrolling then return end
+    
+    local log_layout = console_scrolling:FindFirstChildOfClass("UIListLayout")
+
+    color = color or (classify_color and classify_color(text))
+    local ColorMap = {
+        red = "#ff4d4d",
+        orange = "#ff9f43",
+        yellow = "#feca57",
+        green = "#00ff96"
+    }
+    
+    local hex = ColorMap[color] or "#00ff96"
+    local timestamp = os.date("%H:%M:%S")
+    
+    local formatted_text = string.format("<font color='#555564'>[%s]</font> <font color='%s'>%s</font>", timestamp, hex, text)
+
+    local log_entry = Instance.new("TextLabel")
+    log_entry.Name = "LogEntry"
+    log_entry.BackgroundTransparency = 1
+    log_entry.Size = UDim2.new(1, -8, 0, 0)
+    log_entry.Font = Enum.Font.SourceSansSemibold
+    log_entry.RichText = true
+    log_entry.Text = formatted_text
+    log_entry.TextSize = 14
+    log_entry.TextWrapped = true
+    log_entry.TextXAlignment = Enum.TextXAlignment.Left
+    log_entry.TextColor3 = Color3.fromRGB(255, 255, 255)
+    log_entry.AutomaticSize = Enum.AutomaticSize.Y
+    log_entry.Parent = console_scrolling
+
+    table.insert(log_table, log_entry)
+
+    if #log_table > max_logs then
+        log_table[1]:Destroy()
+        table.remove(log_table, 1)
+    end
+
+    task.wait()
+    if log_layout then
+        console_scrolling.CanvasSize = UDim2.new(0, 0, 0, log_layout.AbsoluteContentSize.Y)
+        console_scrolling.CanvasPosition = Vector2.new(0, console_scrolling.CanvasSize.Y.Offset)
+    end
+end
 
 -- // currency tracking
 local start_coins, current_total_coins, start_gems, current_total_gems = 0, 0, 0, 0
@@ -299,7 +366,7 @@ local function handle_post_match()
 
     pcall(function()
         send_request({
-            Url = _G.Webhook,
+            Url = _G.WebhookURL,
             Method = "POST",
             Headers = { ["Content-Type"] = "application/json" },
             Body = game:GetService("HttpService"):JSONEncode(post_data)
@@ -313,8 +380,8 @@ end
 
 local function log_match_start()
     if not _G.SendWebhook then return end
-    if type(_G.Webhook) ~= "string" or _G.Webhook == "" then return end
-    if _G.Webhook:find("YOUR%-WEBHOOK") then return end
+    if type(_G.WebhookURL) ~= "string" or _G.WebhookURL == "" then return end
+    if _G.WebhookURL:find("YOUR%-WEBHOOK") then return end
     
     local start_payload = {
         username = "TDS AutoStrat",
@@ -346,7 +413,7 @@ local function log_match_start()
 
     pcall(function()
         send_request({
-            Url = _G.Webhook,
+            Url = _G.WebhookURL,
             Method = "POST",
             Headers = { ["Content-Type"] = "application/json" },
             Body = game:GetService("HttpService"):JSONEncode(start_payload)
@@ -405,16 +472,23 @@ local function cast_map_vote(map_id, pos_vec)
     local target_map = map_id or "Simplicity"
     local target_pos = pos_vec or Vector3.new(0,0,0)
     remote_event:FireServer("LobbyVoting", "Vote", target_map, target_pos)
+    log("Cast map vote: " .. target_map, "green")
 end
 
 local function lobby_ready_up()
     pcall(function()
         remote_event:FireServer("LobbyVoting", "Ready")
+        log("Lobby ready up sent", "green")
     end)
 end
 
-local function select_map_override(map_id)
-    remote_func:InvokeServer("LobbyVoting", "Override", map_id)
+local function select_map_override(map_id, ...)
+    local args = {...}
+
+    if args[#args] == "vip" then
+        remote_func:InvokeServer("LobbyVoting", "Override", map_id)
+    end
+
     task.wait(3)
     cast_map_vote(map_id, Vector3.new(12.59, 10.64, 52.01))
     task.wait(1)
@@ -434,6 +508,44 @@ local function cast_modifier_vote(mods_table)
     pcall(function()
         bulk_modifiers:InvokeServer(selected_mods)
     end)
+end
+
+local function is_map_available(name)
+    for _, g in ipairs(workspace:GetDescendants()) do
+        if g:IsA("SurfaceGui") and g.Name == "MapDisplay" then
+            local t = g:FindFirstChild("Title")
+            if t and t.Text == name then return true end
+        end
+    end
+
+    repeat
+        remote_event:FireServer("LobbyVoting", "Veto")
+        wait(1)
+
+        local found = false
+        for _, g in ipairs(workspace:GetDescendants()) do
+            if g:IsA("SurfaceGui") and g.Name == "MapDisplay" then
+                local t = g:FindFirstChild("Title")
+                if t and t.Text == name then
+                    found = true
+                    break
+                end
+            end
+        end
+
+        local total_player = #players_service:GetChildren()
+        local veto_text = player_gui:WaitForChild("ReactGameIntermission"):WaitForChild("Frame"):WaitForChild("buttons"):WaitForChild("veto"):WaitForChild("value").Text
+        
+    until found or veto_text == "Veto ("..total_player.."/"..total_player..")"
+
+    for _, g in ipairs(workspace:GetDescendants()) do
+        if g:IsA("SurfaceGui") and g.Name == "MapDisplay" then
+            local t = g:FindFirstChild("Title")
+            if t and t.Text == name then return true end
+        end
+    end
+
+    return false
 end
 
 -- // timescale logic
@@ -481,9 +593,10 @@ local function unlock_speed_tickets()
     if local_player.TimescaleTickets.Value >= 1 then
         if game.Players.LocalPlayer.PlayerGui.ReactUniversalHotbar.Frame.timescale.Lock.Visible then
             replicated_storage.RemoteFunction:InvokeServer('TicketsManager', 'UnlockTimeScale')
+            log("Unlocked timescale tickets", "yellow")
         end
     else
-        warn("no tickets left")
+        log("No timescale tickets left", "red")
     end
 end
 
@@ -507,12 +620,17 @@ local function trigger_restart()
 end
 
 local function get_current_wave()
-    local label = player_gui:WaitForChild("ReactGameTopGameDisplay").Frame.wave.container.value
-    local wave_num = label.Text:match("^(%d+)")
+    local label = game:GetService("Players").LocalPlayer.PlayerGui
+        .ReactGameTopGameDisplay.Frame.wave.container.value
+
+    local text = label.Text
+    local wave_num = text:match("(%d+)")
+
     return tonumber(wave_num) or 0
 end
 
 local function do_place_tower(t_name, t_pos)
+    log("Placing tower: " .. t_name, "green")
     while true do
         local ok, res = pcall(function()
             return remote_func:InvokeServer("Troops", "Pl\208\176ce", {
@@ -656,28 +774,24 @@ function TDS:Mode(difficulty)
     local res
         repeat
             local ok, result = pcall(function()
-                if difficulty == "Hardcore" then
-                    return remote:InvokeServer("Multiplayer", "v2:start", {
-                        mode = "hardcore",
+                local mode = TDS.matchmaking_map[difficulty]
+
+                local payload
+
+                if mode then
+                    payload = {
+                        mode = mode,
                         count = 1
-                    })
-                elseif difficulty == "Pizza Party" then
-                    return remote:InvokeServer("Multiplayer", "v2:start", {
-                        mode = "halloween",
-                        count = 1
-                    })
-                elseif difficulty == "Polluted" then
-                    return remote:InvokeServer("Multiplayer", "v2:start", {
-                        mode = "polluted",
-                        count = 1
-                    })
+                    }
                 else
-                    return remote:InvokeServer("Multiplayer", "v2:start", {
+                    payload = {
                         difficulty = difficulty,
                         mode = "survival",
                         count = 1
-                    })
+                    }
                 end
+
+                return remote:InvokeServer("Multiplayer", "v2:start", payload)
             end)
 
             if ok and check_res_ok(result) then
@@ -692,9 +806,18 @@ function TDS:Mode(difficulty)
     return true
 end
 
+local args = {
+	"Inventory",
+	"Unequip",
+	"tower",
+	""
+}
+game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
+
+
 function TDS:Loadout(...)
     if game_state ~= "LOBBY" then
-        return false
+        return
     end
 
     local lobby_hud = player_gui:WaitForChild("ReactLobbyHud", 30)
@@ -710,6 +833,8 @@ function TDS:Loadout(...)
             repeat
                 local ok = pcall(function()
                     remote:InvokeServer("Inventory", "Equip", "tower", tower_name)
+                    log("Equipped tower: " .. tower_name, "green")
+                    task.wait(0.5)
                 end)
                 if ok then
                     success = true
@@ -721,13 +846,12 @@ function TDS:Loadout(...)
         end
     end
 
+    task.wait(0.5)
+
     return true
 end
 
 function TDS:Addons()
-    if game_state ~= "GAME" then
-        return false
-    end
     local url = "https://api.junkie-development.de/api/v1/luascripts/public/57fe397f76043ce06afad24f07528c9f93e97730930242f57134d0b60a2d250b/download"
     local success, code = pcall(game.HttpGet, game, url)
 
@@ -737,8 +861,15 @@ function TDS:Addons()
 
     loadstring(code)()
 
-    while not TDS.Equip do
+    while not (TDS.MultiMode and TDS.Multiplayer) do
         task.wait(0.1)
+    end
+
+    local original_equip = TDS.Equip
+    TDS.Equip = function(...)
+        if game_state == "GAME" then
+            return original_equip(...)
+        end
     end
 
     return true
@@ -749,11 +880,38 @@ function TDS:TeleportToLobby()
     send_to_lobby()
 end
 
-function TDS:VoteSkip(req_wave)
-    if req_wave then
-        repeat task.wait(0.5) until get_current_wave() >= req_wave
-    end
-    run_vote_skip()
+function TDS:VoteSkip(start_wave, end_wave)
+    task.spawn(function()
+        local current_wave = get_current_wave()
+        start_wave = start_wave or (current_wave > 0 and current_wave or 1)
+        end_wave = end_wave or start_wave
+
+        for wave = start_wave, end_wave do
+            while get_current_wave() < wave do
+                task.wait(1)
+            end
+
+            local skip_done = false
+            while not skip_done do
+                local vote_ui = player_gui:FindFirstChild("ReactOverridesVote")
+                local vote_button = vote_ui 
+                    and vote_ui:FindFirstChild("Frame") 
+                    and vote_ui.Frame:FindFirstChild("votes") 
+                    and vote_ui.Frame.votes:FindFirstChild("vote", true)
+
+                if vote_button and vote_button.Position == UDim2.new(0.5, 0, 0.5, 0) then
+                    run_vote_skip()
+                    skip_done = true
+                    log("Voted to skip wave " .. wave, "green")
+                else
+                    if get_current_wave() > wave then
+                        break 
+                    end
+                    task.wait(0.5)
+                end
+            end
+        end
+    end)
 end
 
 function TDS:GameInfo(name, list)
@@ -761,10 +919,17 @@ function TDS:GameInfo(name, list)
     if game_state ~= "GAME" then return false end
 
     local vote_gui = player_gui:WaitForChild("ReactGameIntermission", 30)
+    if not (vote_gui and vote_gui.Enabled and vote_gui:WaitForChild("Frame", 5)) then return end
 
-    if vote_gui and vote_gui.Enabled and vote_gui:WaitForChild("Frame", 5) then
-        cast_modifier_vote(list)
+    cast_modifier_vote(list)
+
+    if marketplace_service:UserOwnsGamePassAsync(local_player.UserId, 10518590) then
+        select_map_override(name, "vip")
+        log("Selected map: " .. name, "green")
+    elseif is_map_available(name) then
         select_map_override(name)
+    else
+        teleport_service:Teleport(3260590327, local_player)
     end
 end
 
@@ -795,7 +960,13 @@ function TDS:RestartGame()
     trigger_restart()
 end
 
-function TDS:Place(t_name, px, py, pz)
+function TDS:Place(t_name, px, py, pz, ...)
+    local args = {...}
+    local stack = false
+
+    if args[#args] == "stack" or args[#args] == true then
+        py = py+20
+    end
     if game_state ~= "GAME" then
         return false 
     end
@@ -836,6 +1007,7 @@ function TDS:Upgrade(idx, p_id)
     local t = self.placed_towers[idx]
     if t then
         do_upgrade_tower(t, p_id or 1)
+        log("Upgrading tower index: " .. idx, "green")
         upgrade_history[idx] = (upgrade_history[idx] or 0) + 1
     end
 end
@@ -853,6 +1025,7 @@ function TDS:SetTarget(idx, target_type, req_wave)
             Troop = t,
             Target = target_type
         })
+        log("Set target for tower index " .. idx .. " to " .. target_type, "green")
     end)
 end
 
@@ -862,35 +1035,37 @@ function TDS:Sell(idx, req_wave)
     end
     local t = self.placed_towers[idx]
     if t and do_sell_tower(t) then
-        table.remove(self.placed_towers, idx)
         return true
     end
     return false
 end
 
 function TDS:SellAll(req_wave)
-    if req_wave then
-        repeat task.wait(0.5) until get_current_wave() >= req_wave
-    end
+    task.spawn(function()
+        if req_wave then
+            repeat task.wait(0.5) until get_current_wave() >= req_wave
+        end
 
-    local towers_copy = {unpack(self.placed_towers)}
-    for idx, t in ipairs(towers_copy) do
-        if do_sell_tower(t) then
-            for i, orig_t in ipairs(self.placed_towers) do
-                if orig_t == t then
-                    table.remove(self.placed_towers, i)
-                    break
+        local towers_copy = {unpack(self.placed_towers)}
+        for idx, t in ipairs(towers_copy) do
+            if do_sell_tower(t) then
+                for i, orig_t in ipairs(self.placed_towers) do
+                    if orig_t == t then
+                        table.remove(self.placed_towers, i)
+                        break
+                    end
                 end
             end
         end
-    end
 
-    return true
+        return true
+    end)
 end
 
 function TDS:Ability(idx, name, data, loop)
     local t = self.placed_towers[idx]
     if not t then return false end
+    log("Activating ability '" .. name .. "' for tower index: " .. idx, "green")
     return do_activate_ability(t, name, data, loop)
 end
 
@@ -938,10 +1113,53 @@ end
 function TDS:SetOption(idx, name, val, req_wave)
     local t = self.placed_towers[idx]
     if t then
+        log("Setting option '" .. name .. "' for tower index: " .. idx, "green")
         return do_set_option(t, name, val, req_wave)
     end
     return false
 end
+
+-- === TDS:Equip FUNCTION === --
+function TDS:Equip(t_name)
+    if game_state ~= "GAME" then
+        return false
+    end
+    local tower_table = type(tower_input) == "string" and {tower_input} or tower_input
+    
+    if type(tower_table) ~= "table" then
+        warn("[TDS] Equip: Invalid input - expected string or table")
+        return
+    end
+
+    for _, tower_name in ipairs(tower_table) do
+        if tower_name == "" then continue end
+        
+        local args = {
+            "Inventory",
+            "Equip",
+            "tower",
+            tower_name
+        }
+        
+        local success, result = pcall(function()
+            return remote_func:InvokeServer(unpack(args))
+        end)
+        
+        if success then
+            if result == true or (type(result) == "table" and result.Success) or (typeof(result) == "Instance" and result:IsA("Model")) then
+                print("[TDS] Successfully equipped: " .. tower_name)
+            else
+                warn("[TDS] Failed to equip: " .. tower_name .. " (remote returned false/nil)")
+            end
+        else
+            warn("[TDS] Error equipping " .. tower_name .. ": " .. tostring(result))
+        end
+        
+        task.wait(0.5) -- Prevent rate limiting
+    end
+end
+-- ===============================
+
 
 -- // misc utility
 local function is_void_charm(obj)
@@ -1008,6 +1226,42 @@ local function start_auto_skip()
     end)
 end
 
+local function start_claim_rewards()
+    if auto_claim_rewards or not _G.ClaimRewards or game_state ~= "LOBBY" then 
+        return 
+    end
+    
+    auto_claim_rewards = true
+
+    local player = game:GetService("Players").LocalPlayer
+    local network = game:GetService("ReplicatedStorage"):WaitForChild("Network")
+        
+    local spin_tickets = player:WaitForChild("SpinTickets", 15)
+    
+    if spin_tickets and spin_tickets.Value > 0 then
+        local ticket_count = spin_tickets.Value
+        
+        local daily_spin = network:WaitForChild("DailySpin", 5)
+        local redeem_remote = daily_spin and daily_spin:WaitForChild("RF:RedeemSpin", 5)
+    
+        if redeem_remote then
+            for i = 1, ticket_count do
+                redeem_remote:InvokeServer()
+                task.wait(0.5)
+            end
+        end
+    end
+
+    for i = 1, 6 do
+        local args = { i }
+        network:WaitForChild("PlaytimeRewards"):WaitForChild("RF:ClaimReward"):InvokeServer(unpack(args))
+        task.wait(0.5)
+    end
+    
+    game:GetService("ReplicatedStorage").Network.DailySpin["RF:RedeemReward"]:InvokeServer()
+    auto_claim_rewards = false
+end
+
 local function start_back_to_lobby()
     if back_to_lobby_running then return end
     back_to_lobby_running = true
@@ -1026,6 +1280,10 @@ end
 local function start_anti_lag()
     if anti_lag_running then return end
     anti_lag_running = true
+
+    local settings = settings().Rendering
+    local original_quality = settings.QualityLevel
+    settings.QualityLevel = Enum.QualityLevel.Level01
 
     task.spawn(function()
         while _G.AntiLag do
@@ -1098,10 +1356,138 @@ local function start_rejoin_on_disconnect()
     end)
 end
 
+local function start_auto_chain()
+    if auto_chain_running or not _G.AutoChain then return end
+    auto_chain_running = true
+
+    task.spawn(function()
+        local idx = 1
+
+        while _G.AutoChain do
+            local commander = {}
+            local towers_folder = workspace:FindFirstChild("Towers")
+
+            if towers_folder then
+                for _, towers in ipairs(towers_folder:GetDescendants()) do
+                    if towers:IsA("Folder") and towers.Name == "TowerReplicator"
+                    and towers:GetAttribute("Name") == "Commander"
+                    and towers:GetAttribute("OwnerId") == game.Players.LocalPlayer.UserId
+                    and (towers:GetAttribute("Upgrade") or 0) >= 2 then
+                        commander[#commander + 1] = towers.Parent
+                    end
+                end
+            end
+
+            if #commander >= 3 then
+                if idx > #commander then idx = 1 end
+
+                remote_func:InvokeServer(
+                    "Troops",
+                    "Abilities",
+                    "Activate",
+                    { Troop = commander[idx], Name = "Call Of Arms", Data = {} }
+                )
+
+                idx += 1
+
+                local hotbar = player_gui.ReactUniversalHotbar.Frame
+                local timescale = hotbar and hotbar:FindFirstChild("timescale")
+                if timescale then
+                    if timescale:FindFirstChild("Lock") then
+                        task.wait(11)
+                    else
+                        task.wait(5.5)
+                    end
+                else
+                    task.wait(11)
+                end
+            end
+
+            task.wait(1)
+        end
+
+        auto_chain_running = false
+    end)
+end
+
+local function start_auto_dj_booth()
+    if auto_dj_running or not _G.AutoDJ then return end
+    auto_dj_running = true
+
+    task.spawn(function()
+        while _G.AutoDJ do
+            local towers_folder = workspace:FindFirstChild("Towers")
+
+            if towers_folder then
+                for _, towers in ipairs(towers_folder:GetDescendants()) do
+                    if towers:IsA("Folder") and towers.Name == "TowerReplicator"
+                    and towers:GetAttribute("Name") == "DJ Booth"
+                    and towers:GetAttribute("OwnerId") == game.Players.LocalPlayer.UserId
+                    and (towers:GetAttribute("Upgrade") or 0) >= 3 then
+                        DJ = towers.Parent
+                    end
+                end
+            end
+
+            if DJ then
+                remote_func:InvokeServer(
+                    "Troops",
+                    "Abilities",
+                    "Activate",
+                    { Troop = DJ, Name = "Drop The Beat", Data = {} }
+                )
+
+                local hotbar = player_gui.ReactUniversalHotbar.Frame
+                local timescale = hotbar and hotbar:FindFirstChild("timescale")
+                if timescale then
+                    if timescale:FindFirstChild("Lock") then
+                        task.wait(28)
+                    else
+                        task.wait(14)
+                    end
+                else
+                    task.wait(28)
+                end
+            end
+
+            task.wait(1)
+        end
+
+        auto_dj_running = false
+    end)
+end
+
+task.spawn(function()
+    while true do
+        if _G.AutoPickups and not auto_pickups_running then
+            start_auto_pickups()
+        end
+        
+        if _G.AutoSkip and not auto_skip_running then
+            start_auto_skip()
+        end
+
+        if _G.AutoChain and not auto_chain_running then
+            start_auto_chain()
+        end
+
+        if _G.AutoDJ and not auto_dj_running then
+            start_auto_dj_booth()
+        end
+        
+        if _G.AntiLag and not anti_lag_running then
+            start_anti_lag()
+        end
+        
+        task.wait(1)
+    end
+end)
+
+if _G.ClaimRewards and not auto_claim_rewards then
+    start_claim_rewards()
+end
+
 start_back_to_lobby()
-start_auto_skip()
-start_auto_pickups()
-start_anti_lag()
 start_anti_afk()
 start_rejoin_on_disconnect()
 
