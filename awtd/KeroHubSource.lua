@@ -88,6 +88,13 @@ task.spawn(function()
         task.wait(0.05)
         VirtualInputManager:SendKeyEvent(false, bind, false, game)
     end)
+
+    task.spawn(function()
+        repeat task.wait() until Fluent.Unloaded == true
+        if Fluent.Unloaded then
+            ToggleGui:Destroy()
+        end
+    end)
 end)
 
 -- // VARIABLES // --
