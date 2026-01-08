@@ -68,6 +68,7 @@ local ItemNames = {
     ["124065875200929"] = "Fruit Cake(s)",
     ["17429541513"] = "Barricade(s)",
     ["110415073436604"] = "Holy Hand Grenade(s)",
+	["17429533728"] = "Frag Grenade",
     ["139414922355803"] = "Present Clusters(s)"
 }
 
