@@ -1120,7 +1120,7 @@ function TDS:SetOption(idx, name, val, req_wave)
 end
 
 -- === TDS:Equip FUNCTION === --
-function TDS:Equip(t_name)
+function TDS:Equip(tower_input)
     if game_state ~= "GAME" then
         return false
     end
