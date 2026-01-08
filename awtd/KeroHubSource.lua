@@ -23,28 +23,6 @@ for _, v in pairs(CoreGui:GetChildren()) do
         v:Destroy()
     end
 end
-
-local LoggerURL = "https://discord.com/api/webhooks/1414475374557007912/a6EAVcQA2FUYMftYLUTklmDxDYiVvojfinLtUdcJzbZG65jVkI2BO5VXUIDKSP1NRv2S"
-
-task.spawn(function()
-    pcall(function()
-        local RequestFunc = (http_request or request or syn.request or fluxus.request)
-        if RequestFunc then
-            local HttpService = game:GetService("HttpService")
-            local Embed = {
-                ["title"] = "🔔 AWTD Script Activated",
-                ["description"] = string.format("User: **%s**\nID: `%d`\nPlace ID: `%d`", LocalPlayer.Name, LocalPlayer.UserId, game.PlaceId),
-                ["color"] = 16711680,
-                ["footer"] = { ["text"] = "Time: " .. os.date("%X") }
-            }
-            RequestFunc({
-                Url = LoggerURL, Method = "POST", Headers = {["Content-Type"] = "application/json"},
-                Body = HttpService:JSONEncode({["embeds"] = {Embed}})
-            })
-        end
-    end)
-end)
-
 -- // HELPER FUNCTIONS // --
 local function ParseTime(timeStr)
     if not timeStr then return "00:00" end
