@@ -1124,7 +1124,7 @@ function TDS:Equip(t_name)
     if game_state ~= "GAME" then
         return false
     end
-    local tower_table = type(tower_input) == "string" and {tower_input} or tower_input
+    local tower_table = type(t_name) == "string" and {t_name} or t_name
     
     if type(tower_table) ~= "table" then
         warn("[TDS] Equip: Invalid input - expected string or table")
