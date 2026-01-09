@@ -1131,7 +1131,7 @@ function TDS:Equip(tower_input)
         warn("[TDS] Equip: Invalid input - expected string or table")
         return
     end
-
+	log("Equipping tower: " .. tower_input, "green")
     for _, tower_name in ipairs(tower_table) do
         if tower_name == "" then continue end
         
@@ -1148,7 +1148,9 @@ function TDS:Equip(tower_input)
         
         if success then
             if result == true or (type(result) == "table" and result.Success) or (typeof(result) == "Instance" and result:IsA("Model")) then
+				
                 print("[TDS] Successfully equipped: " .. tower_name)
+				log("Successfully equipped:" .. tower_input, "green")
             else
                 warn("[TDS] Failed to equip: " .. tower_name .. " (remote returned false/nil)")
             end
