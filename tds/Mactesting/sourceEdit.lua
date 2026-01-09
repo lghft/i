@@ -1128,7 +1128,8 @@ function TDS:Equip(tower_input)
     local tower_table = type(tower_input) == "string" and {tower_input} or tower_input
     
     if type(tower_table) ~= "table" then
-        warn("[TDS] Equip: Invalid input - expected string or table")
+        --warn("[TDS] Equip: Invalid input - expected string or table")
+		log("Equip: Invalid input - expected string or table" .. tower_input, "yellow")
         return
     end
 	log("Equipping tower: " .. tower_input, "green")
@@ -1153,9 +1154,11 @@ function TDS:Equip(tower_input)
 				log("Successfully equipped:" .. tower_input, "green")
             else
                 warn("[TDS] Failed to equip: " .. tower_name .. " (remote returned false/nil)")
+				log("Failed to equip: " .. tower_input, "orange")
             end
         else
             warn("[TDS] Error equipping " .. tower_name .. ": " .. tostring(result))
+			log("Error equipping " .. tower_input, "red")
         end
         
         task.wait(0.5) -- Prevent rate limiting
