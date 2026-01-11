@@ -42,6 +42,8 @@ local auto_claim_rewards = false
 local anti_lag_running = false
 local auto_chain_running = false
 local auto_dj_running = false
+local auto_mercenary_running = false
+local sell_farms_running = false
 
 local ColorMap = {
     green = "#2BFFAE",
@@ -709,7 +711,6 @@ local function do_activate_ability(t_obj, ab_name, ab_data, is_looping)
                 if ab_data then
                     data = table.clone(ab_data)
 
-                    -- 🎯 RANDOMIZE HERE (every attempt)
                     if positions and #positions > 0 then
                         data.towerPosition = positions[math.random(#positions)]
                     end
@@ -1415,6 +1416,85 @@ local function start_auto_dj_booth()
     end)
 end
 
+local function start_auto_mercenary()
+    if auto_mercenary_running or not _G.AutoMercenary then return end
+    auto_mercenary_running = true
+
+    task.spawn(function()
+        while _G.AutoMercenary do
+            local towers_folder = workspace:FindFirstChild("Towers")
+
+            if towers_folder then
+                for _, towers in ipairs(towers_folder:GetDescendants()) do
+                    if towers:IsA("Folder") and towers.Name == "TowerReplicator"
+                    and towers:GetAttribute("Name") == "Mercenary Base"
+                    and towers:GetAttribute("OwnerId") == game.Players.LocalPlayer.UserId
+                    and (towers:GetAttribute("Upgrade") or 0) >= 5 then
+                        
+                        remote_func:InvokeServer(
+                            "Troops",
+                            "Abilities",
+                            "Activate",
+                            { 
+                                Troop = towers.Parent, 
+                                Name = "Air-Drop", 
+                                Data = {
+                                    pathName = 1, 
+                                    directionCFrame = CFrame.new(), 
+                                    dist = _G.PathDistance or 195
+                                } 
+                            }
+                        )
+
+                        task.wait(0.5)
+                        
+                        if not _G.AutoMercenary then break end
+                    end
+                end
+            end
+
+            task.wait(0.5)
+        end
+
+        auto_mercenary_running = false
+    end)
+end
+
+local function start_sell_farm()
+    if sell_farms_running or not _G.SellFarms then return end
+    sell_farms_running = true
+
+    task.spawn(function()
+        while _G.SellFarms do
+            local current_wave = get_current_wave()
+            if _G.SellFarmsWave and current_wave < _G.SellFarmsWave then
+                task.wait(1)
+                continue
+            end
+
+            local towers_folder = workspace:FindFirstChild("Towers")
+            if towers_folder then
+                for _, replicator in ipairs(towers_folder:GetDescendants()) do
+                    if replicator:IsA("Folder") and replicator.Name == "TowerReplicator" then
+                        local is_farm = replicator:GetAttribute("Name") == "Farm"
+                        local is_mine = replicator:GetAttribute("OwnerId") == game.Players.LocalPlayer.UserId
+
+                        if is_farm and is_mine then
+                            local tower_model = replicator.Parent
+                            remote_func:InvokeServer("Troops", "Sell", { Troop = tower_model })
+                            
+                            task.wait(0.2)
+                        end
+                    end
+                end
+            end
+
+            task.wait(1)
+        end
+        sell_farms_running = false
+    end)
+end
+
 task.spawn(function()
     while true do
         if _G.AutoPickups and not auto_pickups_running then
@@ -1431,6 +1511,14 @@ task.spawn(function()
 
         if _G.AutoDJ and not auto_dj_running then
             start_auto_dj_booth()
+        end
+
+        if _G.AutoMercenary and not auto_mercenary_running then
+            start_auto_mercenary()
+        end
+
+        if _G.SellFarms and not sell_farms_running then
+            start_sell_farm()
         end
         
         if _G.AntiLag and not anti_lag_running then
