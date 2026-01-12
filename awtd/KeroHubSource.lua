@@ -8,12 +8,14 @@ getgenv().AutoUrara = false
 getgenv().NativeAutoSkill = false
 getgenv().AutoJoinAbyssLoop = false
 getgenv().AutoCreateLoop = false
+getgenv().AutoEventTimeLoop = false 
 getgenv().AutoResumeState = false
 getgenv().WebhookEnabled = false 
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local HttpService = game:GetService("HttpService") 
 
 -- // REMOVE OLD UI // --
 if CoreGui:FindFirstChild("FluentMobileToggle_Fix_Duc") then CoreGui.FluentMobileToggle_Fix_Duc:Destroy() end
@@ -37,11 +39,10 @@ end
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
-local HttpService = game:GetService("HttpService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local GuiService = game:GetService("GuiService")
-local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Window = Fluent:CreateWindow({
     Title = "AWTD",
@@ -87,13 +88,6 @@ task.spawn(function()
         VirtualInputManager:SendKeyEvent(true, bind, false, game)
         task.wait(0.05)
         VirtualInputManager:SendKeyEvent(false, bind, false, game)
-    end)
-
-    task.spawn(function()
-        repeat task.wait() until Fluent.Unloaded == true
-        if Fluent.Unloaded then
-            ToggleGui:Destroy()
-        end
     end)
 end)
 
@@ -270,6 +264,27 @@ Tabs.Lobby:AddSection("Auto Game Functions")
 Tabs.Lobby:AddToggle("AutoRestart", {Title = "Auto Restart", Default = false })
 Tabs.Lobby:AddToggle("AutoNext", {Title = "Auto Next", Default = false })
 Tabs.Lobby:AddToggle("AutoLeave", {Title = "Auto Leave", Default = false })
+
+-- >>> EVENT SECTION <<<
+Tabs.Lobby:AddSection("Event")
+Tabs.Lobby:AddDropdown("EventTimeSelect", { Title = "Select Time", Values = {"Day", "Night", "Cycle"}, Default = "Cycle" })
+Tabs.Lobby:AddToggle("AutoPickTime", {Title = "Auto Pick Time", Default = false }):OnChanged(function(v)
+    getgenv().AutoEventTimeLoop = v
+    if v then
+        task.spawn(function()
+            while getgenv().AutoEventTimeLoop do
+                local val = Options.EventTimeSelect.Value
+                if val then
+                    local args = { [1] = val }
+                    local remote = ReplicatedStorage:FindFirstChild("Remote") and ReplicatedStorage.Remote:FindFirstChild("Update")
+                    if remote then remote:FireServer(unpack(args)) end
+                end
+                task.wait(2)
+            end
+        end)
+    end
+end)
+
 Tabs.Lobby:AddSection("Abyss Bypass")
 Tabs.Lobby:AddInput("AbyssFloorInput", {Title = "Bypass Abyss Floor", Default = "40", Numeric = true, Callback = function(v) end})
 Tabs.Lobby:AddToggle("AutoJoinAbyss", {Title = "Auto Join Abyss", Default = false }):OnChanged(function(v)
@@ -288,17 +303,17 @@ Tabs.Lobby:AddToggle("AutoJoinAbyss", {Title = "Auto Join Abyss", Default = fals
 end)
 Tabs.Lobby:AddSection("Create/Join Room")
 local MapData = {
-    ["Event Stage"] = {"Boss Rush", "Random Unit"},
-    ["Resource Mode"] = {"Training Field", "Metal Rush", "Blue Element", "Red Element", "Green Element", "Purple Element", "Yellow Element"},
+    ["Event Stage"] = {"Boss Rush", "Random Unit", "Forbidden Graveyard", "Training Field", "Work Field"},
+    ["Resource Mode"] = {"Metal Rush", "Blue Element", "Red Element", "Green Element", "Purple Element", "Yellow Element"},
     ["Raid Mode"] = {"The Rumbling", "Esper City", "String Kingdom", "Ruin Society", "Soul Hall", "Katana Revenge", "Pillar Cave", "Spider MT.Raid", "Katamura City Raid", "Kujaku House", "Hero City Raid", "MarineFord Raid", "Idol Concert", "Evil Pink Dungeon", "Exploding Planet", "Charuto Bridge"},
     ["Legend Stages"] = {"Fairy Camelot", "Z Game", "Android Future", "Paradox Invasion", "Victory Valley", "Shinobi Battleground", "Dream Island", "Tomb of the Star", "Shadow Realm", "Chaos Return"},
     ["Quest Stages"] = {"The Eclipse"},
-    ["Special Event"] = {"Summer Island"}
+    ["Special Event"] = {"Reaper Town"}
 }
 local ModeList = {"Event Stage", "Resource Mode", "Raid Mode", "Legend Stages", "Quest Stages", "Special Event"}
 local DiffList = {"Normal", "Insane", "Nightmare", "Master", "Challenger", "Unique"}
 Tabs.Lobby:AddDropdown("RoomMode", { Title = "Select Mode", Values = ModeList, Default = "Special Event", Callback = function(Value) if Options.RoomStage then Options.RoomStage:SetValues(MapData[Value] or {}); Options.RoomStage:SetValue(MapData[Value][1]) end end })
-Tabs.Lobby:AddDropdown("RoomStage", {Title = "Select Stage", Values = MapData["Special Event"], Default = "Summer Island"})
+Tabs.Lobby:AddDropdown("RoomStage", {Title = "Select Stage", Values = MapData["Special Event"], Default = "Reaper Town"})
 Tabs.Lobby:AddDropdown("RoomDiff", {Title = "Select Difficulty", Values = DiffList, Default = "Unique"})
 Tabs.Lobby:AddToggle("RoomFriendOnly", {Title = "Friend Only", Default = false })
 Tabs.Lobby:AddToggle("AutoCreateRoom", {Title = "Auto Join/Create", Default = false }):OnChanged(function(v)
@@ -380,9 +395,8 @@ local function SendGameWebhook(status)
 
     -- SENDING LOGIC
     local embedColor = (status == "Victory") and 65280 or 16711680
-    -- >>> ĐÃ ĐỔI CHỖ ẢNH LẠI CHO ĐÚNG <<<
-    local headerIcon = "https://i.postimg.cc/TwNxZvmw/no-Filter.webp" -- Ảnh mèo (Thumbnail nhỏ)
-    local mainImage = "https://i.postimg.cc/1RYRdwrS/Bo-suu-tap.jpg"   -- Ảnh Anime (Main Image to)
+    local headerIcon = "https://i.postimg.cc/1RYRdwrS/Bo-suu-tap.jpg" -- Thumbnail
+    local mainImage = "https://i.postimg.cc/TwNxZvmw/no-Filter.webp" -- Main Image
     local footerIcon = "https://i.postimg.cc/HWKcyfKJ/download-(2).jpg"
     
     local Payload = {
@@ -533,9 +547,11 @@ task.spawn(function()
             if not w then 
                 w = true; isPlaying = false
                 if getgenv().WebhookEnabled then SendGameWebhook(status) end
+                
                 if Options.AutoRestart.Value then firebutton(getUiButton("Restart"))
                 elseif Options.AutoNext.Value then firebutton(getUiButton("Next"))
                 elseif Options.AutoLeave.Value then firebutton(getUiButton("Back")) end
+                
                 task.wait(1) 
             end
         elseif w then
