@@ -1,4 +1,3 @@
--- // CLEANUP & INIT // --
 if getgenv().StopAllMacros then
     getgenv().StopAllMacros = true
     task.wait(0.2)
@@ -9,6 +8,7 @@ getgenv().NativeAutoSkill = false
 getgenv().AutoJoinAbyssLoop = false
 getgenv().AutoCreateLoop = false
 getgenv().AutoEventTimeLoop = false 
+getgenv().AutoGraveLoop = false
 getgenv().AutoResumeState = false
 getgenv().WebhookEnabled = false 
 
@@ -21,7 +21,6 @@ local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
--- [UI CLEANUP]
 if CoreGui:FindFirstChild("FluentMobileToggle_Fix_Duc") then CoreGui.FluentMobileToggle_Fix_Duc:Destroy() end
 if LocalPlayer.PlayerGui:FindFirstChild("FluentMobileToggle_Fix_Duc") then LocalPlayer.PlayerGui.FluentMobileToggle_Fix_Duc:Destroy() end
 for _, v in pairs(CoreGui:GetChildren()) do
@@ -30,7 +29,6 @@ for _, v in pairs(CoreGui:GetChildren()) do
     end
 end
 
--- [HELPER]
 local function ParseTime(timeStr)
     if not timeStr then return "00:00" end
     local min, sec = timeStr:match("(%d+)%s*min%s*(%d+)%s*sec")
@@ -85,7 +83,6 @@ task.spawn(function()
     end)
 end)
 
--- [VARS]
 local MACRO_FOLDER = "AWTD_Macros_Kero"
 local AutoConfigName = "AWTD_AutoSave_Kero" 
 if getgenv().AutoResumeState == nil then getgenv().AutoResumeState = false end
@@ -99,26 +96,35 @@ local AutoSkillConnections = {}
 local AllowedRemotes = { ["SpawnUnit"]=true, ["SellUnit"]=true, ["UpgradeUnit"]=true, ["UnitAbility"]=true, ["ChangeUnitModeFunction"]=true, ["BuyMeat"]=true, ["FeedAll"]=true, ["SkipEvent"]=true, ["x2Event"]=true }
 if not isfolder(MACRO_FOLDER) then makefolder(MACRO_FOLDER) end
 
--- [CORE]
-local function SmartFire(remote, args)
-    if not remote then return end
-    if remote:IsA("RemoteEvent") or remote:IsA("UnreliableRemoteEvent") then remote:FireServer(unpack(args or {}))
-    elseif remote:IsA("RemoteFunction") then task.spawn(function() pcall(function() remote:InvokeServer(unpack(args or {})) end) end) end
+local PlacedUnitsRegistry = {}
+
+local function SmartFire(remote, args, maxRetries)
+    if not remote then return false end
+    args = args or {}
+    maxRetries = maxRetries or 3
+    for attempt = 1, maxRetries do
+        local ok = pcall(function()
+            if remote:IsA("RemoteEvent") or remote:IsA("UnreliableRemoteEvent") then
+                remote:FireServer(unpack(args))
+            elseif remote:IsA("RemoteFunction") then
+                remote:InvokeServer(unpack(args))
+            end
+        end)
+        if ok then return true end
+        if attempt < maxRetries then task.wait(0.1) end
+    end
+    return false
 end
+
 local function CFrameToTable(cf) return {cf:GetComponents()} end
 local function TableToCFrame(tab) return CFrame.new(unpack(tab)) end
 local function getCash() local ls=LocalPlayer:FindFirstChild("leaderstats"); return (ls and ls:FindFirstChild("Cash")) and ls.Cash.Value or 0 end
 
--- [NEW] GLOBAL IGNORE LIST FOR PLACED UNITS
-local PlacedUnitsRegistry = {} 
-
 local function findUnitByCFrame(tCF, ignorePlaced) 
     if not Workspace:FindFirstChild("Units") then return nil end
     local closestUnit = nil
-    local minDist = 1.0 -- Radius nhỏ (1 stud)
-    
+    local minDist = 1.0 
     for _, u in pairs(Workspace.Units:GetChildren()) do 
-        -- Nếu ignorePlaced = true, bỏ qua các unit đã có trong Registry
         if not (ignorePlaced and PlacedUnitsRegistry[u]) then
             local r = u:FindFirstChild("HumanoidRootPart") or u.PrimaryPart
             if r then
@@ -133,12 +139,47 @@ local function findUnitByCFrame(tCF, ignorePlaced)
     return closestUnit 
 end
 
-local function getUiButton(n) local pg=LocalPlayer:FindFirstChild("PlayerGui"); if not pg then return nil end; local s,b=pcall(function() return pg.EndUI.UI.Stage_Grid.Frame[n].Button end); return (s and b) or nil end
-local function firebutton(btn) if not btn then return end; local oN,oS=GuiService.GuiNavigationEnabled,GuiService.SelectedObject; GuiService.GuiNavigationEnabled=true; GuiService.SelectedObject=btn; VirtualInputManager:SendKeyEvent(true,"Return",false,nil); VirtualInputManager:SendKeyEvent(false,"Return",false,nil); task.wait(0.05); GuiService.GuiNavigationEnabled=oN; GuiService.SelectedObject=oS end
+local function getUiButton(name) 
+    local pg = LocalPlayer:FindFirstChild("PlayerGui")
+    if not pg then return nil end
+    local path = pg:FindFirstChild("EndUI")
+    if path then path = path:FindFirstChild("UI") end
+    if path then path = path:FindFirstChild("Stage_Grid") end
+    if path then path = path:FindFirstChild("Frame") end
+    if path then path = path:FindFirstChild(name) end
+    if path then return path:FindFirstChild("Button") end
+    return nil 
+end
+
+local function firebutton(btn) 
+    if not btn then return end
+    local oldNav = GuiService.GuiNavigationEnabled
+    local oldSel = GuiService.SelectedObject
+    GuiService.GuiNavigationEnabled = true
+    GuiService.SelectedObject = btn
+    VirtualInputManager:SendKeyEvent(true, "Return", false, nil)
+    VirtualInputManager:SendKeyEvent(false, "Return", false, nil)
+    task.wait(0.1)
+    GuiService.GuiNavigationEnabled = oldNav
+    GuiService.SelectedObject = oldSel
+end
+
 local function getWave() if Workspace:FindFirstChild("Info") and Workspace.Info:FindFirstChild("Wave") then return Workspace.Info.Wave.Value end return 0 end
-local function SaveCurrentMacro() if currentMacroName=="" then return end; local e={}; for _,a in ipairs(currentMacroData) do local n=table.clone(a); if n.CFrame then n.CFrame=CFrameToTable(n.CFrame) end; table.insert(e,n) end; writefile(MACRO_FOLDER.."/"..currentMacroName..".json", HttpService:JSONEncode(e)); Fluent:Notify({Title="System", Content="Saved", Duration=1}) end
-local function LoadMacro(n) if not isfile(MACRO_FOLDER.."/"..n..".json") then return end; local c=readfile(MACRO_FOLDER.."/"..n..".json"); local d=HttpService:JSONDecode(c); currentMacroData={}; for _,a in ipairs(d) do if a.CFrame then a.CFrame=TableToCFrame(a.CFrame) end; table.insert(currentMacroData,a) end; currentMacroName=n end
-local function GetMacroFiles() local f=listfiles(MACRO_FOLDER); local n={}; for _,v in ipairs(f) do local nm=v:match("([^/]+)%.json$"); if nm then table.insert(n,nm) end end; return n end
+local function SaveCurrentMacro() if currentMacroName=="" then return end; local e={}; for _,a in ipairs(currentMacroData) do local n=table.clone(a); if n.CFrame then n.CFrame=CFrameToTable(n.CFrame) end; table.insert(e,n) end; writefile(MACRO_FOLDER.."/"..currentMacroName..".json", HttpService:JSONEncode(e)); end
+
+local function LoadMacro(n) 
+    if not isfile(MACRO_FOLDER.."/"..n..".json") then return end; 
+    local c=readfile(MACRO_FOLDER.."/"..n..".json"); 
+    local d=HttpService:JSONDecode(c); 
+    currentMacroData={}; 
+    for _,a in ipairs(d) do 
+        if a.CFrame then a.CFrame=TableToCFrame(a.CFrame) end; 
+        table.insert(currentMacroData,a) 
+    end; 
+    currentMacroName=n 
+end
+
+local function GetMacroFiles() local f=listfiles(MACRO_FOLDER); local n={}; for _,v in ipairs(f) do local nm=v:match("([^/]+)%.json$"); if nm then table.insert(n,nm) end end; table.sort(n); return n end
 
 local function getUnitUpgradeCost(unit)
     if unit and unit:FindFirstChild("Info") and unit.Info:FindFirstChild("UpgradeCost") then return unit.Info.UpgradeCost.Value end
@@ -169,7 +210,6 @@ end
 
 local function CleanupAutoSkillConnections() for _, conn in pairs(AutoSkillConnections) do if conn then conn:Disconnect() end end AutoSkillConnections = {} end
 
--- [RECORDING HOOK]
 local mt = getrawmetatable(game)
 local oldNamecall = mt.__namecall
 setreadonly(mt, false)
@@ -186,16 +226,15 @@ mt.__namecall = newcclosure(function(self, ...)
             if rName == "SpawnUnit" then 
                 task.wait(0.5)
                 table.insert(currentMacroData, {Action="Place", Time=currentTime, Wave=currentWave, Cost=math.max(0, preCash - getCash()), UnitName=args[1], CFrame=args[2], Slot=args[3], Data=args[4]})
-                Fluent:Notify({Title="Rec", Content="Place", Duration=1})
-            elseif rName == "SellUnit" then local u=args[1]; if u and u.PrimaryPart then table.insert(currentMacroData, {Action="Sell", Time=currentTime, Wave=currentWave, Cost=0, CFrame=u.PrimaryPart.CFrame}); Fluent:Notify({Title="Rec", Content="Sell", Duration=1}) end
-            elseif rName == "UpgradeUnit" then task.wait(0.5); local u=args[1]; if u and u.PrimaryPart then table.insert(currentMacroData, {Action="Upgrade", Time=currentTime, Wave=currentWave, Cost=math.max(0, preCash - getCash()), CFrame=u.PrimaryPart.CFrame}); Fluent:Notify({Title="Rec", Content="Upgrade", Duration=1}) end
+            elseif rName == "SellUnit" then local u=args[1]; if u and u.PrimaryPart then table.insert(currentMacroData, {Action="Sell", Time=currentTime, Wave=currentWave, Cost=0, CFrame=u.PrimaryPart.CFrame}) end
+            elseif rName == "UpgradeUnit" then task.wait(0.5); local u=args[1]; if u and u.PrimaryPart then table.insert(currentMacroData, {Action="Upgrade", Time=currentTime, Wave=currentWave, Cost=math.max(0, preCash - getCash()), CFrame=u.PrimaryPart.CFrame}) end
             elseif rName == "UnitAbility" then 
                 local u = args[2]
                 if u and u.PrimaryPart then table.insert(currentMacroData, { Action="Ability", Time=currentTime, Wave=currentWave, Cost=0, SkillName=args[1], CFrame=u.PrimaryPart.CFrame, AbilityData=args[3] }) end
             elseif rName == "ChangeUnitModeFunction" then
                 local u = args[1]
-                if u and u.PrimaryPart then table.insert(currentMacroData, {Action="TargetMode", Time=currentTime, Wave=currentWave, Cost=0, CFrame=u.PrimaryPart.CFrame}); Fluent:Notify({Title="Rec", Content="Target Mode", Duration=1}) end
-            elseif rName == "BuyMeat" then task.wait(0.5); table.insert(currentMacroData, {Action="BuyMeat", Time=currentTime, Wave=currentWave, Cost=math.max(0, preCash - getCash()), Args=args}); Fluent:Notify({Title="Rec", Content="Buy Meat", Duration=1})
+                if u and u.PrimaryPart then table.insert(currentMacroData, {Action="TargetMode", Time=currentTime, Wave=currentWave, Cost=0, CFrame=u.PrimaryPart.CFrame}) end
+            elseif rName == "BuyMeat" then task.wait(0.5); table.insert(currentMacroData, {Action="BuyMeat", Time=currentTime, Wave=currentWave, Cost=math.max(0, preCash - getCash()), Args=args})
             elseif rName == "FeedAll" then table.insert(currentMacroData, {Action="FeedAll", Time=currentTime, Wave=currentWave, Cost=0})
             elseif rName == "SkipEvent" then table.insert(currentMacroData, {Action="SkipWave", Time=currentTime, Wave=currentWave, Cost=0})
             elseif rName == "x2Event" then table.insert(currentMacroData, {Action="AutoSpeed", Time=currentTime, Wave=currentWave, Cost=0})
@@ -206,7 +245,6 @@ mt.__namecall = newcclosure(function(self, ...)
 end)
 setreadonly(mt, true)
 
--- [TABS]
 local Tabs = {
     Macro = Window:AddTab({ Title = "Macro Manager", Icon = "file-cog" }),
     Ability = Window:AddTab({ Title = "Ability Manager", Icon = "star" }),
@@ -292,6 +330,33 @@ Tabs.Lobby:AddToggle("AutoPickTime", {Title = "Auto Pick Time", Default = false 
                     local remote = ReplicatedStorage:FindFirstChild("Remote") and ReplicatedStorage.Remote:FindFirstChild("Update")
                     if remote then remote:FireServer(unpack(args)) end
                 end
+                task.wait(2)
+            end
+        end)
+    end
+end)
+
+Tabs.Lobby:AddToggle("AutoGrave", {Title = "Auto Reveal Graves", Default = false }):OnChanged(function(v)
+    getgenv().AutoGraveLoop = v
+    if v then
+        task.spawn(function()
+            while getgenv().AutoGraveLoop do
+                pcall(function()
+                    local map = Workspace:FindFirstChild("Map")
+                    if map and map:FindFirstChild("Graves") then
+                        for _, grave in pairs(map.Graves:GetChildren()) do
+                            if not getgenv().AutoGraveLoop then break end
+                            local part = grave:FindFirstChild("Part")
+                            if part then
+                                local event = part:FindFirstChild("GraveEvent")
+                                if event then
+                                    local remote = ReplicatedStorage:FindFirstChild("Remote") and ReplicatedStorage.Remote:FindFirstChild("GraveEvent")
+                                    if remote then SmartFire(remote, {event}, 1) end
+                                end
+                            end
+                        end
+                    end
+                end)
                 task.wait(2)
             end
         end)
@@ -416,18 +481,16 @@ Window:SelectTab(1)
 
 task.spawn(function()
     task.wait(1) 
-    pcall(function() SaveManager:Load(AutoConfigName); Fluent:Notify({Title="System", Content="Config Loaded!", Duration=2}) end)
+    pcall(function() SaveManager:Load(AutoConfigName) end)
 end)
 
 task.spawn(function()
     while true do task.wait(5); pcall(function() SaveManager:Save(AutoConfigName) end) end
 end)
 
--- [MACRO PLAYER - IGNORE STACKED UNITS]
 function playMacro()
     if #currentMacroData == 0 then return end
     isPlaying = true
-    -- [IMPORTANT] Reset registry on start
     PlacedUnitsRegistry = {} 
 
     task.spawn(function()
@@ -459,32 +522,29 @@ function playMacro()
                         local attempts = 0
                         repeat
                             if getgenv().StopAllMacros or not isPlaying then break end
-                            
-                            -- [KEY FIX] Find Unit but IGNORE ones we already placed in previous steps
                             local u = findUnitByCFrame(act.CFrame, true) 
-                            
                             if u then 
                                 stepDone = true
-                                PlacedUnitsRegistry[u] = true -- MARK AS PLACED
+                                PlacedUnitsRegistry[u] = true
                             else
                                 attempts = attempts + 1
-                                if attempts > 200 then -- 20 seconds timeout
+                                if attempts > 200 then
                                     stepDone = true 
                                 else
                                     if getCash() >= cost then
-                                        SmartFire(Rem.Spawn, {act.UnitName, act.CFrame, act.Slot, act.Data})
+                                        SmartFire(Rem.Spawn, {act.UnitName, act.CFrame, act.Slot, act.Data}, 3)
                                     end
-                                    task.wait(0.1) -- Fast Spam
+                                    task.wait(0.1)
                                 end
                             end
                         until stepDone
 
                     elseif act.Action == "Upgrade" and Rem.Upgrade then
-                        local u = findUnitByCFrame(act.CFrame, false) -- Don't ignore here, we need to find it
+                        local u = findUnitByCFrame(act.CFrame, false)
                         if u then
                             if getUnitUpgradeCost(u) <= 0 then stepDone = true else
                                 if getCash() >= cost then
-                                    SmartFire(Rem.Upgrade, {u})
+                                    SmartFire(Rem.Upgrade, {u}, 3)
                                     stepDone = true
                                 else
                                     UpdateStatus("Waiting Cash", "Needed: "..cost)
@@ -494,12 +554,12 @@ function playMacro()
 
                     elseif act.Action == "Sell" and Rem.Sell then
                         local u = findUnitByCFrame(act.CFrame, false)
-                        if u then SmartFire(Rem.Sell, {u}) end
+                        if u then SmartFire(Rem.Sell, {u}, 3) end
                         stepDone = true
 
                     elseif act.Action == "TargetMode" and Rem.TargetMode then
                         local u = findUnitByCFrame(act.CFrame, false)
-                        if u then SmartFire(Rem.TargetMode, {u}) end
+                        if u then SmartFire(Rem.TargetMode, {u}, 3) end
                         stepDone = true
 
                     elseif act.Action == "AutoSkill" then
@@ -510,15 +570,15 @@ function playMacro()
                     elseif act.Action == "Ability" and Rem.Ability then 
                         local u = findUnitByCFrame(act.CFrame, false)
                         if u then 
-                            if act.AbilityData then SmartFire(Rem.Ability, {act.SkillName, u, act.AbilityData}) else SmartFire(Rem.Ability, {act.SkillName, u}) end 
+                            if act.AbilityData then SmartFire(Rem.Ability, {act.SkillName, u, act.AbilityData}, 3) else SmartFire(Rem.Ability, {act.SkillName, u}, 3) end 
                         end
                         stepDone = true 
 
-                    elseif act.Action == "BuyMeat" and Rem.BuyMeat then SmartFire(Rem.BuyMeat, act.Args or {}); stepDone = true 
-                    elseif act.Action == "FeedAll" and Rem.FeedAll then SmartFire(Rem.FeedAll, {}); stepDone = true
-                    elseif act.Action == "SkipEvent" and Rem.Skip then SmartFire(Rem.Skip, {}); stepDone = true
-                    elseif act.Action == "SkipWave" and Rem.Skip then SmartFire(Rem.Skip, {}); stepDone = true
-                    elseif act.Action == "AutoSpeed" and Rem.Speed then SmartFire(Rem.Speed, {}); stepDone = true
+                    elseif act.Action == "BuyMeat" and Rem.BuyMeat then SmartFire(Rem.BuyMeat, act.Args or {}, 3); stepDone = true 
+                    elseif act.Action == "FeedAll" and Rem.FeedAll then SmartFire(Rem.FeedAll, {}, 3); stepDone = true
+                    elseif act.Action == "SkipEvent" and Rem.Skip then SmartFire(Rem.Skip, {}, 3); stepDone = true
+                    elseif act.Action == "SkipWave" and Rem.Skip then SmartFire(Rem.Skip, {}, 3); stepDone = true
+                    elseif act.Action == "AutoSpeed" and Rem.Speed then SmartFire(Rem.Speed, {}, 3); stepDone = true
                     else stepDone = true end
                     
                     if stepDone then step = step + 1 end
@@ -538,26 +598,34 @@ function playMacro()
 end
 
 if getgenv().AutoResumeState then
-    task.delay(2, function() if currentMacroName == "" then local f=GetMacroFiles(); if #f>0 then LoadMacro(f[1]) end end; playMacro() end)
+    task.delay(2, function() if currentMacroName == "" then local f=GetMacroFiles(); if #f>0 then LoadMacro(f[1]) end end; end)
 end
 
 task.spawn(function()
-    local w = false
+    local wasEnded = false
     while task.wait(0.5) do
         if getgenv().StopAllMacros then break end
         local eff = Workspace:FindFirstChild("Effect")
         if eff and (eff:FindFirstChild("Gameover") or eff:FindFirstChild("Victory")) then
             local status = eff:FindFirstChild("Victory") and "Victory" or "Lose"
-            if not w then 
-                w = true; isPlaying = false
+            if not wasEnded then 
+                wasEnded = true
+                isPlaying = false
+                task.wait(2) 
                 if getgenv().WebhookEnabled then SendGameWebhook(status) end
-                if Options.AutoRestart.Value then firebutton(getUiButton("Restart"))
-                elseif Options.AutoNext.Value then firebutton(getUiButton("Next"))
-                elseif Options.AutoLeave.Value then firebutton(getUiButton("Back")) end
-                task.wait(1) 
+                if Options.AutoRestart.Value then 
+                    local btn = getUiButton("Restart")
+                    if btn and btn.Visible then firebutton(btn) end
+                elseif Options.AutoNext.Value then 
+                    local btn = getUiButton("Next")
+                    if btn and btn.Visible then firebutton(btn) end
+                elseif Options.AutoLeave.Value then 
+                    local btn = getUiButton("Back")
+                    if btn and btn.Visible then firebutton(btn) end
+                end
             end
-        elseif w then
-            w = false
+        elseif wasEnded then
+            wasEnded = false
             if Options.PlayToggle.Value then playMacro() end
         end
     end
