@@ -1537,4 +1537,23 @@ start_back_to_lobby()
 start_anti_afk()
 start_rejoin_on_disconnect()
 
+task.spawn(function()
+    local lobby_timer = 0
+    local time_limit = 60 
+
+    while game_state == "LOBBY" do
+        task.wait(1)
+        lobby_timer = lobby_timer + 1
+
+        if lobby_timer == 20 then
+            log("Potentially stuck, waiting 40 seconds before rejoining.")
+        end
+
+        if lobby_timer >= time_limit then
+            teleport_service:Teleport(3260590327, local_player)
+            break 
+        end
+    end
+end)
+
 return TDS
