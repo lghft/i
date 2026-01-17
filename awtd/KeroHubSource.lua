@@ -478,7 +478,7 @@ Tabs.Misc:AddToggle("AutoExec", {Title = "Auto Execute", Default = false }):OnCh
     if v then
         local queue_on_teleport = queue_on_teleport or syn.queue_on_teleport or fluxus.queue_on_teleport
         if queue_on_teleport then
-            queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/KeroTwT/Kero-Hub/main/AWTD"))()')
+            queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/lghft/i/refs/heads/main/awtd/KeroHubSource.lua"))()')
         end
     end
 end)
