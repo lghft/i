@@ -250,6 +250,7 @@ local Tabs = {
     Ability = Window:AddTab({ Title = "Ability Manager", Icon = "star" }),
     Lobby = Window:AddTab({ Title = "Lobby Manager", Icon = "home" }),
     Webhook = Window:AddTab({ Title = "Webhook Manager", Icon = "bell" }), 
+    Misc = Window:AddTab({ Title = "Misc", Icon = "components" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 local Options = Fluent.Options
@@ -357,7 +358,7 @@ Tabs.Lobby:AddToggle("AutoGrave", {Title = "Auto Reveal Graves", Default = false
                         end
                     end
                 end)
-                task.wait(2)
+                task.wait(0.5)
             end
         end)
     end
@@ -470,6 +471,78 @@ local function SendGameWebhook(status)
 end
 
 Tabs.Webhook:AddButton({ Title = "Test Send Webhook", Description = "Send a test webhook", Callback = function() SendGameWebhook("Test Victory") end })
+
+Tabs.Misc:AddSection("Auto Execute")
+Tabs.Misc:AddToggle("AutoExec", {Title = "Auto Execute", Default = false }):OnChanged(function(v)
+    getgenv().AutoExec = v
+    if v then
+        local queue_on_teleport = queue_on_teleport or syn.queue_on_teleport or fluxus.queue_on_teleport
+        if queue_on_teleport then
+            queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/KeroTwT/Kero-Hub/main/AWTD"))()')
+        end
+    end
+end)
+
+Tabs.Misc:AddSection("FPS Boost")
+Tabs.Misc:AddButton({Title = "Boost FPS", Callback = function()
+    local lighting = game:GetService("Lighting")
+    lighting.GlobalShadows = false
+    lighting.FogEnd = 9e9
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") and not v:IsA("Terrain") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
+            v.CastShadow = false
+            v.Color = Color3.new(1, 1, 1)
+        elseif v:IsA("Decal") or v:IsA("Texture") then
+            v:Destroy()
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Enabled = false
+        end
+    end
+end})
+
+Tabs.Misc:AddSection("Privacy")
+Tabs.Misc:AddToggle("HideUser", {Title = "Hide User", Default = false }):OnChanged(function(v)
+    getgenv().HideUserLoop = v
+    if v then
+        task.spawn(function()
+            while getgenv().HideUserLoop do
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    if not char and LocalPlayer.Name then char = workspace:FindFirstChild(LocalPlayer.Name) end
+                    
+                    if char then
+                        -- Hide Name
+                        if char:FindFirstChild("Head") then
+                            local pt = char.Head:FindFirstChild("PlayerTag")
+                            if pt and pt:FindFirstChild("Info") and pt.Info:FindFirstChild("PlayerName") then
+                                pt.Info.PlayerName:Destroy()
+                            end
+                        end
+                        
+                        local hum = char:FindFirstChild("Humanoid")
+                        if hum then
+                            hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+                        end
+                        
+                        -- Aggressive Loop
+                        for _, child in pairs(char:GetChildren()) do
+                            if child:IsA("Accessory") or child:IsA("Accoutrement") or child:IsA("Clothing") or child:IsA("CharacterMesh") or child:IsA("BodyColors") then
+                                child:Destroy()
+                            elseif child:IsA("BasePart") and child.Name ~= "HumanoidRootPart" then
+                                child.Color = Color3.fromRGB(255, 0, 0)
+                                child.Material = Enum.Material.SmoothPlastic
+                                child.Transparency = 0
+                            end
+                        end
+                    end
+                end)
+                task.wait(0.1)
+            end
+        end)
+    end
+end)
 
 SaveManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
