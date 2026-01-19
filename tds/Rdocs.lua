@@ -5,11 +5,14 @@
 [ CORE ENGINE METHODS ]
 --------------------------------------------------------------------------------
 TDS:Place(name, x, y, z)    -> Places tower, returns index.
+TDS:Equip(name)             -> Equips tower by name.
 TDS:Upgrade(idx, path)      -> Upgrades tower at index (path 1 or 2).
 TDS:Sell(idx)               -> Sells tower at index.
 TDS:SetTarget(idx, mode)    -> Targeting: "First", "Strong", "Last", "Random".
-TDS:UseTimeScale(val)       -> Sets speed: 0.5, 1, 1.5, or 2.
+TDS:UnlockTimeScale()      -> Unlocks time scale control.
+TDS:TimeScale(val)       -> Sets speed: 0.5, 1, 1.5, or 2.
 TDS:GameInfo(map, modifiers)       -> Selects the desired Map and Modifiers
+TDS:VoteSkip(start_wave, end_wave) -> Vote to skip on the wave of your choice. Ex: TDS:VoteSkip(1) or TDS:VoteSkip(1,5)
 Modifiers:
 HiddenEnemies = true, Glass = true, ExplodingEnemies = true, Limitation = true, Committed = true, HealthyEnemies = true, SpeedyEnemies = true, Quarantine = true, Fog = true, FlyingEnemies = true, Broke = true, Jailed = true, Inflation = true
 
@@ -35,7 +38,7 @@ Description: Triggers special abilities. Set 'loop' to true for auto-spam.
 Usage: TDS:Ability(index, "AbilityName", dataTable, loop)
 
 • Commander:
-  - "Call to Arms" (No data)
+  - "Call Of Arms" (No data)
   - "Support Caravan" (No data)
 
 • DJ Booth:
@@ -74,9 +77,10 @@ Usage: TDS:Ability(index, "AbilityName", dataTable, loop)
 --------------------------------------------------------------------------------
 _G.AutoStrat     = true  -- Enables the 24/7 infinite loop
 _G.AutoSkip      = true  -- Automatically votes to skip waves
-_G.AutoSnowballs = true  -- Automatically collects event snowballs
+_G.AutoPickups = true  -- Automatically collects event snowballs
 _G.Webhook       = ""    -- Your Discord Webhook URL
 _G.SendWebhook   = true  -- Toggles match result logging
+_G.AntiLag     = true     -- Stops you from lagging too hard
 
 --------------------------------------------------------------------------------
 [ ADVANCED: INFINITE LOOP (Autoexec) ]
