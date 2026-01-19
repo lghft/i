@@ -29,6 +29,7 @@ end
 local teleport_service = game:GetService("TeleportService")
 local marketplace_service = game:GetService("MarketplaceService")
 local replicated_storage = game:GetService("ReplicatedStorage")
+local http_service = game:GetService("HttpService")
 local remote_func = replicated_storage:WaitForChild("RemoteFunction")
 local remote_event = replicated_storage:WaitForChild("RemoteEvent")
 local players_service = game:GetService("Players")
@@ -42,6 +43,8 @@ local auto_claim_rewards = false
 local anti_lag_running = false
 local auto_chain_running = false
 local auto_dj_running = false
+local auto_mercenary_running = false
+local sell_farms_running = false
 
 local ColorMap = {
     green = "#2BFFAE",
@@ -68,7 +71,6 @@ local ItemNames = {
     ["124065875200929"] = "Fruit Cake(s)",
     ["17429541513"] = "Barricade(s)",
     ["110415073436604"] = "Holy Hand Grenade(s)",
-	["17429533728"] = "Frag Grenade",
     ["139414922355803"] = "Present Clusters(s)"
 }
 
@@ -710,7 +712,6 @@ local function do_activate_ability(t_obj, ab_name, ab_data, is_looping)
                 if ab_data then
                     data = table.clone(ab_data)
 
-                    -- 🎯 RANDOMIZE HERE (every attempt)
                     if positions and #positions > 0 then
                         data.towerPosition = positions[math.random(#positions)]
                     end
@@ -807,15 +808,6 @@ function TDS:Mode(difficulty)
     return true
 end
 
-local args = {
-	"Inventory",
-	"Unequip",
-	"tower",
-	""
-}
-game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
-
-
 function TDS:Loadout(...)
     if game_state ~= "LOBBY" then
         return
@@ -827,28 +819,58 @@ function TDS:Loadout(...)
 
     local towers = {...}
     local remote = game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction")
+    local state_replicators = replicated_storage:FindFirstChild("StateReplicators")
+    
+    local currently_equipped = {}
 
-    for _, tower_name in ipairs(towers) do
-        if tower_name and tower_name ~= "" then
-            local success = false
+    if state_replicators then
+        for _, folder in ipairs(state_replicators:GetChildren()) do
+            if folder.Name == "PlayerReplicator" and folder:GetAttribute("UserId") == local_player.UserId then
+                local equipped_attr = folder:GetAttribute("EquippedTowers")
+                if type(equipped_attr) == "string" then
+                    local cleaned_json = equipped_attr:match("%[.*%]") 
+                    local decode_success, decoded = pcall(function()
+                        return http_service:JSONDecode(cleaned_json)
+                    end)
+
+                    if decode_success and type(decoded) == "table" then
+                        currently_equipped = decoded
+                    end
+                end
+            end
+        end
+    end
+
+    for _, current_tower in ipairs(currently_equipped) do
+        if current_tower ~= "None" then
+            local unequip_done = false
             repeat
                 local ok = pcall(function()
-                    remote:InvokeServer("Inventory", "Equip", "tower", tower_name)
-                    log("Equipped tower: " .. tower_name, "green")
-                    task.wait(0.5)
+                    remote:InvokeServer("Inventory", "Unequip", "tower", current_tower)
+                    task.wait(0.3)
                 end)
-                if ok then
-                    success = true
-                else
-                    task.wait(0.2)
-                end
-            until success
-            task.wait(0.4)
+                if ok then unequip_done = true else task.wait(0.2) end
+            until unequip_done
         end
     end
 
     task.wait(0.5)
 
+    for _, tower_name in ipairs(towers) do
+        if tower_name and tower_name ~= "" then
+            local equip_success = false
+            repeat
+                local ok = pcall(function()
+                    remote:InvokeServer("Inventory", "Equip", "tower", tower_name)
+                    log("Equipped tower: " .. tower_name, "green")
+                    task.wait(0.3)
+                end)
+                if ok then equip_success = true else task.wait(0.2) end
+            until equip_success
+        end
+    end
+
+    task.wait(0.5)
     return true
 end
 
@@ -927,10 +949,16 @@ function TDS:GameInfo(name, list)
     if marketplace_service:UserOwnsGamePassAsync(local_player.UserId, 10518590) then
         select_map_override(name, "vip")
         log("Selected map: " .. name, "green")
+        repeat task.wait(1) until player_gui:FindFirstChild("ReactUniversalHotbar") -- waits for the game to load
+        return true 
     elseif is_map_available(name) then
         select_map_override(name)
+        repeat task.wait(1) until player_gui:FindFirstChild("ReactUniversalHotbar") -- waits for the game to load again
+        return true
     else
+        log("Map '" .. name .. "' not available, rejoining...", "red") -- Logger
         teleport_service:Teleport(3260590327, local_player)
+        repeat task.wait(9999) until false -- waits until 2050 instead of wasting timescale tickets/phantom placing/upgrading/selling towers
     end
 end
 
@@ -960,6 +988,48 @@ end
 function TDS:RestartGame()
     trigger_restart()
 end
+
+-- === TDS:Equip FUNCTION === --
+function TDS:Equip(tower_input)
+    if game_state ~= "GAME" then
+        return false
+    end
+    local tower_table = type(tower_input) == "string" and {tower_input} or tower_input
+    
+    if type(tower_table) ~= "table" then
+		log("Equip: Invalid input - expected string or table" .. tower_input, "yellow")
+        return
+    end
+	log("Equipping tower: " .. tower_input, "green")
+    for _, tower_name in ipairs(tower_table) do
+        if tower_name == "" then continue end
+        
+        local args = {
+            "Inventory",
+            "Equip",
+            "tower",
+            tower_name
+        }
+        
+        local success, result = pcall(function()
+            return remote_func:InvokeServer(unpack(args))
+        end)
+        
+        if success then
+            if result == true or (type(result) == "table" and result.Success) or (typeof(result) == "Instance" and result:IsA("Model")) then
+				log("Successfully equipped:" .. tower_input, "green")
+            else
+				log("Failed to equip: " .. tower_input, "orange")
+            end
+        else
+			log("Error equipping " .. tower_input, "red")
+        end
+        
+        task.wait(0.5)
+    end
+end
+-- ===============================
+
 
 function TDS:Place(t_name, px, py, pz, ...)
     local args = {...}
@@ -1120,53 +1190,6 @@ function TDS:SetOption(idx, name, val, req_wave)
     return false
 end
 
--- === TDS:Equip FUNCTION === --
-function TDS:Equip(tower_input)
-    if game_state ~= "GAME" then
-        return false
-    end
-    local tower_table = type(tower_input) == "string" and {tower_input} or tower_input
-    
-    if type(tower_table) ~= "table" then
-        --warn("[TDS] Equip: Invalid input - expected string or table")
-		log("Equip: Invalid input - expected string or table" .. tower_input, "yellow")
-        return
-    end
-	log("Equipping tower: " .. tower_input, "green")
-    for _, tower_name in ipairs(tower_table) do
-        if tower_name == "" then continue end
-        
-        local args = {
-            "Inventory",
-            "Equip",
-            "tower",
-            tower_name
-        }
-        
-        local success, result = pcall(function()
-            return remote_func:InvokeServer(unpack(args))
-        end)
-        
-        if success then
-            if result == true or (type(result) == "table" and result.Success) or (typeof(result) == "Instance" and result:IsA("Model")) then
-				
-                print("[TDS] Successfully equipped: " .. tower_name)
-				log("Successfully equipped:" .. tower_input, "green")
-            else
-                warn("[TDS] Failed to equip: " .. tower_name .. " (remote returned false/nil)")
-				log("Failed to equip: " .. tower_input, "orange")
-            end
-        else
-            warn("[TDS] Error equipping " .. tower_name .. ": " .. tostring(result))
-			log("Error equipping " .. tower_input, "red")
-        end
-        
-        task.wait(0.5) -- Prevent rate limiting
-    end
-end
--- ===============================
-
-
 -- // misc utility
 local function is_void_charm(obj)
     return math.abs(obj.Position.Y) > 999999
@@ -1325,40 +1348,52 @@ local function start_anti_lag()
 end
 
 local function start_anti_afk()
-    local Players = game:GetService("Players")
-    local GC = getconnections and getconnections or get_signal_cons
+    local VirtualUser = game:GetService("VirtualUser")
 
-    if GC then
-        for i, v in pairs(GC(Players.LocalPlayer.Idled)) do
-            if v.Disable then
-                v:Disable()
-            elseif v.Disconnect then
-                v:Disconnect()
+    task.spawn(function()
+        local function disable_idled()
+            local success, connections = pcall(getconnections, local_player.Idled)
+            if success then
+                for _, v in pairs(connections) do
+                    v:Disable()
+                end
             end
         end
-    else
-        Players.LocalPlayer.Idled:Connect(function()
-            local VirtualUser = game:GetService("VirtualUser")
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
-    end
-
-    local ANTIAFK = Players.LocalPlayer.Idled:Connect(function()
-        local VirtualUser = game:GetService("VirtualUser")
-        VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        
+        disable_idled()
     end)
-end
 
-local function start_rejoin_on_disconnect()
     task.spawn(function()
-        game.Players.PlayerRemoving:connect(function (plr)
-            if plr == game.Players.LocalPlayer then
-                game:GetService('TeleportService'):Teleport(3260590327, plr)
+        local_player.Idled:Connect(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new(0, 0))
+        end)
+    end)
+
+    task.spawn(function()
+        local core_gui = game:GetService("CoreGui")
+        local overlay = core_gui:WaitForChild("RobloxPromptGui"):WaitForChild("promptOverlay")
+
+        overlay.ChildAdded:Connect(function(child)
+            if child.Name == 'ErrorPrompt' then
+                while true do
+                    teleport_service:Teleport(3260590327)
+                    task.wait(5)
+                end
             end
         end)
+    end)
+
+    task.spawn(function()
+        local lobby_timer = 0
+        while game_state == "LOBBY" do 
+            task.wait(1)
+            lobby_timer = lobby_timer + 1
+            if lobby_timer >= 240 then
+                teleport_service:Teleport(3260590327)
+                break 
+            end
+        end
     end)
 end
 
@@ -1387,29 +1422,34 @@ local function start_auto_chain()
             if #commander >= 3 then
                 if idx > #commander then idx = 1 end
 
-                remote_func:InvokeServer(
+                local response = remote_func:InvokeServer(
                     "Troops",
                     "Abilities",
                     "Activate",
                     { Troop = commander[idx], Name = "Call Of Arms", Data = {} }
                 )
 
-                idx += 1
+                if response then
+                    idx += 1
 
-                local hotbar = player_gui.ReactUniversalHotbar.Frame
-                local timescale = hotbar and hotbar:FindFirstChild("timescale")
-                if timescale then
-                    if timescale:FindFirstChild("Lock") then
-                        task.wait(11)
+                    local hotbar = player_gui:FindFirstChild("ReactUniversalHotbar")
+                    local timescale_frame = hotbar and hotbar.Frame:FindFirstChild("timescale")
+                    
+                    if timescale_frame and timescale_frame.Visible then
+                        if timescale_frame:FindFirstChild("Lock") then
+                            task.wait(10.3)
+                        else
+                            task.wait(5.25)
+                        end
                     else
-                        task.wait(5.5)
+                        task.wait(10.3)
                     end
                 else
-                    task.wait(11)
+                    task.wait(0.5)
                 end
+            else
+                task.wait(1)
             end
-
-            task.wait(1)
         end
 
         auto_chain_running = false
@@ -1442,24 +1482,91 @@ local function start_auto_dj_booth()
                     "Activate",
                     { Troop = DJ, Name = "Drop The Beat", Data = {} }
                 )
-
-                local hotbar = player_gui.ReactUniversalHotbar.Frame
-                local timescale = hotbar and hotbar:FindFirstChild("timescale")
-                if timescale then
-                    if timescale:FindFirstChild("Lock") then
-                        task.wait(28)
-                    else
-                        task.wait(14)
-                    end
-                else
-                    task.wait(28)
-                end
             end
 
             task.wait(1)
         end
 
         auto_dj_running = false
+    end)
+end
+
+local function start_auto_mercenary()
+    if auto_mercenary_running or not _G.AutoMercenary then return end
+    auto_mercenary_running = true
+
+    task.spawn(function()
+        while _G.AutoMercenary do
+            local towers_folder = workspace:FindFirstChild("Towers")
+
+            if towers_folder then
+                for _, towers in ipairs(towers_folder:GetDescendants()) do
+                    if towers:IsA("Folder") and towers.Name == "TowerReplicator"
+                    and towers:GetAttribute("Name") == "Mercenary Base"
+                    and towers:GetAttribute("OwnerId") == game.Players.LocalPlayer.UserId
+                    and (towers:GetAttribute("Upgrade") or 0) >= 5 then
+                        
+                        remote_func:InvokeServer(
+                            "Troops",
+                            "Abilities",
+                            "Activate",
+                            { 
+                                Troop = towers.Parent, 
+                                Name = "Air-Drop", 
+                                Data = {
+                                    pathName = 1, 
+                                    directionCFrame = CFrame.new(), 
+                                    dist = _G.PathDistance or 195
+                                } 
+                            }
+                        )
+
+                        task.wait(0.5)
+                        
+                        if not _G.AutoMercenary then break end
+                    end
+                end
+            end
+
+            task.wait(0.5)
+        end
+
+        auto_mercenary_running = false
+    end)
+end
+
+local function start_sell_farm()
+    if sell_farms_running or not _G.SellFarms then return end
+    sell_farms_running = true
+
+    task.spawn(function()
+        while _G.SellFarms do
+            local current_wave = get_current_wave()
+            if _G.SellFarmsWave and current_wave < _G.SellFarmsWave then
+                task.wait(1)
+                continue
+            end
+
+            local towers_folder = workspace:FindFirstChild("Towers")
+            if towers_folder then
+                for _, replicator in ipairs(towers_folder:GetDescendants()) do
+                    if replicator:IsA("Folder") and replicator.Name == "TowerReplicator" then
+                        local is_farm = replicator:GetAttribute("Name") == "Farm"
+                        local is_mine = replicator:GetAttribute("OwnerId") == game.Players.LocalPlayer.UserId
+
+                        if is_farm and is_mine then
+                            local tower_model = replicator.Parent
+                            remote_func:InvokeServer("Troops", "Sell", { Troop = tower_model })
+                            
+                            task.wait(0.2)
+                        end
+                    end
+                end
+            end
+
+            task.wait(1)
+        end
+        sell_farms_running = false
     end)
 end
 
@@ -1480,6 +1587,14 @@ task.spawn(function()
         if _G.AutoDJ and not auto_dj_running then
             start_auto_dj_booth()
         end
+
+        if _G.AutoMercenary and not auto_mercenary_running then
+            start_auto_mercenary()
+        end
+
+        if _G.SellFarms and not sell_farms_running then
+            start_sell_farm()
+        end
         
         if _G.AntiLag and not anti_lag_running then
             start_anti_lag()
@@ -1495,6 +1610,5 @@ end
 
 start_back_to_lobby()
 start_anti_afk()
-start_rejoin_on_disconnect()
 
 return TDS
