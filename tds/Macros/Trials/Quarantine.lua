@@ -1,6 +1,6 @@
 local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Library.lua"))()
 --TDS:Addons()
-
+-- no golden
 TDS:Loadout("Cowboy", "Electroshocker", "Commander", "Minigunner", "Accelerator")
 TDS:Place("Cowboy", 26.139, -34.960, -343.619, true)
 TDS:Upgrade(1)
