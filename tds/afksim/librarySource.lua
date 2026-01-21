@@ -1,5 +1,55 @@
 if not game:IsLoaded() then game.Loaded:Wait() end
 
+-- // services & main refs
+local user_input_service = game:GetService("UserInputService")
+local virtual_user = game:GetService("VirtualUser")
+local run_service = game:GetService("RunService")
+local teleport_service = game:GetService("TeleportService")
+local marketplace_service = game:GetService("MarketplaceService")
+local replicated_storage = game:GetService("ReplicatedStorage")
+local http_service = game:GetService("HttpService")
+local remote_func = replicated_storage:WaitForChild("RemoteFunction")
+local remote_event = replicated_storage:WaitForChild("RemoteEvent")
+local players_service = game:GetService("Players")
+local local_player = players_service.LocalPlayer or players_service.PlayerAdded:Wait()
+local mouse = local_player:GetMouse()
+local player_gui = local_player:WaitForChild("PlayerGui")
+local file_name = "ADS_Config.json"
+
+task.spawn(function()
+    local function disable_idled()
+        local success, connections = pcall(getconnections, local_player.Idled)
+        if success then
+            for _, v in pairs(connections) do
+                v:Disable()
+            end
+        end
+    end
+        
+    disable_idled()
+end)
+
+task.spawn(function()
+    local_player.Idled:Connect(function()
+        virtual_user:CaptureController()
+        virtual_user:ClickButton2(Vector2.new(0, 0))
+    end)
+end)
+
+task.spawn(function()
+    local core_gui = game:GetService("CoreGui")
+    local overlay = core_gui:WaitForChild("RobloxPromptGui"):WaitForChild("promptOverlay")
+
+    overlay.ChildAdded:Connect(function(child)
+        if child.Name == 'ErrorPrompt' then
+            while true do
+                teleport_service:Teleport(3260590327)
+                task.wait(5)
+            end
+        end
+    end)
+end)
+
 local function identify_game_state()
     local players = game:GetService("Players")
     local temp_player = players.LocalPlayer or players.PlayerAdded:Wait()
@@ -25,17 +75,6 @@ if not send_request then
     return 
 end
 
--- // services & main refs
-local teleport_service = game:GetService("TeleportService")
-local marketplace_service = game:GetService("MarketplaceService")
-local replicated_storage = game:GetService("ReplicatedStorage")
-local http_service = game:GetService("HttpService")
-local remote_func = replicated_storage:WaitForChild("RemoteFunction")
-local remote_event = replicated_storage:WaitForChild("RemoteEvent")
-local players_service = game:GetService("Players")
-local local_player = players_service.LocalPlayer or players_service.PlayerAdded:Wait()
-local player_gui = local_player:WaitForChild("PlayerGui")
-
 local back_to_lobby_running = false
 local auto_pickups_running = false
 local auto_skip_running = false
@@ -43,15 +82,49 @@ local auto_claim_rewards = false
 local anti_lag_running = false
 local auto_chain_running = false
 local auto_dj_running = false
-local auto_mercenary_running = false
+local auto_mercenary_base_running = false
+local auto_military_base_running = false
 local sell_farms_running = false
 
-local ColorMap = {
-    green = "#2BFFAE",
-    red = "#FF3A3A",
-    orange = "#FFA500",
-    yellow = "#FFF300",
+local max_path_distance = 300 -- default
+local mil_marker = nil
+local merc_marker = nil
+
+_G.record_strat = false
+local spawned_towers = {}
+local current_equipped_towers = {"None"}
+local tower_count = 0
+
+local stack_enabled = false
+local selected_tower = nil
+local stack_sphere = nil
+
+local default_settings = {
+    PathVisuals = false,
+    MilitaryPath = false,
+    MercenaryPath = false,
+    AutoSkip = false,
+    AutoChain = false,
+    AutoDJ = false,
+    AutoRejoin = true,
+    SellFarms = false,
+    AutoMercenary = false,
+    AutoMilitary = false,
+    Frost = false,
+    Fallen = false,
+    Easy = false,
+    AntiLag = false,
+    AutoPickups = false,
+    ClaimRewards = false,
+    SendWebhook = false,
+    NoRecoil = false,
+    SellFarmsWave = 1,
+    WebhookURL = "",
+    Cooldown = 0.01,
+    Multiply = 60
 }
+
+local last_state = {}
 
 -- // icon item ids ill add more soon arghh
 local ItemNames = {
@@ -75,7 +148,7 @@ local ItemNames = {
 }
 
 -- // tower management core
-local TDS = {
+TDS = {
     placed_towers = {},
     active_strat = true,
     matchmaking_map = {
@@ -91,95 +164,1189 @@ local upgrade_history = {}
 -- // shared for addons
 shared.TDS_Table = TDS
 
+-- // load & save
+local function save_settings()
+    local data_to_save = {}
+    for key, _ in pairs(default_settings) do
+        data_to_save[key] = _G[key]
+    end
+    writefile(file_name, http_service:JSONEncode(data_to_save))
+end
+
+local function load_settings()
+    if isfile(file_name) then
+        local success, data = pcall(function()
+            return http_service:JSONDecode(readfile(file_name))
+        end)
+        
+        if success and type(data) == "table" then
+            for key, default_val in pairs(default_settings) do
+                if data[key] ~= nil then
+                    _G[key] = data[key]
+                else
+                    _G[key] = default_val
+                end
+            end
+            return
+        end
+    end
+    
+    for key, value in pairs(default_settings) do
+        _G[key] = value
+    end
+    save_settings()
+end
+
+local function set_setting(name, value)
+    if default_settings[name] ~= nil then
+        _G[name] = value
+        save_settings()
+    end
+end
+
+load_settings()
+
+-- // for calculating path
+local function find_path()
+    local map_folder = workspace:FindFirstChild("Map")
+    if not map_folder then return nil end
+    local paths_folder = map_folder:FindFirstChild("Paths")
+    if not paths_folder then return nil end
+    local path_folder = paths_folder:GetChildren()[1]
+    if not path_folder then return nil end
+    
+    local path_nodes = {}
+    for _, node in ipairs(path_folder:GetChildren()) do
+        if node:IsA("BasePart") then
+            table.insert(path_nodes, node)
+        end
+    end
+    
+    table.sort(path_nodes, function(a, b)
+        local num_a = tonumber(a.Name:match("%d+"))
+        local num_b = tonumber(b.Name:match("%d+"))
+        if num_a and num_b then return num_a < num_b end
+        return a.Name < b.Name
+    end)
+    
+    return path_nodes
+end
+
+local function total_length(path_nodes)
+    local total_length = 0
+    for i = 1, #path_nodes - 1 do
+        total_length = total_length + (path_nodes[i + 1].Position - path_nodes[i].Position).Magnitude
+    end
+    return total_length
+end
+
+local MercenarySlider
+local MilitarySlider
+
+local function calc_length()
+    local map = workspace:FindFirstChild("Map")
+    
+    if game_state == "GAME" and map then
+        local path_nodes = find_path()
+        
+        if path_nodes and #path_nodes > 0 then
+            max_path_distance = total_length(path_nodes)
+            
+            if MercenarySlider then
+                MercenarySlider:SetMax(max_path_distance) 
+            end
+            
+            if MilitarySlider then
+                MilitarySlider:SetMax(max_path_distance)
+            end
+            return true
+        end
+    end
+    return false
+end
+
+local function get_point_at_distance(path_nodes, distance)
+    if not path_nodes or #path_nodes < 2 then return nil end
+    
+    local current_dist = 0
+    for i = 1, #path_nodes - 1 do
+        local start_pos = path_nodes[i].Position
+        local end_pos = path_nodes[i+1].Position
+        local segment_len = (end_pos - start_pos).Magnitude
+        
+        if current_dist + segment_len >= distance then
+            local remaining = distance - current_dist
+            local direction = (end_pos - start_pos).Unit
+            return start_pos + (direction * remaining)
+        end
+        current_dist = current_dist + segment_len
+    end
+    return path_nodes[#path_nodes].Position
+end
+
+local function update_path_visuals()
+    if not _G.PathVisuals then
+        if mil_marker then 
+            mil_marker:Destroy() 
+            mil_marker = nil 
+        end
+        if merc_marker then 
+            merc_marker:Destroy() 
+            merc_marker = nil 
+        end
+        return
+    end
+
+    local path_nodes = find_path()
+    if not path_nodes then return end
+
+    if not mil_marker then
+        mil_marker = Instance.new("Part")
+        mil_marker.Name = "MilVisual"
+        mil_marker.Shape = Enum.PartType.Cylinder
+        mil_marker.Size = Vector3.new(0.3, 3, 3)
+        mil_marker.Color = Color3.fromRGB(0, 255, 0)
+        mil_marker.Material = Enum.Material.Plastic
+        mil_marker.Anchored = true
+        mil_marker.CanCollide = false
+        mil_marker.Orientation = Vector3.new(0, 0, 90)
+        mil_marker.Parent = workspace
+    end
+
+    if not merc_marker then
+        merc_marker = mil_marker:Clone()
+        merc_marker.Name = "MercVisual"
+        merc_marker.Color = Color3.fromRGB(255, 0, 0)
+        merc_marker.Parent = workspace
+    end
+
+    local mil_pos = get_point_at_distance(path_nodes, _G.MilitaryPath or 0)
+    local merc_pos = get_point_at_distance(path_nodes, _G.MercenaryPath or 0)
+
+    if mil_pos then
+        mil_marker.Position = mil_pos + Vector3.new(0, 0.2, 0)
+        mil_marker.Transparency = 0.7
+    end
+    if merc_pos then
+        merc_marker.Position = merc_pos + Vector3.new(0, 0.2, 0)
+        merc_marker.Transparency = 0.7
+    end
+end
+
+local function record_action(command_str)
+    if not _G.record_strat then return end
+    if appendfile then
+        appendfile("Strat.txt", command_str .. "\n")
+    end
+end
+
+function TDS:Addons()
+    local url = "https://api.jnkie.com/api/v1/luascripts/public/57fe397f76043ce06afad24f07528c9f93e97730930242f57134d0b60a2d250b/download"
+    local success, code = pcall(game.HttpGet, game, url)
+
+    if not success then
+        return false
+    end
+
+    loadstring(code)()
+
+    while not (TDS.MultiMode and TDS.Multiplayer) do
+        task.wait(0.1)
+    end
+
+    local original_equip = TDS.Equip
+    TDS.Equip = function(...)
+        if game_state == "GAME" then
+            return original_equip(...)
+        end
+    end
+
+    return true
+end
+
+local function get_equipped_towers()
+    local towers = {}
+    local state_replicators = replicated_storage:FindFirstChild("StateReplicators")
+
+    if state_replicators then
+        for _, folder in ipairs(state_replicators:GetChildren()) do
+            if folder.Name == "PlayerReplicator" and folder:GetAttribute("UserId") == local_player.UserId then
+                local equipped = folder:GetAttribute("EquippedTowers")
+                if type(equipped) == "string" then
+                    local cleaned_json = equipped:match("%[.*%]") 
+                    local success, tower_table = pcall(function()
+                        return http_service:JSONDecode(cleaned_json)
+                    end)
+
+                    if success and type(tower_table) == "table" then
+                        for i = 1, 5 do
+                            if tower_table[i] then
+                                table.insert(towers, tower_table[i])
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return #towers > 0 and towers or {"None"}
+end
+
+current_equipped_towers = get_equipped_towers()
+
 -- // ui
-loadstring(game:HttpGet("https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Sources/GuiSource.lua"))()
-local Console = shared.AutoStratGUI.Console
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Sources/UI.lua"))()
 
-shared.AutoStratGUI.Status(tostring(game_state))
-
-local log_table = {}
-local max_logs = 100
-
--- // console
-local function classify_color(text)
-    local t = text:lower()
-
-    if t:find("error")
-        or t:find("failed")
-        or t:find("invalid")
-        or t:find("missing")
-        or t:find("cannot")
-        or t:find("nil")
-        or t:find("no ") then
-        return "red"
-    end
-
-    if t:find("warning")
-        or t:find("issue")
-        or t:find("retry")
-        or t:find("skipped")
-        or t:find("delay") then
-        return "orange"
-    end
-
-    if t:find("loaded")
-        or t:find("detected")
-        or t:find("updated")
-        or t:find("adjusted")
-        or t:find("processing") then
-        return "yellow"
-    end
-
-    return "green"
-end
-
--- // console logging
-local function log(text, color)
-    local console_scrolling = shared.AutoStratGUI and shared.AutoStratGUI.Console
-    if not console_scrolling then return end
-    
-    local log_layout = console_scrolling:FindFirstChildOfClass("UIListLayout")
-
-    color = color or (classify_color and classify_color(text))
-    local ColorMap = {
-        red = "#ff4d4d",
-        orange = "#ff9f43",
-        yellow = "#feca57",
-        green = "#00ff96"
+local Window = Library:Window({
+    Title = "ADS",
+    Desc = "AFK Defense Simulator",
+    Theme = "Dark",
+    DiscordLink = "https://discord.gg/autostrat",
+    Icon = 105059922903197,
+    Config = {
+        Keybind = Enum.KeyCode.LeftControl,
+        Size = UDim2.new(0, 500, 0, 400)
     }
-    
-    local hex = ColorMap[color] or "#00ff96"
-    local timestamp = os.date("%H:%M:%S")
-    
-    local formatted_text = string.format("<font color='#555564'>[%s]</font> <font color='%s'>%s</font>", timestamp, hex, text)
+})
 
-    local log_entry = Instance.new("TextLabel")
-    log_entry.Name = "LogEntry"
-    log_entry.BackgroundTransparency = 1
-    log_entry.Size = UDim2.new(1, -8, 0, 0)
-    log_entry.Font = Enum.Font.SourceSansSemibold
-    log_entry.RichText = true
-    log_entry.Text = formatted_text
-    log_entry.TextSize = 14
-    log_entry.TextWrapped = true
-    log_entry.TextXAlignment = Enum.TextXAlignment.Left
-    log_entry.TextColor3 = Color3.fromRGB(255, 255, 255)
-    log_entry.AutomaticSize = Enum.AutomaticSize.Y
-    log_entry.Parent = console_scrolling
+local Main = Window:Tab({Title = "Main", Icon = "star"}) do
+    Main:Section({Title = "Main"})
 
-    table.insert(log_table, log_entry)
+    local TowerDropdown = Main:Dropdown({
+        Title = "Tower:",
+        List = current_equipped_towers,
+        Value = current_equipped_towers[1],
+        Callback = function(choice)
+            selected_tower = choice
+        end
+    })
 
-    if #log_table > max_logs then
-        log_table[1]:Destroy()
-        table.remove(log_table, 1)
+    local function refresh_dropdown()
+        local new_towers = get_equipped_towers()
+        if table.concat(new_towers, ",") ~= table.concat(current_equipped_towers, ",") then
+            TowerDropdown:Clear() 
+            
+            for _, tower_name in ipairs(new_towers) do
+                TowerDropdown:Add(tower_name)
+            end
+            
+            current_equipped_towers = new_towers
+        end
     end
 
-    task.wait()
-    if log_layout then
-        console_scrolling.CanvasSize = UDim2.new(0, 0, 0, log_layout.AbsoluteContentSize.Y)
-        console_scrolling.CanvasPosition = Vector2.new(0, console_scrolling.CanvasSize.Y.Offset)
+    task.spawn(function()
+        while task.wait(2) do
+            refresh_dropdown()
+        end
+    end)
+
+    Main:Toggle({
+        Title = "Stack Tower",
+        Desc = "Enables Stacking placement",
+        Value = false,
+        Callback = function(v)
+            stack_enabled = v
+
+            if stack_enabled then
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Make sure not to equip the tower, only select it and then place where you want to!",
+                    Time = 5,
+                    Type = "normal"
+                })
+            end
+        end
+    })
+
+    Main:Button({
+        Title = "Upgrade Selected",
+        Desc = "",
+        Callback = function()
+            if selected_tower then
+                for _, v in pairs(workspace.Towers:GetChildren()) do
+                    if v:FindFirstChild("TowerReplicator") and v.TowerReplicator:GetAttribute("Name") == selected_tower and v.TowerReplicator:GetAttribute("OwnerId") == local_player.UserId then
+                        remote_func:InvokeServer("Troops", "Upgrade", "Set", {Troop = v})
+                    end
+                end
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Attempted to upgrade all the selected towers!",
+                    Time = 3,
+                    Type = "normal"
+                })
+            end
+        end
+    })
+
+    Main:Button({
+        Title = "Sell Selected",
+        Desc = "",
+        Callback = function()
+            if selected_tower then
+                for _, v in pairs(workspace.Towers:GetChildren()) do
+                    if v:FindFirstChild("TowerReplicator") and v.TowerReplicator:GetAttribute("Name") == selected_tower and v.TowerReplicator:GetAttribute("OwnerId") == local_player.UserId then
+                        remote_func:InvokeServer("Troops", "Sell", {Troop = v})
+                    end
+                end
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Attempted to sell all the selected towers!",
+                    Time = 3,
+                    Type = "normal"
+                })
+            end
+        end
+    })
+
+    Main:Button({
+        Title = "Upgrade All",
+        Desc = "",
+        Callback = function()
+            for _, v in pairs(workspace.Towers:GetChildren()) do
+                if v:FindFirstChild("Owner") and v.Owner.Value == local_player.UserId then
+                    remote_func:InvokeServer("Troops", "Upgrade", "Set", {Troop = v})
+                end
+            end
+            Window:Notify({
+                Title = "ADS",
+                Desc = "Attempted to upgrade all the towers!",
+                Time = 3,
+                Type = "normal"
+            })
+        end
+    })
+
+    Main:Button({
+        Title = "Sell All",
+        Desc = "",
+        Callback = function()
+            for _, v in pairs(workspace.Towers:GetChildren()) do
+                if v:FindFirstChild("Owner") and v.Owner.Value == local_player.UserId then
+                    remote_func:InvokeServer("Troops", "Sell", {Troop = v})
+                end
+            end
+
+            Window:Notify({
+                Title = "ADS",
+                Desc = "Attempted to sell all the towers!",
+                Time = 3,
+                Type = "normal"
+            })
+        end
+    })
+
+    Main:Section({Title = "Equipper"})
+    Main:Textbox({
+        Title = "Equip:",
+        Desc = "",
+        Placeholder = "",
+        Value = "",
+        ClearTextOnFocus = false,
+        Callback = function(text)
+            if text == "" or text == nil then return end
+            task.spawn(function()
+                if not TDS.Equip then
+                    Window:Notify({
+                        Title = "ADS",
+                        Desc = "Waiting for Key System to finish...",
+                        Time = 3,
+                        Type = "normal"
+                    })
+                    repeat 
+                        task.wait(0.5) 
+                    until TDS.Equip
+                end
+                
+                local success, err = pcall(function()
+                    TDS:Equip(tostring(text))
+                end)
+
+                if success then
+                    Window:Notify({
+                        Title = "ADS",
+                        Desc = "Successfully equipped: " .. tostring(text),
+                        Time = 3,
+                        Type = "normal"
+                    })
+                end
+            end)
+        end
+    })
+
+    Main:Button({
+        Title = "Unlock Equipper",
+        Desc = "",
+        Callback = function()
+            task.spawn(function()
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Loading Key System...",
+                    Time = 3,
+                    Type = "normal"
+                })
+                local success = TDS:Addons()
+                
+                if success then
+                    Window:Notify({
+                        Title = "ADS",
+                        Desc = "Addons Loaded! You can now equip towers.",
+                        Time = 3,
+                        Type = "normal"
+                    })
+                end
+            end)
+        end
+    })
+
+    Main:Section({Title = "Quality of life"})
+    Main:Toggle({
+        Title = "Auto Skip Waves",
+        Desc = "Skips all Waves",
+        Value = _G.AutoSkip,
+        Callback = function(v)
+            set_setting("AutoSkip", v)
+        end
+    })
+
+    Main:Toggle({
+        Title = "Auto Chain",
+        Desc = "Chains Commander Ability",
+        Value = _G.AutoChain,
+        Callback = function(v)
+            set_setting("AutoChain", v)
+        end
+    })
+
+    Main:Toggle({
+        Title = "Auto DJ Booth",
+        Desc = "Uses DJ Booth Ability",
+        Value = _G.AutoDJ,
+        Callback = function(v)
+            set_setting("AutoDJ", v)
+        end
+    })
+
+    Main:Toggle({
+        Title = "Auto Rejoin Lobby",
+        Desc = "Teleports back to lobby after you've won automatically",
+        Value = _G.AutoRejoin,
+        Callback = function(v)
+            set_setting("AutoRejoin", v)
+        end
+    })
+
+    Main:Section({Title = "Farm"})
+    Main:Toggle({
+        Title = "Sell Farms",
+        Desc = "Sells all your farms on the specified wave",
+        Value = _G.SellFarms,
+        Callback = function(v)
+            set_setting("SellFarms", v)
+        end
+    })
+
+    Main:Textbox({
+        Title = "Wave:",
+        Desc = "Wave to sell farms",
+        Placeholder = "40",
+        Value = tostring(_G.SellFarmsWave),
+        ClearTextOnFocus = false,
+        Callback = function(text)
+            local number = tonumber(text)
+            if number then
+                set_setting("SellFarmsWave", number)
+            else
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Invalid number entered!",
+                    Time = 3,
+                    Type = "error"
+                })
+            end
+        end
+    })
+
+    Main:Section({Title = "Abilities"})
+    Main:Toggle({
+        Title = "Enable Path Distance Marker",
+        Desc = "Red = Mercenary Base, Green = Military Baset",
+        Value = _G.PathVisuals,
+        Callback = function(v)
+            set_setting("PathVisuals", v)
+        end
+    })
+
+    Main:Toggle({
+        Title = "Auto Mercenary Base",
+        Desc = "Uses Air-Drop Ability",
+        Value = _G.AutoMercenary,
+        Callback = function(v)
+            set_setting("AutoMercenary", v)
+        end
+    })
+
+    MercenarySlider = Main:Slider({
+        Title = "Path Distance",
+        Min = 0,
+        Max = 300,
+        Rounding = 0,
+        Value = _G.MercenaryPath,
+        Callback = function(val)
+            set_setting("MercenaryPath", val)
+        end
+    })
+
+    Main:Toggle({
+        Title = "Auto Military Base",
+        Desc = "Uses Airstrike Ability",
+        Value = _G.AutoMilitary,
+        Callback = function(v)
+            set_setting("AutoMilitary", v)
+        end
+    })
+
+    MilitarySlider = Main:Slider({
+        Title = "Path Distance",
+        Min = 0,
+        Max = 300,
+        Rounding = 0,
+        Value = _G.MilitaryPath,
+        Callback = function(val)
+            set_setting("MilitaryPath", val)
+        end
+    })
+
+    task.spawn(function()
+        while true do
+            local success = calc_length()
+            if success then break end 
+            task.wait(3)
+        end
+    end)
+end
+
+Window:Line()
+
+local Logger
+
+local Logger = Window:Tab({Title = "Logger", Icon = "notebook-pen"}) do
+    Logger = Logger:CreateLogger({
+        Title = "STRATEGY LOGGER:",
+        Size = UDim2.new(0, 330, 0, 300)
+    })
+end
+
+Window:Line()
+
+local RecorderTab = Window:Tab({Title = "Recorder", Icon = "camera"}) do
+    local Recorder = RecorderTab:CreateLogger({
+        Title = "RECORDER:",
+        Size = UDim2.new(0, 330, 0, 230)
+    })
+
+    RecorderTab:Button({
+        Title = "START",
+        Desc = "",
+        Callback = function()
+            Recorder:Clear()
+            Recorder:Log("Recorder started")
+
+            local current_mode = "Unknown"
+            local current_map = "Unknown"
+            
+            local state_folder = replicated_storage:FindFirstChild("State")
+            if state_folder then
+                current_mode = state_folder.Difficulty.Value
+                current_map = state_folder.Map.Value
+            end
+
+            local tower1, tower2, tower3, tower4, tower5 = "None", "None", "None", "None", "None"
+            local current_modifiers = "" 
+            local state_replicators = replicated_storage:FindFirstChild("StateReplicators")
+
+            if state_replicators then
+                for _, folder in ipairs(state_replicators:GetChildren()) do
+                    if folder.Name == "PlayerReplicator" and folder:GetAttribute("UserId") == local_player.UserId then
+                        local equipped = folder:GetAttribute("EquippedTowers")
+                        if type(equipped) == "string" then
+                            local cleaned_json = equipped:match("%[.*%]") 
+                            
+                            local success, tower_table = pcall(function()
+                                return http_service:JSONDecode(cleaned_json)
+                            end)
+
+                            if success and type(tower_table) == "table" then
+                                tower1 = tower_table[1] or "None"
+                                tower2 = tower_table[2] or "None"
+                                tower3 = tower_table[3] or "None"
+                                tower4 = tower_table[4] or "None"
+                                tower5 = tower_table[5] or "None"
+                            end
+                        end
+                    end
+
+                    if folder.Name == "ModifierReplicator" then
+                        local raw_votes = folder:GetAttribute("Votes")
+                        if type(raw_votes) == "string" then
+                            local cleaned_json = raw_votes:match("{.*}") 
+                            
+                            local success, mod_table = pcall(function()
+                                return http_service:JSONDecode(cleaned_json)
+                            end)
+
+                            if success and type(mod_table) == "table" then
+                                local mods = {}
+                                for mod_name, _ in pairs(mod_table) do
+                                    table.insert(mods, mod_name .. " = true")
+                                end
+                                current_modifiers = table.concat(mods, ", ")
+                            end
+                        end
+                    end
+                end
+            end
+
+            Recorder:Log("Mode: " .. current_mode)
+            Recorder:Log("Map: " .. current_map)
+            Recorder:Log("Towers: " .. tower1 .. ", " .. tower2)
+            Recorder:Log(tower3 .. ", " .. tower4 .. ", " .. tower5)
+
+            _G.record_strat = true
+
+            if writefile then 
+                local config_header = string.format([[
+local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Library.lua"))()
+
+TDS:Loadout("%s", "%s", "%s", "%s", "%s")
+TDS:Mode("%s")
+TDS:GameInfo("%s", {%s})
+
+]], tower1, tower2, tower3, tower4, tower5, current_mode, current_map, current_modifiers)
+
+                writefile("Strat.txt", config_header)
+            end
+
+
+
+            Window:Notify({
+                Title = "ADS",
+                Desc = "Recorder has started, you may place down your towers now.",
+                Time = 3,
+                Type = "normal"
+            })
+        end
+    })
+
+    RecorderTab:Button({
+        Title = "STOP",
+        Desc = "",
+        Callback = function()
+            _G.record_strat = false
+            Recorder:Clear()
+            Recorder:Log("Strategy saved, you may find it in \nyour workspace folder called 'Strat.txt'")
+            Window:Notify({
+                Title = "ADS",
+                Desc = "Recording has been saved! Check your workspace folder for Strat.txt",
+                Time = 3,
+                Type = "normal"
+            })
+        end
+    })
+
+    if game_state == "GAME" then
+        local towers_folder = workspace:WaitForChild("Towers", 5)
+
+        towers_folder.ChildAdded:Connect(function(tower)
+            if not _G.record_strat then return end
+            
+            local replicator = tower:WaitForChild("TowerReplicator", 5)
+            if not replicator then return end
+
+            local owner_id = replicator:GetAttribute("OwnerId")
+            if owner_id and owner_id ~= local_player.UserId then return end
+
+            tower_count = tower_count + 1
+            local my_index = tower_count
+            spawned_towers[tower] = my_index
+
+            local tower_name = replicator:GetAttribute("Name") or tower.Name
+            local raw_pos = replicator:GetAttribute("Position")
+            
+            local pos_x, pos_y, pos_z
+            if typeof(raw_pos) == "Vector3" then
+                pos_x, pos_y, pos_z = raw_pos.X, raw_pos.Y, raw_pos.Z
+            else
+                local p = tower:GetPivot().Position
+                pos_x, pos_y, pos_z = p.X, p.Y, p.Z
+            end
+            
+            local command = string.format('TDS:Place("%s", %.3f, %.3f, %.3f)', tower_name, pos_x, pos_y, pos_z)
+            record_action(command)
+            Recorder:Log("Placed " .. tower_name .. " (Index: " .. my_index .. ")")
+
+            replicator:GetAttributeChangedSignal("Upgrade"):Connect(function()
+                if not _G.record_strat then return end
+                record_action(string.format('TDS:Upgrade(%d)', my_index))
+                Recorder:Log("Upgraded Tower " .. my_index)
+            end)
+        end)
+
+        towers_folder.ChildRemoved:Connect(function(tower)
+            if not _G.record_strat then return end
+            
+            local my_index = spawned_towers[tower]
+            if my_index then
+                record_action(string.format('TDS:Sell(%d)', my_index))
+                Recorder:Log("Sold Tower " .. my_index)
+                
+                spawned_towers[tower] = nil
+            end
+        end)
     end
 end
+
+Window:Line()
+
+local Strategies = Window:Tab({Title = "Strategies", Icon = "newspaper"}) do
+    Strategies:Section({Title = "Survival Strategies"})
+    Strategies:Toggle({
+        Title = "Frost Mode",
+        Desc = "Skill tree: MAX\n\nTowers:\nGolden Scout,\nFirework Technician,\nHacker,\nBrawler,\nDJ Booth,\nCommander,\nEngineer,\nAccelerator,\nTurret,\nMercenary Base",
+        Value = _G.Frost,
+        Callback = function(v)
+            set_setting("Frost", v)
+
+            if v then
+                 task.spawn(function()
+                    local url = "https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Strategies/Frost.lua"
+                    local content = game:HttpGet(url)
+                    
+                    while not (TDS and TDS.Loadout) do
+                        task.wait(0.5) 
+                    end
+                    
+                    local func, err = loadstring(content)
+                    if func then
+                        func() 
+                        Window:Notify({ Title = "ADS", Desc = "Running...", Time = 3 })
+                    end
+                end)
+            end
+        end
+    })
+
+    Strategies:Toggle({
+        Title = "Fallen Mode",
+        Desc = "Skill tree: Not needed\n\nTowers:\nGolden Scout,\nBrawler,\nMercenary Base,\nElectroshocker,\nEngineer",
+        Value = _G.Fallen,
+        Callback = function(v)
+            set_setting("Fallen", v)
+
+            if v then
+                task.spawn(function()
+                    local url = "https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Strategies/Fallen.lua"
+                    local content = game:HttpGet(url)
+                    
+                    while not (TDS and TDS.Loadout) do
+                        task.wait(0.5) 
+                    end
+                    
+                    local func, err = loadstring(content)
+                    if func then
+                        func() 
+                        Window:Notify({ Title = "ADS", Desc = "Running...", Time = 3 })
+                    end
+                end)
+            end
+        end
+    })
+
+    Strategies:Toggle({
+        Title = "Intermediate Mode",
+        Desc = "Skill tree: Not needed\n\nTowers:\nShotgunner,\nCrook Boss",
+        Value = _G.Intermediate,
+        Callback = function(v)
+            set_setting("Intermediate", v)
+
+            if v then
+                task.spawn(function()
+                    local url = "https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Strategies/Intermediate.lua"
+                    local content = game:HttpGet(url)
+                    
+                    while not (TDS and TDS.Loadout) do
+                        task.wait(0.5) 
+                    end
+                    
+                    local func, err = loadstring(content)
+                    if func then
+                        func() 
+                        Window:Notify({ Title = "ADS", Desc = "Running...", Time = 3 })
+                    end
+                end)
+            end
+        end
+    })
+
+    Strategies:Toggle({
+        Title = "Casual Mode",
+        Desc = "Skill tree: Not needed\n\nTowers:\nShotgunner",
+        Value = _G.Casual,
+        Callback = function(v)
+            set_setting("Casual", v)
+
+            if v then
+                task.spawn(function()
+                    local url = "https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Strategies/Casual.lua"
+                    local content = game:HttpGet(url)
+                    
+                    while not (TDS and TDS.Loadout) do
+                        task.wait(0.5) 
+                    end
+                    
+                    local func, err = loadstring(content)
+                    if func then
+                        func() 
+                        Window:Notify({ Title = "ADS", Desc = "Running...", Time = 3 })
+                    end
+                end)
+            end
+        end
+    })
+
+    Strategies:Toggle({
+        Title = "Easy Mode",
+        Desc = "Skill tree: Not needed\n\nTowers:\nNormal Scout",
+        Value = _G.Easy,
+        Callback = function(v)
+            set_setting("Easy", v)
+
+            if v then
+                task.spawn(function()
+                    local url = "https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Strategies/Easy.lua"
+                    local content = game:HttpGet(url)
+                    
+                    while not (TDS and TDS.Loadout) do
+                        task.wait(0.5) 
+                    end
+                    
+                    local func, err = loadstring(content)
+                    if func then
+                        func() 
+                        Window:Notify({ Title = "ADS", Desc = "Running...", Time = 3 })
+                    end
+                end)
+            end
+        end
+    })
+
+    Strategies:Section({Title = "Other Strategies"})
+    Strategies:Toggle({
+        Title = "Hardcore Mode",
+        Desc = "Towers:\nFarm,\nGolden Scout,\nDJ Booth,\nCommander,\nElectroshocker,\nRanger,\nFreezer,\nGolden Minigunner",
+        Value = _G.Hardcore,
+        Callback = function(v)
+            set_setting("Hardcore", v)
+
+            if v then
+                task.spawn(function()
+                    local url = "https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Strategies/Hardcore.lua"
+                    local content = game:HttpGet(url)
+                    
+                    while not (TDS and TDS.Loadout) do
+                        task.wait(0.5) 
+                    end
+                    
+                    local func, err = loadstring(content)
+                    if func then
+                        func() 
+                        Window:Notify({ Title = "ADS", Desc = "Running...", Time = 3 })
+                    end
+                end)
+            end
+        end
+    })
+end
+
+Window:Line()
+
+local Misc = Window:Tab({Title = "Misc", Icon = "box"}) do
+    Misc:Section({Title = "Misc"})
+    Misc:Toggle({
+        Title = "Enable Anti-Lag",
+        Desc = "Boosts your FPS",
+        Value = _G.AntiLag,
+        Callback = function(v)
+            set_setting("AntiLag", v)
+        end
+    })
+
+    Misc:Toggle({
+        Title = "Auto Collect Pickups",
+        Desc = "Collects Logbooks + Snowballs",
+        Value = _G.AutoPickups,
+        Callback = function(v)
+            set_setting("AutoPickups", v)
+        end
+    })
+
+    Misc:Toggle({
+        Title = "Claim Rewards",
+        Desc = "Claims your playtime and uses spin tickets in Lobby",
+        Value = _G.ClaimRewards,
+        Callback = function(v)
+            set_setting("ClaimRewards", v)
+        end
+    })
+
+    Misc:Section({Title = "Gatling Gun"})
+    Misc:Textbox({
+        Title = "Cooldown:",
+        Desc = "",
+        Placeholder = "0.01",
+        Value = _G.Cooldown,
+        ClearTextOnFocus = true,
+        Callback = function(value)
+            if value ~= 0 then
+                set_setting("Cooldown", value)
+            end
+        end
+    })
+
+    Misc:Textbox({
+        Title = "Multiply:",
+        Desc = "",
+        Placeholder = "60",
+        Value = _G.Multiply,
+        ClearTextOnFocus = true,
+        Callback = function(value)
+            if value ~= 0 then
+                set_setting("Multiply", value)
+            end
+        end
+    })
+
+    Misc:Button({
+        Title = "Apply Gatling",
+        Callback = function()
+            if hookmetamethod then
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Successfully applied Gatling Gun Settings",
+                    Time = 3,
+                    Type = "normal"
+                })
+
+                local ggchannel = require(game.ReplicatedStorage.Resources.Universal.NewNetwork).Channel("GatlingGun")
+                local gganim = require(game.ReplicatedStorage.Content.Tower["Gatling Gun"].Animator)
+                
+                gganim._fireGun = function(self)
+                    local cam = require(game.ReplicatedStorage.Content.Tower["Gatling Gun"].Animator.CameraController)
+                    local pos = cam.result and cam.result.Position or cam.position
+                    
+                    for i = 1, _G.Multiply do
+                        ggchannel:fireServer("Fire", pos, workspace:GetAttribute("Sync"), workspace:GetServerTimeNow())
+                    end
+                    
+                    self:Wait(_G.Cooldown)
+                end
+            else
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Your executor is not supported, please use a different one!",
+                    Time = 3,
+                    Type = "normal"
+                })
+            end
+        end
+    })
+
+    Misc:Section({Title = "Experimental"})
+    Misc:Toggle({
+        Title = "Sticker Spam",
+        Desc = "This will drop everyones FPS to like 5 (you will not be able to see this unless you have an alt)",
+        Value = false,
+        Callback = function(v)
+            local sticker_spam = v
+            
+            if sticker_spam then
+                task.spawn(function()
+                    while sticker_spam do
+                        for i = 1, 100 do
+                            if not sticker_spam then break end
+                            
+                            local args = {"Flex"}
+                            game:GetService("ReplicatedStorage"):WaitForChild("Network"):WaitForChild("Sticker"):WaitForChild("URE:Show"):FireServer(unpack(args))
+                        end
+                        task.wait()
+                    end
+                end)
+            end
+        end
+    })
+
+    Misc:Button({
+        Title = "Unlock Admin+ (Sandbox)",
+        Desc = "Keep in mind that some features such as selecting maps, spawning in enemies and changing tower stats will not work!",
+        Callback = function()
+            if game_state == "GAME" then
+                local args = {
+                    game.Players.LocalPlayer.UserId,
+                    true
+                }
+                
+                game:GetService("ReplicatedStorage"):WaitForChild("Network"):WaitForChild("Sandbox"):WaitForChild("RE:SetAdmin"):FireServer(unpack(args))
+
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Successfully unlocked Admin+ Mode!",
+                    Time = 3,
+                    Type = "normal"
+                })
+            else
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "You must be in Sandbox mode for this to work!",
+                    Time = 3,
+                    Type = "normal"
+                })
+            end
+        end
+    })
+end
+
+Window:Line()
+
+local Settings = Window:Tab({Title = "Settings", Icon = "settings"}) do
+    Settings:Section({Title = "Settings"})
+    Settings:Button({
+        Title = "Save Settings",
+        Callback = function()
+            Window:Notify({
+                    Title = "ADS",
+                    Desc = "Settings Saved!",
+                    Time = 3,
+                    Type = "normal"
+                })
+            load_settings()
+        end
+    })
+
+    Settings:Button({
+        Title = "Load Settings",
+        Callback = function()
+            Window:Notify({
+                    Title = "ADS",
+                    Desc = "Settings Loaded!",
+                    Time = 3,
+                    Type = "normal"
+                })
+            save_settings()
+        end
+    })
+
+    Settings:Section({Title = "Webhook"})
+    Settings:Toggle({
+        Title = "Send Webhook",
+        Desc = "",
+        Value = _G.SendWebhook,
+        Callback = function(v)
+            set_setting("SendWebhook", v)
+        end
+    })
+
+    Settings:Button({
+        Title = "Test Webhook",
+        Callback = function()
+            if not _G.WebhookURL or _G.WebhookURL == "" then
+                return Window:Notify({Title = "Error", Desc = "Webhook URL is empty!", Time = 3, Type = "error"})
+            end
+
+            local success, response = pcall(function()
+                return send_request({
+                    Url = _G.WebhookURL,
+                    Method = "POST",
+                    Headers = { ["Content-Type"] = "application/json" },
+                    Body = game:GetService("HttpService"):JSONEncode({["content"] = "Webhook Test"})
+                })
+            end)
+
+            if success and response.StatusCode >= 200 and response.StatusCode < 300 then
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Webhook sent successfully and is working!",
+                    Time = 3,
+                    Type = "normal"
+                })
+            else
+                Window:Notify({
+                    Title = "Error",
+                    Desc = "Invalid Webhook, Discord returned an error.",
+                    Time = 5,
+                    Type = "error"
+                })
+            end
+        end
+    })
+
+    Settings:Textbox({
+        Title = "Webhook URL:",
+        Desc = "",
+        Placeholder = "https://discord.com/api/webhooks/...",
+        Value = _G.WebhookURL,
+        ClearTextOnFocus = true,
+        Callback = function(value)
+            if value ~= "" and value:find("https://discord.com/api/webhooks/") then
+                set_setting("WebhookURL", value)
+                
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Webhook is successfully set!",
+                    Time = 3,
+                    Type = "normal"
+                })
+            else
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Invalid Webhook URL!",
+                    Time = 3,
+                    Type = "normal"
+                })
+            end
+        end
+    })
+end
+
+run_service.RenderStepped:Connect(function()
+    if stack_enabled then
+        if not stack_sphere then
+            stack_sphere = Instance.new("Part")
+            stack_sphere.Shape = Enum.PartType.Ball
+            stack_sphere.Size = Vector3.new(1.5, 1.5, 1.5)
+            stack_sphere.Color = Color3.fromRGB(0, 255, 0)
+            stack_sphere.Transparency = 0.5
+            stack_sphere.Anchored = true
+            stack_sphere.CanCollide = false
+            stack_sphere.Material = Enum.Material.Neon
+            stack_sphere.Parent = workspace
+            mouse.TargetFilter = stack_sphere
+        end
+        local hit = mouse.Hit
+        if hit then stack_sphere.Position = hit.Position end
+    elseif stack_sphere then
+        stack_sphere:Destroy()
+        stack_sphere = nil
+    end
+
+    update_path_visuals()
+end)
+
+mouse.Button1Down:Connect(function()
+    if stack_enabled and stack_sphere and selected_tower then
+        local pos = stack_sphere.Position
+        local newpos = Vector3.new(pos.X, pos.Y + 25, pos.Z)
+        remote_func:InvokeServer("Troops", "Pl\208\176ce", {Rotation = CFrame.new(), Position = newpos}, selected_tower)
+    end
+end)
 
 -- // currency tracking
 local start_coins, current_total_coins, start_gems, current_total_gems = 0, 0, 0, 0
@@ -310,12 +1477,15 @@ local function handle_post_match()
     until ui_root
 
     if not ui_root then return send_to_lobby() end
+    if not _G.AutoRejoin then return end
 
     if not _G.SendWebhook then
         send_to_lobby()
         return
     end
 
+    task.wait(1)
+    
     local match = get_all_rewards()
 
     current_total_coins += match.Coins
@@ -381,49 +1551,6 @@ local function handle_post_match()
     send_to_lobby()
 end
 
-local function log_match_start()
-    if not _G.SendWebhook then return end
-    if type(_G.WebhookURL) ~= "string" or _G.WebhookURL == "" then return end
-    if _G.WebhookURL:find("YOUR%-WEBHOOK") then return end
-    
-    local start_payload = {
-        username = "TDS AutoStrat",
-        embeds = {{
-            title = "🚀 **Match Started Successfully**",
-            description = "The AutoStrat has successfully loaded into a new game session and is beginning execution.",
-            color = 3447003,
-            fields = {
-                {
-                    name = "🪙 Starting Coins",
-                    value = "```" .. tostring(start_coins) .. " Coins```",
-                    inline = true
-                },
-                {
-                    name = "💎 Starting Gems",
-                    value = "```" .. tostring(start_gems) .. " Gems```",
-                    inline = true
-                },
-                {
-                    name = "Status",
-                    value = "🟢 Running Script",
-                    inline = false
-                }
-            },
-            footer = { text = "Logged for " .. local_player.Name .. " • TDS AutoStrat" },
-            timestamp = DateTime.now():ToIsoDate()
-        }}
-    }
-
-    pcall(function()
-        send_request({
-            Url = _G.WebhookURL,
-            Method = "POST",
-            Headers = { ["Content-Type"] = "application/json" },
-            Body = game:GetService("HttpService"):JSONEncode(start_payload)
-        })
-    end)
-end
-
 -- // voting & map selection
 local function run_vote_skip()
     while true do
@@ -468,20 +1595,19 @@ local function match_ready_up()
     repeat task.wait(0.1) until vote_ready.Visible == true
 
     run_vote_skip()
-    log_match_start()
 end
 
 local function cast_map_vote(map_id, pos_vec)
     local target_map = map_id or "Simplicity"
     local target_pos = pos_vec or Vector3.new(0,0,0)
     remote_event:FireServer("LobbyVoting", "Vote", target_map, target_pos)
-    log("Cast map vote: " .. target_map, "green")
+    Logger:Log("Cast map vote: " .. target_map)
 end
 
 local function lobby_ready_up()
     pcall(function()
         remote_event:FireServer("LobbyVoting", "Ready")
-        log("Lobby ready up sent", "green")
+        Logger:Log("Lobby ready up sent")
     end)
 end
 
@@ -553,6 +1679,10 @@ end
 
 -- // timescale logic
 local function set_game_timescale(target_val)
+    if game_state ~= "GAME" then 
+        return false 
+    end
+
     local speed_list = {0, 0.5, 1, 1.5, 2}
 
     local target_idx
@@ -593,13 +1723,17 @@ local function set_game_timescale(target_val)
 end
 
 local function unlock_speed_tickets()
+    if game_state ~= "GAME" then 
+        return false 
+    end
+
     if local_player.TimescaleTickets.Value >= 1 then
         if game.Players.LocalPlayer.PlayerGui.ReactUniversalHotbar.Frame.timescale.Lock.Visible then
             replicated_storage.RemoteFunction:InvokeServer('TicketsManager', 'UnlockTimeScale')
-            log("Unlocked timescale tickets", "yellow")
+            Logger:Log("Unlocked timescale tickets")
         end
     else
-        log("No timescale tickets left", "red")
+        Logger:Log("No timescale tickets left")
     end
 end
 
@@ -623,8 +1757,13 @@ local function trigger_restart()
 end
 
 local function get_current_wave()
-    local label = game:GetService("Players").LocalPlayer.PlayerGui
-        .ReactGameTopGameDisplay.Frame.wave.container.value
+    local label
+
+    repeat
+        task.wait(0.5)
+        label = player_gui:FindFirstChild("ReactGameTopGameDisplay", true) 
+            and player_gui.ReactGameTopGameDisplay.Frame.wave.container:FindFirstChild("value")
+    until label ~= nil
 
     local text = label.Text
     local wave_num = text:match("(%d+)")
@@ -633,7 +1772,7 @@ local function get_current_wave()
 end
 
 local function do_place_tower(t_name, t_pos)
-    log("Placing tower: " .. t_name, "green")
+    Logger:Log("Placing tower: " .. t_name)
     while true do
         local ok, res = pcall(function()
             return remote_func:InvokeServer("Troops", "Pl\208\176ce", {
@@ -862,7 +2001,7 @@ function TDS:Loadout(...)
             repeat
                 local ok = pcall(function()
                     remote:InvokeServer("Inventory", "Equip", "tower", tower_name)
-                    log("Equipped tower: " .. tower_name, "green")
+                    Logger:Log("Equipped tower: " .. tower_name)
                     task.wait(0.3)
                 end)
                 if ok then equip_success = true else task.wait(0.2) end
@@ -874,35 +2013,7 @@ function TDS:Loadout(...)
     return true
 end
 
-function TDS:Addons()
-    local url = "https://api.junkie-development.de/api/v1/luascripts/public/57fe397f76043ce06afad24f07528c9f93e97730930242f57134d0b60a2d250b/download"
-    local success, code = pcall(game.HttpGet, game, url)
-
-    if not success then
-        return false
-    end
-
-    loadstring(code)()
-
-    while not (TDS.MultiMode and TDS.Multiplayer) do
-        task.wait(0.1)
-    end
-
-    local original_equip = TDS.Equip
-    TDS.Equip = function(...)
-        if game_state == "GAME" then
-            return original_equip(...)
-        end
-    end
-
-    return true
-end
-
 -- ingame
-function TDS:TeleportToLobby()
-    send_to_lobby()
-end
-
 function TDS:VoteSkip(start_wave, end_wave)
     task.spawn(function()
         local current_wave = get_current_wave()
@@ -925,7 +2036,7 @@ function TDS:VoteSkip(start_wave, end_wave)
                 if vote_button and vote_button.Position == UDim2.new(0.5, 0, 0.5, 0) then
                     run_vote_skip()
                     skip_done = true
-                    log("Voted to skip wave " .. wave, "green")
+                    Logger:Log("Voted to skip wave " .. wave)
                 else
                     if get_current_wave() > wave then
                         break 
@@ -948,7 +2059,7 @@ function TDS:GameInfo(name, list)
 
     if marketplace_service:UserOwnsGamePassAsync(local_player.UserId, 10518590) then
         select_map_override(name, "vip")
-        log("Selected map: " .. name, "green")
+        Logger:Log("Selected map: " .. name)
         repeat task.wait(1) until player_gui:FindFirstChild("ReactUniversalHotbar") -- waits for the game to load
         return true 
     elseif is_map_available(name) then
@@ -956,7 +2067,7 @@ function TDS:GameInfo(name, list)
         repeat task.wait(1) until player_gui:FindFirstChild("ReactUniversalHotbar") -- waits for the game to load again
         return true
     else
-        log("Map '" .. name .. "' not available, rejoining...", "red") -- Logger
+        Logger:Log("Map '" .. name .. "' not available, rejoining...") -- Logger
         teleport_service:Teleport(3260590327, local_player)
         repeat task.wait(9999) until false -- waits until 2050 instead of wasting timescale tickets/phantom placing/upgrading/selling towers
     end
@@ -1036,7 +2147,7 @@ function TDS:Upgrade(idx, p_id)
     local t = self.placed_towers[idx]
     if t then
         do_upgrade_tower(t, p_id or 1)
-        log("Upgrading tower index: " .. idx, "green")
+        Logger:Log("Upgrading tower index: " .. idx)
         upgrade_history[idx] = (upgrade_history[idx] or 0) + 1
     end
 end
@@ -1054,7 +2165,7 @@ function TDS:SetTarget(idx, target_type, req_wave)
             Troop = t,
             Target = target_type
         })
-        log("Set target for tower index " .. idx .. " to " .. target_type, "green")
+        Logger:Log("Set target for tower index " .. idx .. " to " .. target_type)
     end)
 end
 
@@ -1094,7 +2205,7 @@ end
 function TDS:Ability(idx, name, data, loop)
     local t = self.placed_towers[idx]
     if not t then return false end
-    log("Activating ability '" .. name .. "' for tower index: " .. idx, "green")
+    Logger:Log("Activating ability '" .. name .. "' for tower index: " .. idx)
     return do_activate_ability(t, name, data, loop)
 end
 
@@ -1142,7 +2253,7 @@ end
 function TDS:SetOption(idx, name, val, req_wave)
     local t = self.placed_towers[idx]
     if t then
-        log("Setting option '" .. name .. "' for tower index: " .. idx, "green")
+        Logger:Log("Setting option '" .. name .. "' for tower index: " .. idx)
         return do_set_option(t, name, val, req_wave)
     end
     return false
@@ -1306,48 +2417,12 @@ local function start_anti_lag()
 end
 
 local function start_anti_afk()
-    local VirtualUser = game:GetService("VirtualUser")
-
-    task.spawn(function()
-        local function disable_idled()
-            local success, connections = pcall(getconnections, local_player.Idled)
-            if success then
-                for _, v in pairs(connections) do
-                    v:Disable()
-                end
-            end
-        end
-        
-        disable_idled()
-    end)
-
-    task.spawn(function()
-        local_player.Idled:Connect(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new(0, 0))
-        end)
-    end)
-
-    task.spawn(function()
-        local core_gui = game:GetService("CoreGui")
-        local overlay = core_gui:WaitForChild("RobloxPromptGui"):WaitForChild("promptOverlay")
-
-        overlay.ChildAdded:Connect(function(child)
-            if child.Name == 'ErrorPrompt' then
-                while true do
-                    teleport_service:Teleport(3260590327)
-                    task.wait(5)
-                end
-            end
-        end)
-    end)
-
     task.spawn(function()
         local lobby_timer = 0
         while game_state == "LOBBY" do 
             task.wait(1)
             lobby_timer = lobby_timer + 1
-            if lobby_timer >= 240 then
+            if lobby_timer >= 600 then
                 teleport_service:Teleport(3260590327)
                 break 
             end
@@ -1380,11 +2455,25 @@ local function start_auto_chain()
             if #commander >= 3 then
                 if idx > #commander then idx = 1 end
 
+                local current_commander = commander[idx]
+                local replicator = current_commander:FindFirstChild("TowerReplicator")
+                local upgrade_level = replicator and replicator:GetAttribute("Upgrade") or 0
+
+                if upgrade_level >= 4 then
+                    remote_func:InvokeServer(
+                        "Troops",
+                        "Abilities",
+                        "Activate",
+                        { Troop = current_commander, Name = "Support Caravan", Data = {} }
+                    )
+                    task.wait(0.1) 
+                end
+
                 local response = remote_func:InvokeServer(
                     "Troops",
                     "Abilities",
                     "Activate",
-                    { Troop = commander[idx], Name = "Call Of Arms", Data = {} }
+                    { Troop = current_commander, Name = "Call Of Arms", Data = {} }
                 )
 
                 if response then
@@ -1450,8 +2539,10 @@ local function start_auto_dj_booth()
 end
 
 local function start_auto_mercenary()
-    if auto_mercenary_running or not _G.AutoMercenary then return end
-    auto_mercenary_running = true
+    if not _G.AutoMercenary and not _G.AutoMilitary then return end
+        
+    if auto_mercenary_base_running then return end
+    auto_mercenary_base_running = true
 
     task.spawn(function()
         while _G.AutoMercenary do
@@ -1474,7 +2565,7 @@ local function start_auto_mercenary()
                                 Data = {
                                     pathName = 1, 
                                     directionCFrame = CFrame.new(), 
-                                    dist = _G.PathDistance or 195
+                                    dist = _G.MercenaryPath or 195
                                 } 
                             }
                         )
@@ -1489,13 +2580,62 @@ local function start_auto_mercenary()
             task.wait(0.5)
         end
 
-        auto_mercenary_running = false
+        auto_mercenary_base_running = false
+    end)
+end
+
+local function start_auto_military()
+    if not _G.AutoMilitary then return end
+        
+    if auto_military_base_running then return end
+    auto_military_base_running = true
+
+    task.spawn(function()
+        while _G.AutoMilitary do
+            local towers_folder = workspace:FindFirstChild("Towers")
+            if towers_folder then
+                for _, towers in ipairs(towers_folder:GetDescendants()) do
+                    if towers:IsA("Folder") and towers.Name == "TowerReplicator"
+                    and towers:GetAttribute("Name") == "Military Base"
+                    and towers:GetAttribute("OwnerId") == game.Players.LocalPlayer.UserId
+                    and (towers:GetAttribute("Upgrade") or 0) >= 4 then
+                        
+                        remote_func:InvokeServer(
+                            "Troops",
+                            "Abilities",
+                            "Activate",
+                            { 
+                                Troop = towers.Parent, 
+                                Name = "Airstrike", 
+                                Data = {
+                                    pathName = 1, 
+                                    pointToEnd = CFrame.new(), 
+                                    dist = _G.MilitaryPath or 195
+                                } 
+                            }
+                        )
+
+                        task.wait(0.5)
+                        
+                        if not _G.AutoMilitary then break end
+                    end
+                end
+            end
+
+            task.wait(0.5)
+        end
+        
+        auto_military_base_running = false
     end)
 end
 
 local function start_sell_farm()
     if sell_farms_running or not _G.SellFarms then return end
     sell_farms_running = true
+
+    if game_state ~= "GAME" then 
+        return false 
+    end
 
     task.spawn(function()
         while _G.SellFarms do
@@ -1546,8 +2686,12 @@ task.spawn(function()
             start_auto_dj_booth()
         end
 
-        if _G.AutoMercenary and not auto_mercenary_running then
+        if _G.AutoMercenary and not auto_mercenary_base_running then
             start_auto_mercenary()
+        end
+
+        if _G.AutoMilitary and not auto_military_base_running then
+            start_auto_military()
         end
 
         if _G.SellFarms and not sell_farms_running then
@@ -1556,6 +2700,10 @@ task.spawn(function()
         
         if _G.AntiLag and not anti_lag_running then
             start_anti_lag()
+        end
+
+        if _G.AutoRejoin and not back_to_lobby_running then
+            start_back_to_lobby()
         end
         
         task.wait(1)
@@ -1566,7 +2714,6 @@ if _G.ClaimRewards and not auto_claim_rewards then
     start_claim_rewards()
 end
 
-start_back_to_lobby()
 start_anti_afk()
 
 return TDS
