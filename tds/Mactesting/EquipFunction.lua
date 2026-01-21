@@ -34,7 +34,7 @@ function TDS:Equip(tower_input)
 			log("Error equipping " .. tower_input, "red")
         end
         
-        task.wait(0.5) -- Prevent rate limiting
+        task.wait(0.5)
     end
 end
 -- ===============================
