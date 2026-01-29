@@ -7,6 +7,7 @@ local run_service = game:GetService("RunService")
 local teleport_service = game:GetService("TeleportService")
 local marketplace_service = game:GetService("MarketplaceService")
 local replicated_storage = game:GetService("ReplicatedStorage")
+local pathfinding_service = game:GetService("PathfindingService")
 local http_service = game:GetService("HttpService")
 local remote_func = replicated_storage:WaitForChild("RemoteFunction")
 local remote_event = replicated_storage:WaitForChild("RemoteEvent")
@@ -67,6 +68,22 @@ end
 
 local game_state = identify_game_state()
 
+local function start_anti_afk()
+    task.spawn(function()
+        local lobby_timer = 0
+        while game_state == "LOBBY" do 
+            task.wait(1)
+            lobby_timer = lobby_timer + 1
+            if lobby_timer >= 600 then
+                teleport_service:Teleport(3260590327)
+                break 
+            end
+        end
+    end)
+end
+
+start_anti_afk()
+
 local send_request = request or http_request or httprequest
     or GetDevice and GetDevice().request
 
@@ -99,12 +116,19 @@ local stack_enabled = false
 local selected_tower = nil
 local stack_sphere = nil
 
+local All_Modifiers = {
+    "HiddenEnemies", "Glass", "ExplodingEnemies", "Limitation", 
+    "Committed", "HealthyEnemies", "Fog", "FlyingEnemies", 
+    "Broke", "SpeedyEnemies", "Quarantine", "JailedTowers", "Inflation"
+}
+
 local default_settings = {
     PathVisuals = false,
     MilitaryPath = false,
     MercenaryPath = false,
     AutoSkip = false,
     AutoChain = false,
+    SupportCaravan = false,
     AutoDJ = false,
     AutoRejoin = true,
     SellFarms = false,
@@ -114,6 +138,7 @@ local default_settings = {
     Fallen = false,
     Easy = false,
     AntiLag = false,
+    Disable3DRendering = false,
     AutoPickups = false,
     ClaimRewards = false,
     SendWebhook = false,
@@ -121,7 +146,13 @@ local default_settings = {
     SellFarmsWave = 1,
     WebhookURL = "",
     Cooldown = 0.01,
-    Multiply = 60
+    Multiply = 60,
+    PickupMethod = "Pathfinding",
+    StreamerMode = false,
+    HideUsername = false,
+    StreamerName = "",
+    tagName = "None",
+    Modifiers = {}
 }
 
 local last_state = {}
@@ -204,7 +235,453 @@ local function set_setting(name, value)
     end
 end
 
+local function apply_3d_rendering()
+    if _G.Disable3DRendering then
+        game:GetService("RunService"):Set3dRenderingEnabled(false)
+    else
+        run_service:Set3dRenderingEnabled(true)
+    end
+    local player_gui = local_player:FindFirstChild("PlayerGui")
+    local gui = player_gui and player_gui:FindFirstChild("ADS_BlackScreen")
+    if _G.Disable3DRendering then
+        if player_gui and not gui then
+            gui = Instance.new("ScreenGui")
+            gui.Name = "ADS_BlackScreen"
+            gui.IgnoreGuiInset = true
+            gui.ResetOnSpawn = false
+            gui.DisplayOrder = -1000
+            gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+            gui.Parent = player_gui
+            local frame = Instance.new("Frame")
+            frame.Name = "Cover"
+            frame.BackgroundColor3 = Color3.new(0, 0, 0)
+            frame.BorderSizePixel = 0
+            frame.Size = UDim2.fromScale(1, 1)
+            frame.ZIndex = 0
+            frame.Parent = gui
+        end
+        gui.Enabled = true
+    else
+        if gui then
+            gui.Enabled = false
+        end
+    end
+end
+
 load_settings()
+apply_3d_rendering()
+
+local isTagChangerRunning = false
+local tagChangerConn = nil
+local tagChangerTag = nil
+local tagChangerOrig = nil
+
+local function collectTagOptions()
+    local list = {}
+    local seen = {}
+    local function addFolder(folder)
+        if not folder then
+            return
+        end
+        for _, child in ipairs(folder:GetChildren()) do
+            local childName = child.Name
+            if childName and not seen[childName] then
+                seen[childName] = true
+                list[#list + 1] = childName
+            end
+        end
+    end
+    local content = replicated_storage:FindFirstChild("Content")
+    if content then
+        local nametag = content:FindFirstChild("Nametag")
+        if nametag then
+            addFolder(nametag:FindFirstChild("Basic"))
+            addFolder(nametag:FindFirstChild("Exclusive"))
+        end
+    end
+    table.sort(list)
+    table.insert(list, 1, "None")
+    return list
+end
+
+local function stopTagChanger()
+    if tagChangerConn then
+        tagChangerConn:Disconnect()
+        tagChangerConn = nil
+    end
+    if tagChangerTag and tagChangerTag.Parent and tagChangerOrig ~= nil then
+        pcall(function()
+            tagChangerTag.Value = tagChangerOrig
+        end)
+    end
+    tagChangerTag = nil
+    tagChangerOrig = nil
+end
+
+local function startTagChanger()
+    if isTagChangerRunning then
+        return
+    end
+    isTagChangerRunning = true
+    task.spawn(function()
+        while _G.tagName and _G.tagName ~= "" and _G.tagName ~= "None" do
+            local tag = local_player:FindFirstChild("Tag")
+            if tag then
+                if tagChangerTag ~= tag then
+                    if tagChangerConn then
+                        tagChangerConn:Disconnect()
+                        tagChangerConn = nil
+                    end
+                    tagChangerTag = tag
+                    if tagChangerOrig == nil then
+                        tagChangerOrig = tag.Value
+                    end
+                end
+                if tag.Value ~= _G.tagName then
+                    tag.Value = _G.tagName
+                end
+                if not tagChangerConn then
+                    tagChangerConn = tag:GetPropertyChangedSignal("Value"):Connect(function()
+                        if _G.tagName and _G.tagName ~= "" and _G.tagName ~= "None" then
+                            if tag.Value ~= _G.tagName then
+                                tag.Value = _G.tagName
+                            end
+                        end
+                    end)
+                end
+            end
+            task.wait(0.5)
+        end
+        isTagChangerRunning = false
+    end)
+end
+
+if _G.tagName and _G.tagName ~= "" and _G.tagName ~= "None" then
+    startTagChanger()
+end
+
+local original_display_name = local_player.DisplayName
+local original_user_name = local_player.Name
+
+local spoof_text_cache = setmetatable({}, {__mode = "k"})
+local privacy_running = false
+local last_spoof_name = nil
+local privacy_conns = {}
+local privacy_text_nodes = setmetatable({}, {__mode = "k"})
+local streamer_tag = nil
+local streamer_tag_orig = nil
+local streamer_tag_conn = nil
+
+local function add_privacy_conn(conn)
+    if conn then
+        privacy_conns[#privacy_conns + 1] = conn
+    end
+end
+
+local function clear_privacy_conns()
+    for _, c in ipairs(privacy_conns) do
+        pcall(function()
+            c:Disconnect()
+        end)
+    end
+    privacy_conns = {}
+    for inst in pairs(privacy_text_nodes) do
+        privacy_text_nodes[inst] = nil
+    end
+end
+
+local function make_spoof_name()
+    return "BelowNatural"
+end
+
+local function ensure_spoof_name()
+    local nm = _G.StreamerName
+    if not nm or nm == "" then
+        nm = make_spoof_name()
+        set_setting("StreamerName", nm)
+    end
+    return nm
+end
+
+local function is_tag_changer_active()
+    return _G.tagName and _G.tagName ~= "" and _G.tagName ~= "None"
+end
+
+local function set_local_display_name(nm)
+    if not nm or nm == "" then
+        return
+    end
+    pcall(function()
+        local_player.DisplayName = nm
+    end)
+end
+
+local function replace_plain(str, old, new)
+    if not str or str == "" or not old or old == "" or old == new then
+        return str, false
+    end
+    local start = 1
+    local out = {}
+    local changed = false
+    while true do
+        local i, j = string.find(str, old, start, true)
+        if not i then
+            out[#out + 1] = string.sub(str, start)
+            break
+        end
+        changed = true
+        out[#out + 1] = string.sub(str, start, i - 1)
+        out[#out + 1] = new
+        start = j + 1
+    end
+    if changed then
+        return table.concat(out), true
+    end
+    return str, false
+end
+
+local function apply_spoof_to_instance(inst, old_a, old_b, new_name)
+    if not inst then
+        return
+    end
+    if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then
+        local txt = inst.Text
+        if type(txt) == "string" and txt ~= "" then
+            local has_a = old_a and old_a ~= "" and string.find(txt, old_a, 1, true)
+            local has_b = old_b and old_b ~= "" and string.find(txt, old_b, 1, true)
+            if not has_a and not has_b then
+                return
+            end
+            local t = txt
+            local changed = false
+            local ch
+            if old_a and old_a ~= "" then
+                t, ch = replace_plain(t, old_a, new_name)
+                if ch then changed = true end
+            end
+            if old_b and old_b ~= "" then
+                t, ch = replace_plain(t, old_b, new_name)
+                if ch then changed = true end
+            end
+            if changed then
+                if spoof_text_cache[inst] == nil then
+                    spoof_text_cache[inst] = txt
+                end
+                inst.Text = t
+            end
+        end
+    end
+end
+
+local function restore_spoof_text()
+    for inst, txt in pairs(spoof_text_cache) do
+        if inst and inst.Parent then
+            pcall(function()
+                inst.Text = txt
+            end)
+        end
+        spoof_text_cache[inst] = nil
+    end
+end
+
+local function get_privacy_name()
+    if _G.StreamerMode then
+        return ensure_spoof_name()
+    end
+    if _G.HideUsername then
+        return "████████"
+    end
+    return nil
+end
+
+local function add_privacy_node(inst)
+    if not (inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox")) then
+        return
+    end
+    privacy_text_nodes[inst] = true
+    local nm = get_privacy_name()
+    if nm then
+        apply_spoof_to_instance(inst, original_display_name, original_user_name, nm)
+    end
+end
+
+local function hook_privacy_root(root)
+    if not root then
+        return
+    end
+    for _, inst in ipairs(root:GetDescendants()) do
+        add_privacy_node(inst)
+    end
+    add_privacy_conn(root.DescendantAdded:Connect(function(inst)
+        if get_privacy_name() then
+            add_privacy_node(inst)
+        end
+    end))
+end
+
+local function sweep_privacy_text(nm)
+    for inst in pairs(privacy_text_nodes) do
+        if inst and inst.Parent then
+            apply_spoof_to_instance(inst, original_display_name, original_user_name, nm)
+        else
+            privacy_text_nodes[inst] = nil
+        end
+    end
+end
+
+local function apply_streamer_tag()
+    if is_tag_changer_active() then
+        if streamer_tag_conn then
+            streamer_tag_conn:Disconnect()
+            streamer_tag_conn = nil
+        end
+        streamer_tag = nil
+        streamer_tag_orig = nil
+        return
+    end
+    local nm = ensure_spoof_name()
+    local tag = local_player:FindFirstChild("Tag")
+    if not tag then
+        return
+    end
+    if streamer_tag and streamer_tag ~= tag then
+        if streamer_tag_conn then
+            streamer_tag_conn:Disconnect()
+            streamer_tag_conn = nil
+        end
+    end
+    if streamer_tag ~= tag then
+        streamer_tag = tag
+        streamer_tag_orig = tag.Value
+    end
+    if tag.Value ~= nm then
+        tag.Value = nm
+    end
+    if streamer_tag_conn then
+        streamer_tag_conn:Disconnect()
+        streamer_tag_conn = nil
+    end
+    streamer_tag_conn = tag:GetPropertyChangedSignal("Value"):Connect(function()
+        if not _G.StreamerMode then
+            return
+        end
+        if is_tag_changer_active() then
+            return
+        end
+        local nm2 = ensure_spoof_name()
+        if tag.Value ~= nm2 then
+            tag.Value = nm2
+        end
+    end)
+end
+
+local function restore_streamer_tag()
+    if streamer_tag_conn then
+        streamer_tag_conn:Disconnect()
+        streamer_tag_conn = nil
+    end
+    if is_tag_changer_active() then
+        streamer_tag = nil
+        streamer_tag_orig = nil
+        return
+    end
+    if streamer_tag and streamer_tag.Parent and streamer_tag_orig ~= nil then
+        pcall(function()
+            streamer_tag.Value = streamer_tag_orig
+        end)
+    end
+    streamer_tag = nil
+    streamer_tag_orig = nil
+end
+
+local function apply_privacy_once()
+    local nm = get_privacy_name()
+    if not nm then
+        return
+    end
+    if last_spoof_name and last_spoof_name ~= nm then
+        restore_spoof_text()
+    end
+    if _G.StreamerMode then
+        apply_streamer_tag()
+    else
+        restore_streamer_tag()
+    end
+    set_local_display_name(nm)
+    sweep_privacy_text(nm)
+    last_spoof_name = nm
+end
+
+local function stop_privacy_mode()
+    clear_privacy_conns()
+    restore_spoof_text()
+    last_spoof_name = nil
+    restore_streamer_tag()
+    set_local_display_name(original_display_name)
+    privacy_running = false
+end
+
+local function start_privacy_mode()
+    if privacy_running then
+        return
+    end
+    privacy_running = true
+    clear_privacy_conns()
+    apply_privacy_once()
+    local pg = local_player:FindFirstChild("PlayerGui")
+    if pg then
+        hook_privacy_root(pg)
+    end
+    local core_gui = game:GetService("CoreGui")
+    if core_gui then
+        hook_privacy_root(core_gui)
+    end
+    local tags_root = workspace:FindFirstChild("Nametags")
+    if tags_root then
+        hook_privacy_root(tags_root)
+    end
+    local ch = local_player.Character
+    if ch then
+        hook_privacy_root(ch)
+    end
+    add_privacy_conn(local_player.CharacterAdded:Connect(function(new_char)
+        if get_privacy_name() then
+            hook_privacy_root(new_char)
+            apply_privacy_once()
+        end
+    end))
+    add_privacy_conn(workspace.ChildAdded:Connect(function(inst)
+        if get_privacy_name() and inst.Name == "Nametags" then
+            hook_privacy_root(inst)
+            apply_privacy_once()
+        end
+    end))
+    local function step()
+        if not get_privacy_name() then
+            stop_privacy_mode()
+            return
+        end
+        apply_privacy_once()
+        task.delay(0.5, step)
+    end
+    task.defer(step)
+end
+
+local function update_privacy_state()
+    if get_privacy_name() then
+        if not privacy_running then
+            start_privacy_mode()
+        else
+            apply_privacy_once()
+        end
+    else
+        if privacy_running then
+            stop_privacy_mode()
+        end
+    end
+end
+
+update_privacy_state()
 
 -- // for calculating path
 local function find_path()
@@ -398,20 +875,169 @@ current_equipped_towers = get_equipped_towers()
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Sources/UI.lua"))()
 
 local Window = Library:Window({
-    Title = "ADS",
-    Desc = "AFK Defense Simulator",
+    Title = "Aether Hub",
+    Desc = "your #1 hub",
     Theme = "Dark",
     DiscordLink = "https://discord.gg/autostrat",
-    Icon = 105059922903197,
+    Icon = 126403638319957,
     Config = {
         Keybind = Enum.KeyCode.LeftControl,
         Size = UDim2.new(0, 500, 0, 400)
     }
 })
 
-local Main = Window:Tab({Title = "Main", Icon = "star"}) do
-    Main:Section({Title = "Main"})
+local Autostrat = Window:Tab({Title = "Autostrat", Icon = "star"}) do
+    Autostrat:Section({Title = "Main"})
 
+    Autostrat:Toggle({
+        Title = "Auto Rejoin",
+        Desc = "Rejoins the gamemode after you've won and does the strategy again.",
+        Value = _G.AutoRejoin,
+        Callback = function(v)
+            set_setting("AutoRejoin", v)
+        end
+    })
+
+    Autostrat:Toggle({
+        Title = "Auto Skip Waves",
+        Desc = "Skips all Waves",
+        Value = _G.AutoSkip,
+        Callback = function(v)
+            set_setting("AutoSkip", v)
+        end
+    })
+
+    Autostrat:Toggle({
+        Title = "Auto Chain",
+        Desc = "Chains Commander Ability",
+        Value = _G.AutoChain,
+        Callback = function(v)
+            set_setting("AutoChain", v)
+        end
+    })
+
+    Autostrat:Toggle({
+        Title = "Support Caravan",
+        Desc = "Uses Commander Support Caravan",
+        Value = _G.SupportCaravan,
+        Callback = function(v)
+            set_setting("SupportCaravan", v)
+        end
+    })
+
+    Autostrat:Toggle({
+        Title = "Auto DJ Booth",
+        Desc = "Uses DJ Booth Ability",
+        Value = _G.AutoDJ,
+        Callback = function(v)
+            set_setting("AutoDJ", v)
+        end
+    })
+
+    Autostrat:Dropdown({
+        Title = "Modifiers:",
+        List = All_Modifiers,
+        Value = _G.Modifiers,
+        Multi = true,
+        Callback = function(choice)
+            set_setting("Modifiers", choice)
+        end
+    })
+
+    Autostrat:Section({Title = "Farm"})
+    Autostrat:Toggle({
+        Title = "Sell Farms",
+        Desc = "Sells all your farms on the specified wave",
+        Value = _G.SellFarms,
+        Callback = function(v)
+            set_setting("SellFarms", v)
+        end
+    })
+
+    Autostrat:Textbox({
+        Title = "Wave:",
+        Desc = "Wave to sell farms",
+        Placeholder = "40",
+        Value = tostring(_G.SellFarmsWave),
+        ClearTextOnFocus = false,
+        Callback = function(text)
+            local number = tonumber(text)
+            if number then
+                set_setting("SellFarmsWave", number)
+            else
+                Window:Notify({
+                    Title = "ADS",
+                    Desc = "Invalid number entered!",
+                    Time = 3,
+                    Type = "error"
+                })
+            end
+        end
+    })
+
+    Autostrat:Section({Title = "Abilities"})
+    Autostrat:Toggle({
+        Title = "Enable Path Distance Marker",
+        Desc = "Red = Mercenary Base, Green = Military Baset",
+        Value = _G.PathVisuals,
+        Callback = function(v)
+            set_setting("PathVisuals", v)
+        end
+    })
+
+    Autostrat:Toggle({
+        Title = "Auto Mercenary Base",
+        Desc = "Uses Air-Drop Ability",
+        Value = _G.AutoMercenary,
+        Callback = function(v)
+            set_setting("AutoMercenary", v)
+        end
+    })
+
+    MercenarySlider = Autostrat:Slider({
+        Title = "Path Distance",
+        Min = 0,
+        Max = 300,
+        Rounding = 0,
+        Value = _G.MercenaryPath,
+        Callback = function(val)
+            set_setting("MercenaryPath", val)
+        end
+    })
+
+    Autostrat:Toggle({
+        Title = "Auto Military Base",
+        Desc = "Uses Airstrike Ability",
+        Value = _G.AutoMilitary,
+        Callback = function(v)
+            set_setting("AutoMilitary", v)
+        end
+    })
+
+    MilitarySlider = Autostrat:Slider({
+        Title = "Path Distance",
+        Min = 0,
+        Max = 300,
+        Rounding = 0,
+        Value = _G.MilitaryPath,
+        Callback = function(val)
+            set_setting("MilitaryPath", val)
+        end
+    })
+
+    task.spawn(function()
+        while true do
+            local success = calc_length()
+            if success then break end 
+            task.wait(3)
+        end
+    end)
+end
+
+Window:Line()
+
+local Main = Window:Tab({Title = "Main", Icon = "stamp"}) do
+    Main:Section({Title = "Tower Options"})
     local TowerDropdown = Main:Dropdown({
         Title = "Tower:",
         List = current_equipped_towers,
@@ -520,17 +1146,30 @@ local Main = Window:Tab({Title = "Main", Icon = "star"}) do
         Title = "Sell All",
         Desc = "",
         Callback = function()
-            for _, v in pairs(workspace.Towers:GetChildren()) do
-                if v:FindFirstChild("Owner") and v.Owner.Value == local_player.UserId then
-                    remote_func:InvokeServer("Troops", "Sell", {Troop = v})
-                end
-            end
+            Window:Dialog({
+                Title = "Do you want to sell all the towers?",
+                Button1 = {
+                    Title = "Confirm",
+                    Color = Color3.fromRGB(226, 39, 6),
+                    Callback = function()
+                        for _, v in pairs(workspace.Towers:GetChildren()) do
+                            if v:FindFirstChild("Owner") and v.Owner.Value == local_player.UserId then
+                                remote_func:InvokeServer("Troops", "Sell", {Troop = v})
+                            end
+                        end
 
-            Window:Notify({
-                Title = "ADS",
-                Desc = "Attempted to sell all the towers!",
-                Time = 3,
-                Type = "normal"
+                        Window:Notify({
+                            Title = "ADS",
+                            Desc = "Attempted to sell all the towers!",
+                            Time = 3,
+                            Type = "normal"
+                        })
+                    end
+                },
+                Button2 = {
+                    Title = "Cancel",
+                    Color = Color3.fromRGB(0, 188, 0)
+                }
             })
         end
     })
@@ -598,311 +1237,228 @@ local Main = Window:Tab({Title = "Main", Icon = "star"}) do
         end
     })
 
-    Main:Section({Title = "Quality of life"})
-    Main:Toggle({
-        Title = "Auto Skip Waves",
-        Desc = "Skips all Waves",
-        Value = _G.AutoSkip,
-        Callback = function(v)
-            set_setting("AutoSkip", v)
-        end
-    })
-
-    Main:Toggle({
-        Title = "Auto Chain",
-        Desc = "Chains Commander Ability",
-        Value = _G.AutoChain,
-        Callback = function(v)
-            set_setting("AutoChain", v)
-        end
-    })
-
-    Main:Toggle({
-        Title = "Auto DJ Booth",
-        Desc = "Uses DJ Booth Ability",
-        Value = _G.AutoDJ,
-        Callback = function(v)
-            set_setting("AutoDJ", v)
-        end
-    })
-
-    Main:Toggle({
-        Title = "Auto Rejoin Lobby",
-        Desc = "Teleports back to lobby after you've won automatically",
-        Value = _G.AutoRejoin,
-        Callback = function(v)
-            set_setting("AutoRejoin", v)
-        end
-    })
-
-    Main:Section({Title = "Farm"})
-    Main:Toggle({
-        Title = "Sell Farms",
-        Desc = "Sells all your farms on the specified wave",
-        Value = _G.SellFarms,
-        Callback = function(v)
-            set_setting("SellFarms", v)
-        end
-    })
-
-    Main:Textbox({
-        Title = "Wave:",
-        Desc = "Wave to sell farms",
-        Placeholder = "40",
-        Value = tostring(_G.SellFarmsWave),
-        ClearTextOnFocus = false,
-        Callback = function(text)
-            local number = tonumber(text)
-            if number then
-                set_setting("SellFarmsWave", number)
-            else
-                Window:Notify({
-                    Title = "ADS",
-                    Desc = "Invalid number entered!",
-                    Time = 3,
-                    Type = "error"
-                })
-            end
-        end
-    })
-
-    Main:Section({Title = "Abilities"})
-    Main:Toggle({
-        Title = "Enable Path Distance Marker",
-        Desc = "Red = Mercenary Base, Green = Military Baset",
-        Value = _G.PathVisuals,
-        Callback = function(v)
-            set_setting("PathVisuals", v)
-        end
-    })
-
-    Main:Toggle({
-        Title = "Auto Mercenary Base",
-        Desc = "Uses Air-Drop Ability",
-        Value = _G.AutoMercenary,
-        Callback = function(v)
-            set_setting("AutoMercenary", v)
-        end
-    })
-
-    MercenarySlider = Main:Slider({
-        Title = "Path Distance",
-        Min = 0,
-        Max = 300,
-        Rounding = 0,
-        Value = _G.MercenaryPath,
-        Callback = function(val)
-            set_setting("MercenaryPath", val)
-        end
-    })
-
-    Main:Toggle({
-        Title = "Auto Military Base",
-        Desc = "Uses Airstrike Ability",
-        Value = _G.AutoMilitary,
-        Callback = function(v)
-            set_setting("AutoMilitary", v)
-        end
-    })
-
-    MilitarySlider = Main:Slider({
-        Title = "Path Distance",
-        Min = 0,
-        Max = 300,
-        Rounding = 0,
-        Value = _G.MilitaryPath,
-        Callback = function(val)
-            set_setting("MilitaryPath", val)
-        end
-    })
-
-    task.spawn(function()
-        while true do
-            local success = calc_length()
-            if success then break end 
-            task.wait(3)
-        end
-    end)
-end
-
-Window:Line()
-
-local Logger
-
-local Logger = Window:Tab({Title = "Logger", Icon = "notebook-pen"}) do
-    Logger = Logger:CreateLogger({
-        Title = "STRATEGY LOGGER:",
-        Size = UDim2.new(0, 330, 0, 300)
-    })
-end
-
-Window:Line()
-
-local RecorderTab = Window:Tab({Title = "Recorder", Icon = "camera"}) do
-    local Recorder = RecorderTab:CreateLogger({
-        Title = "RECORDER:",
-        Size = UDim2.new(0, 330, 0, 230)
-    })
-
-    RecorderTab:Button({
-        Title = "START",
+    Main:Section({Title = "Stats"})
+    local coins_label = Main:Label({Title = "Coins: 0", Desc = ""})
+    local gems_label = Main:Label({Title = "Gems: 0", Desc = ""})
+    local level_label = Main:Label({Title = "Level: 0", Desc = ""})
+    local wins_label = Main:Label({Title = "Wins: 0", Desc = ""})
+    local loses_label = Main:Label({Title = "Loses: 0", Desc = ""})
+    local exp_label = Main:Label({Title = "Experience: 0 / 0", Desc = ""})
+    local exp_slider = Main:Slider({
+        Title = "EXP",
         Desc = "",
+        Min = 0,
+        Max = 100,
+        Rounding = 0,
+        Value = 0,
         Callback = function()
-            Recorder:Clear()
-            Recorder:Log("Recorder started")
+        end
+    })
 
-            local current_mode = "Unknown"
-            local current_map = "Unknown"
-            
-            local state_folder = replicated_storage:FindFirstChild("State")
-            if state_folder then
-                current_mode = state_folder.Difficulty.Value
-                current_map = state_folder.Map.Value
+    local function parse_number(val)
+        if type(val) == "number" then
+            return val
+        end
+        if type(val) == "string" then
+            local cleaned = string.gsub(val, ",", "")
+            local n = tonumber(cleaned)
+            if n then
+                return n
             end
+        end
+        if type(val) == "table" and val.get then
+            local ok, v = pcall(function()
+                return val:get()
+            end)
+            if ok then
+                return parse_number(v)
+            end
+        end
+        return nil
+    end
 
-            local tower1, tower2, tower3, tower4, tower5 = "None", "None", "None", "None", "None"
-            local current_modifiers = "" 
-            local state_replicators = replicated_storage:FindFirstChild("StateReplicators")
+    local function read_value(obj)
+        if not obj then
+            return nil
+        end
+        local ok, v = pcall(function()
+            return obj.Value
+        end)
+        if ok then
+            return parse_number(v)
+        end
+        return nil
+    end
 
-            if state_replicators then
-                for _, folder in ipairs(state_replicators:GetChildren()) do
-                    if folder.Name == "PlayerReplicator" and folder:GetAttribute("UserId") == local_player.UserId then
-                        local equipped = folder:GetAttribute("EquippedTowers")
-                        if type(equipped) == "string" then
-                            local cleaned_json = equipped:match("%[.*%]") 
-                            
-                            local success, tower_table = pcall(function()
-                                return http_service:JSONDecode(cleaned_json)
-                            end)
+    local function get_stat_number(name)
+        local obj = local_player:FindFirstChild(name)
+        local v = read_value(obj)
+        if v ~= nil then
+            return v
+        end
+        local attr = local_player:GetAttribute(name)
+        v = parse_number(attr)
+        if v ~= nil then
+            return v
+        end
+        return nil
+    end
 
-                            if success and type(tower_table) == "table" then
-                                tower1 = tower_table[1] or "None"
-                                tower2 = tower_table[2] or "None"
-                                tower3 = tower_table[3] or "None"
-                                tower4 = tower_table[4] or "None"
-                                tower5 = tower_table[5] or "None"
-                            end
-                        end
-                    end
+    local function pick_exp_max()
+        local exp_obj = local_player:FindFirstChild("Experience")
+        local attr_max = exp_obj and parse_number(exp_obj:GetAttribute("Max"))
+        local attr_need = exp_obj and parse_number(exp_obj:GetAttribute("Required"))
+        local attr_next = exp_obj and parse_number(exp_obj:GetAttribute("Next"))
+        return attr_max
+            or attr_need
+            or attr_next
+            or get_stat_number("ExperienceMax")
+            or get_stat_number("ExperienceNeeded")
+            or get_stat_number("ExperienceRequired")
+            or get_stat_number("ExperienceToNextLevel")
+            or get_stat_number("ExperienceToLevel")
+            or get_stat_number("NextLevelExp")
+            or get_stat_number("ExpToNextLevel")
+            or get_stat_number("ExpNeeded")
+            or get_stat_number("ExpRequired")
+            or get_stat_number("MaxExp")
+            or get_stat_number("MaxExperience")
+            or 100
+    end
 
-                    if folder.Name == "ModifierReplicator" then
-                        local raw_votes = folder:GetAttribute("Votes")
-                        if type(raw_votes) == "string" then
-                            local cleaned_json = raw_votes:match("{.*}") 
-                            
-                            local success, mod_table = pcall(function()
-                                return http_service:JSONDecode(cleaned_json)
-                            end)
-
-                            if success and type(mod_table) == "table" then
-                                local mods = {}
-                                for mod_name, _ in pairs(mod_table) do
-                                    table.insert(mods, mod_name .. " = true")
-                                end
-                                current_modifiers = table.concat(mods, ", ")
-                            end
-                        end
+    local gc_exp_cache = { t = nil, last = 0 }
+    local function get_gc_exp()
+        if not getgc then
+            return nil
+        end
+        local t = gc_exp_cache.t
+        if t then
+            local exp = parse_number(rawget(t, "exp") or rawget(t, "Exp") or rawget(t, "experience") or rawget(t, "Experience"))
+            local max_exp = parse_number(rawget(t, "maxExp") or rawget(t, "MaxExp") or rawget(t, "maxEXP") or rawget(t, "MaxEXP") or rawget(t, "maxExperience") or rawget(t, "MaxExperience"))
+            local lvl = parse_number(rawget(t, "level") or rawget(t, "Level") or rawget(t, "lvl") or rawget(t, "Lvl"))
+            if exp and max_exp then
+                return exp, max_exp, lvl
+            end
+        end
+        local now = os.clock()
+        if now - gc_exp_cache.last < 3 then
+            return nil
+        end
+        gc_exp_cache.last = now
+        local plvl = get_stat_number("Level")
+        for _, obj in ipairs(getgc(true)) do
+            if type(obj) == "table" then
+                local exp = parse_number(rawget(obj, "exp") or rawget(obj, "Exp") or rawget(obj, "experience") or rawget(obj, "Experience"))
+                local max_exp = parse_number(rawget(obj, "maxExp") or rawget(obj, "MaxExp") or rawget(obj, "maxEXP") or rawget(obj, "MaxEXP") or rawget(obj, "maxExperience") or rawget(obj, "MaxExperience"))
+                if exp and max_exp then
+                    local lvl = parse_number(rawget(obj, "level") or rawget(obj, "Level") or rawget(obj, "lvl") or rawget(obj, "Lvl"))
+                    if not plvl or not lvl or lvl == plvl then
+                        gc_exp_cache.t = obj
+                        return exp, max_exp, lvl
                     end
                 end
             end
-
-            Recorder:Log("Mode: " .. current_mode)
-            Recorder:Log("Map: " .. current_map)
-            Recorder:Log("Towers: " .. tower1 .. ", " .. tower2)
-            Recorder:Log(tower3 .. ", " .. tower4 .. ", " .. tower5)
-
-            _G.record_strat = true
-
-            if writefile then 
-                local config_header = string.format([[
-local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Library.lua"))()
-
-TDS:Loadout("%s", "%s", "%s", "%s", "%s")
-TDS:Mode("%s")
-TDS:GameInfo("%s", {%s})
-
-]], tower1, tower2, tower3, tower4, tower5, current_mode, current_map, current_modifiers)
-
-                writefile("Strat.txt", config_header)
-            end
-
-
-
-            Window:Notify({
-                Title = "ADS",
-                Desc = "Recorder has started, you may place down your towers now.",
-                Time = 3,
-                Type = "normal"
-            })
         end
-    })
+        return nil
+    end
 
-    RecorderTab:Button({
-        Title = "STOP",
-        Desc = "",
-        Callback = function()
-            _G.record_strat = false
-            Recorder:Clear()
-            Recorder:Log("Strategy saved, you may find it in \nyour workspace folder called 'Strat.txt'")
-            Window:Notify({
-                Title = "ADS",
-                Desc = "Recording has been saved! Check your workspace folder for Strat.txt",
-                Time = 3,
-                Type = "normal"
-            })
+    local function update_stats()
+        local coins = get_stat_number("Coins") or 0
+        local gems = get_stat_number("Gems") or 0
+        local lvl = get_stat_number("Level") or 0
+        local wins = get_stat_number("Triumphs") or 0
+        local loses = get_stat_number("Loses") or 0
+        local exp = get_stat_number("Experience") or 0
+        local max_exp = pick_exp_max()
+        local gc_exp, gc_max, gc_lvl = get_gc_exp()
+        if gc_exp and gc_max then
+            exp = gc_exp
+            max_exp = gc_max
+            if gc_lvl then
+                lvl = gc_lvl
+            end
         end
-    })
+        if max_exp < 1 then
+            max_exp = 1
+        end
+        if exp > max_exp then
+            max_exp = exp
+        end
+        if coins_label then coins_label:SetTitle("Coins: " .. tostring(coins)) end
+        if gems_label then gems_label:SetTitle("Gems: " .. tostring(gems)) end
+        if level_label then level_label:SetTitle("Level: " .. tostring(lvl)) end
+        if wins_label then wins_label:SetTitle("Wins: " .. tostring(wins)) end
+        if loses_label then loses_label:SetTitle("Loses: " .. tostring(loses)) end
+        if exp_label then exp_label:SetTitle("Experience: " .. tostring(exp) .. " / " .. tostring(max_exp)) end
+        if exp_slider then
+            exp_slider:SetMin(0)
+            exp_slider:SetMax(max_exp)
+            exp_slider:SetValue(exp)
+        end
+    end
 
-    if game_state == "GAME" then
-        local towers_folder = workspace:WaitForChild("Towers", 5)
-
-        towers_folder.ChildAdded:Connect(function(tower)
-            if not _G.record_strat then return end
-            
-            local replicator = tower:WaitForChild("TowerReplicator", 5)
-            if not replicator then return end
-
-            local owner_id = replicator:GetAttribute("OwnerId")
-            if owner_id and owner_id ~= local_player.UserId then return end
-
-            tower_count = tower_count + 1
-            local my_index = tower_count
-            spawned_towers[tower] = my_index
-
-            local tower_name = replicator:GetAttribute("Name") or tower.Name
-            local raw_pos = replicator:GetAttribute("Position")
-            
-            local pos_x, pos_y, pos_z
-            if typeof(raw_pos) == "Vector3" then
-                pos_x, pos_y, pos_z = raw_pos.X, raw_pos.Y, raw_pos.Z
-            else
-                local p = tower:GetPivot().Position
-                pos_x, pos_y, pos_z = p.X, p.Y, p.Z
-            end
-            
-            local command = string.format('TDS:Place("%s", %.3f, %.3f, %.3f)', tower_name, pos_x, pos_y, pos_z)
-            record_action(command)
-            Recorder:Log("Placed " .. tower_name .. " (Index: " .. my_index .. ")")
-
-            replicator:GetAttributeChangedSignal("Upgrade"):Connect(function()
-                if not _G.record_strat then return end
-                record_action(string.format('TDS:Upgrade(%d)', my_index))
-                Recorder:Log("Upgraded Tower " .. my_index)
-            end)
-        end)
-
-        towers_folder.ChildRemoved:Connect(function(tower)
-            if not _G.record_strat then return end
-            
-            local my_index = spawned_towers[tower]
-            if my_index then
-                record_action(string.format('TDS:Sell(%d)', my_index))
-                Recorder:Log("Sold Tower " .. my_index)
-                
-                spawned_towers[tower] = nil
-            end
+    local stats_queued = false
+    local function queue_stats_update()
+        if stats_queued then
+            return
+        end
+        stats_queued = true
+        task.delay(0.2, function()
+            stats_queued = false
+            update_stats()
         end)
     end
+
+    local function hook_stat_obj(obj)
+        if not obj then
+            return
+        end
+        if obj.Changed then
+            obj.Changed:Connect(queue_stats_update)
+        end
+        obj:GetAttributeChangedSignal("Max"):Connect(queue_stats_update)
+        obj:GetAttributeChangedSignal("Required"):Connect(queue_stats_update)
+        obj:GetAttributeChangedSignal("Next"):Connect(queue_stats_update)
+    end
+
+    local stat_names = {"Coins", "Gems", "Level", "Triumphs", "Loses", "Experience"}
+    local exp_attr_names = {
+        "ExperienceMax",
+        "ExperienceNeeded",
+        "ExperienceRequired",
+        "ExperienceToNextLevel",
+        "ExperienceToLevel",
+        "NextLevelExp",
+        "ExpToNextLevel",
+        "ExpNeeded",
+        "ExpRequired",
+        "MaxExp",
+        "MaxExperience"
+    }
+
+    for _, name in ipairs(stat_names) do
+        hook_stat_obj(local_player:FindFirstChild(name))
+        local_player:GetAttributeChangedSignal(name):Connect(queue_stats_update)
+    end
+
+    for _, name in ipairs(exp_attr_names) do
+        local_player:GetAttributeChangedSignal(name):Connect(queue_stats_update)
+    end
+
+    local_player.ChildAdded:Connect(function(child)
+        if table.find(stat_names, child.Name) then
+            hook_stat_obj(child)
+            queue_stats_update()
+        end
+    end)
+
+    local_player.ChildRemoved:Connect(function(child)
+        if table.find(stat_names, child.Name) then
+            queue_stats_update()
+        end
+    end)
+
+    queue_stats_update()
 end
 
 Window:Line()
@@ -1081,11 +1637,35 @@ local Misc = Window:Tab({Title = "Misc", Icon = "box"}) do
     })
 
     Misc:Toggle({
+        Title = "Disable 3d rendering",
+        Desc = "Turns off 3d rendering",
+        Value = _G.Disable3DRendering,
+        Callback = function(v)
+            set_setting("Disable3DRendering", v)
+            apply_3d_rendering()
+        end
+    })
+
+    Misc:Toggle({
         Title = "Auto Collect Pickups",
         Desc = "Collects Logbooks + Snowballs",
         Value = _G.AutoPickups,
         Callback = function(v)
             set_setting("AutoPickups", v)
+        end
+    })
+
+    Misc:Dropdown({
+        Title = "Pickup Method",
+        Desc = "",
+        List = {"Pathfinding", "Instant"},
+        Value = _G.PickupMethod or "Pathfinding",
+        Callback = function(choice)
+            local selected = type(choice) == "table" and choice[1] or choice
+            if not selected or selected == "" then
+                selected = "Pathfinding"
+            end
+            set_setting("PickupMethod", selected)
         end
     })
 
@@ -1166,12 +1746,12 @@ local Misc = Window:Tab({Title = "Misc", Icon = "box"}) do
         Desc = "This will drop everyones FPS to like 5 (you will not be able to see this unless you have an alt)",
         Value = false,
         Callback = function(v)
-            local sticker_spam = v
+            sticker_spam = v
             
             if sticker_spam then
                 task.spawn(function()
                     while sticker_spam do
-                        for i = 1, 100 do
+                        for i = 1, 9999 do
                             if not sticker_spam then break end
                             
                             local args = {"Flex"}
@@ -1216,6 +1796,186 @@ end
 
 Window:Line()
 
+local Logger
+
+local Logger = Window:Tab({Title = "Logger", Icon = "notebook-pen"}) do
+    Logger = Logger:CreateLogger({
+        Title = "STRATEGY LOGGER:",
+        Size = UDim2.new(0, 330, 0, 300)
+    })
+end
+
+Window:Line()
+
+local RecorderTab = Window:Tab({Title = "Recorder", Icon = "camera"}) do
+    local Recorder = RecorderTab:CreateLogger({
+        Title = "RECORDER:",
+        Size = UDim2.new(0, 330, 0, 230)
+    })
+
+    RecorderTab:Button({
+        Title = "START",
+        Desc = "",
+        Callback = function()
+            Recorder:Clear()
+            Recorder:Log("Recorder started")
+
+            local current_mode = "Unknown"
+            local current_map = "Unknown"
+            
+            local state_folder = replicated_storage:FindFirstChild("State")
+            if state_folder then
+                current_mode = state_folder.Difficulty.Value
+                current_map = state_folder.Map.Value
+            end
+
+            local tower1, tower2, tower3, tower4, tower5 = "None", "None", "None", "None", "None"
+            local current_modifiers = "" 
+            local state_replicators = replicated_storage:FindFirstChild("StateReplicators")
+
+            if state_replicators then
+                for _, folder in ipairs(state_replicators:GetChildren()) do
+                    if folder.Name == "PlayerReplicator" and folder:GetAttribute("UserId") == local_player.UserId then
+                        local equipped = folder:GetAttribute("EquippedTowers")
+                        if type(equipped) == "string" then
+                            local cleaned_json = equipped:match("%[.*%]") 
+                            
+                            local success, tower_table = pcall(function()
+                                return http_service:JSONDecode(cleaned_json)
+                            end)
+
+                            if success and type(tower_table) == "table" then
+                                tower1 = tower_table[1] or "None"
+                                tower2 = tower_table[2] or "None"
+                                tower3 = tower_table[3] or "None"
+                                tower4 = tower_table[4] or "None"
+                                tower5 = tower_table[5] or "None"
+                            end
+                        end
+                    end
+
+                    if folder.Name == "ModifierReplicator" then
+                        local raw_votes = folder:GetAttribute("Votes")
+                        if type(raw_votes) == "string" then
+                            local cleaned_json = raw_votes:match("{.*}") 
+                            
+                            local success, mod_table = pcall(function()
+                                return http_service:JSONDecode(cleaned_json)
+                            end)
+
+                            if success and type(mod_table) == "table" then
+                                local mods = {}
+                                for mod_name, _ in pairs(mod_table) do
+                                    table.insert(mods, mod_name .. " = true")
+                                end
+                                current_modifiers = table.concat(mods, ", ")
+                            end
+                        end
+                    end
+                end
+            end
+
+            Recorder:Log("Mode: " .. current_mode)
+            Recorder:Log("Map: " .. current_map)
+            Recorder:Log("Towers: " .. tower1 .. ", " .. tower2)
+            Recorder:Log(tower3 .. ", " .. tower4 .. ", " .. tower5)
+
+            _G.record_strat = true
+
+            if writefile then 
+                local config_header = string.format([[
+local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Library.lua"))()
+
+TDS:Loadout("%s", "%s", "%s", "%s", "%s")
+TDS:Mode("%s")
+TDS:GameInfo("%s", {%s})
+
+]], tower1, tower2, tower3, tower4, tower5, current_mode, current_map, current_modifiers)
+
+                writefile("Strat.txt", config_header)
+            end
+
+
+
+            Window:Notify({
+                Title = "ADS",
+                Desc = "Recorder has started, you may place down your towers now.",
+                Time = 3,
+                Type = "normal"
+            })
+        end
+    })
+
+    RecorderTab:Button({
+        Title = "STOP",
+        Desc = "",
+        Callback = function()
+            _G.record_strat = false
+            Recorder:Clear()
+            Recorder:Log("Strategy saved, you may find it in \nyour workspace folder called 'Strat.txt'")
+            Window:Notify({
+                Title = "ADS",
+                Desc = "Recording has been saved! Check your workspace folder for Strat.txt",
+                Time = 3,
+                Type = "normal"
+            })
+        end
+    })
+
+    if game_state == "GAME" then
+        local towers_folder = workspace:WaitForChild("Towers", 5)
+
+        towers_folder.ChildAdded:Connect(function(tower)
+            if not _G.record_strat then return end
+            
+            local replicator = tower:WaitForChild("TowerReplicator", 5)
+            if not replicator then return end
+
+            local owner_id = replicator:GetAttribute("OwnerId")
+            if owner_id and owner_id ~= local_player.UserId then return end
+
+            tower_count = tower_count + 1
+            local my_index = tower_count
+            spawned_towers[tower] = my_index
+
+            local tower_name = replicator:GetAttribute("Name") or tower.Name
+            local raw_pos = replicator:GetAttribute("Position")
+            
+            local pos_x, pos_y, pos_z
+            if typeof(raw_pos) == "Vector3" then
+                pos_x, pos_y, pos_z = raw_pos.X, raw_pos.Y, raw_pos.Z
+            else
+                local p = tower:GetPivot().Position
+                pos_x, pos_y, pos_z = p.X, p.Y, p.Z
+            end
+            
+            local command = 'TDS:Place("' .. tower_name .. '", ' .. tostring(pos_x) .. ', ' .. tostring(pos_y) .. ', ' .. tostring(pos_z) .. ')'
+            record_action(command)
+            Recorder:Log("Placed " .. tower_name .. " (Index: " .. my_index .. ")")
+
+            replicator:GetAttributeChangedSignal("Upgrade"):Connect(function()
+                if not _G.record_strat then return end
+                record_action(string.format('TDS:Upgrade(%d)', my_index))
+                Recorder:Log("Upgraded Tower " .. my_index)
+            end)
+        end)
+
+        towers_folder.ChildRemoved:Connect(function(tower)
+            if not _G.record_strat then return end
+            
+            local my_index = spawned_towers[tower]
+            if my_index then
+                record_action(string.format('TDS:Sell(%d)', my_index))
+                Recorder:Log("Sold Tower " .. my_index)
+                
+                spawned_towers[tower] = nil
+            end
+        end)
+    end
+end
+
+Window:Line()
+
 local Settings = Window:Tab({Title = "Settings", Icon = "settings"}) do
     Settings:Section({Title = "Settings"})
     Settings:Button({
@@ -1241,6 +2001,67 @@ local Settings = Window:Tab({Title = "Settings", Icon = "settings"}) do
                     Type = "normal"
                 })
             save_settings()
+        end
+    })
+
+    Settings:Section({Title = "Privacy"})
+    Settings:Toggle({
+        Title = "Hide Username",
+        Desc = "",
+        Value = _G.HideUsername,
+        Callback = function(v)
+            set_setting("HideUsername", v)
+            update_privacy_state()
+        end
+    })
+
+    Settings:Textbox({
+        Title = "Streamer Name",
+        Desc = "",
+        Placeholder = "Spoof Name",
+        Value = _G.StreamerName or "",
+        ClearTextOnFocus = false,
+        Callback = function(value)
+            set_setting("StreamerName", value or "")
+            update_privacy_state()
+        end
+    })
+
+    Settings:Toggle({
+        Title = "Streamer Mode",
+        Desc = "",
+        Value = _G.StreamerMode,
+        Callback = function(v)
+            set_setting("StreamerMode", v)
+            update_privacy_state()
+        end
+    })
+
+    Settings:Section({Title = "Tags"})
+    local tagOptions = collectTagOptions()
+    local tagValue = _G.tagName or "None"
+    if not table.find(tagOptions, tagValue) then
+        tagValue = "None"
+    end
+    Settings:Dropdown({
+        Title = "Tag Changer",
+        Desc = "",
+        List = tagOptions,
+        Value = tagValue,
+        Callback = function(choice)
+            local selected = choice
+            if type(choice) == "table" then
+                selected = choice[1]
+            end
+            if not selected or selected == "" then
+                selected = "None"
+            end
+            set_setting("tagName", selected)
+            if selected == "None" then
+                stopTagChanger()
+            else
+                startTagChanger()
+            end
         end
     })
 
@@ -1457,11 +2278,63 @@ local function get_all_rewards()
     return results
 end
 
--- // lobby / teleporting
-local function send_to_lobby()
-    task.wait(1)
-    local lobby_remote = game.ReplicatedStorage.Network.Teleport["RE:backToLobby"]
-    lobby_remote:FireServer()
+-- // rejoining
+local function rejoin_match()
+    local remote = game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction")
+    local success = false
+    local res
+
+    repeat
+        local state_folder = replicated_storage:FindFirstChild("State")
+        local current_mode = state_folder and state_folder.Difficulty.Value
+
+        if current_mode then
+            local ok, result = pcall(function()
+                local payload
+
+                if current_mode == "PizzaParty" then
+                    payload = {
+                        mode = "halloween",
+                        count = 1
+                    }
+                elseif current_mode == "Hardcore" then
+                    payload = {
+                        mode = "hardcore",
+                        count = 1
+                    }
+                elseif current_mode == "PollutedWasteland" then
+                    payload = {
+                        mode = "polluted",
+                        count = 1
+                    }
+                elseif current_mode == "Badlands" then
+                    payload = {
+                        mode = "badlands",
+                        count = 1
+                    }
+                else
+                    payload = {
+                        difficulty = current_mode,
+                        mode = "survival",
+                        count = 1
+                    }
+                end
+
+                return remote:InvokeServer("Multiplayer", "v2:start", payload)
+            end)
+
+            if ok and check_res_ok(result) then
+                success = true
+                res = result
+            else
+                task.wait(0.5) 
+            end
+        else
+            task.wait(1)
+        end
+    until success
+    
+    return res
 end
 
 local function handle_post_match()
@@ -1476,11 +2349,11 @@ local function handle_post_match()
         ui_root = rewards_screen and rewards_screen:FindFirstChild("RewardsSection")
     until ui_root
 
-    if not ui_root then return send_to_lobby() end
+    if not ui_root then return rejoin_match() end
     if not _G.AutoRejoin then return end
 
     if not _G.SendWebhook then
-        send_to_lobby()
+        rejoin_match()
         return
     end
 
@@ -1548,7 +2421,7 @@ local function handle_post_match()
 
     task.wait(1.5)
 
-    send_to_lobby()
+    rejoin_match()
 end
 
 -- // voting & map selection
@@ -1627,15 +2500,18 @@ end
 
 local function cast_modifier_vote(mods_table)
     local bulk_modifiers = replicated_storage:WaitForChild("Network"):WaitForChild("Modifiers"):WaitForChild("RF:BulkVoteModifiers")
-    local selected_mods = mods_table or {
-        HiddenEnemies = true, Glass = true, ExplodingEnemies = true,
-        Limitation = true, Committed = true, HealthyEnemies = true,
-        SpeedyEnemies = true, Quarantine = true, Fog = true,
-        FlyingEnemies = true, Broke = true, Jailed = true, Inflation = true
-    }
+    
+    local selected_mods = {}
+
+    if mods_table and #mods_table > 0 then
+        for _, modName in ipairs(mods_table) do
+            selected_mods[modName] = true
+        end
+    end
 
     pcall(function()
         bulk_modifiers:InvokeServer(selected_mods)
+        Logger:Log("Successfully casted modifier votes.")
     end)
 end
 
@@ -1948,13 +2824,9 @@ function TDS:Mode(difficulty)
 end
 
 function TDS:Loadout(...)
-    if game_state ~= "LOBBY" then
+    if game_state ~= "GAME" then
         return
     end
-
-    local lobby_hud = player_gui:WaitForChild("ReactLobbyHud", 30)
-    local frame = lobby_hud:WaitForChild("Frame", 30)
-    frame:WaitForChild("matchmaking", 30)
 
     local towers = {...}
     local remote = game:GetService("ReplicatedStorage"):WaitForChild("RemoteFunction")
@@ -2049,27 +2921,28 @@ function TDS:VoteSkip(start_wave, end_wave)
 end
 
 function TDS:GameInfo(name, list)
-    list = list or {}
     if game_state ~= "GAME" then return false end
 
     local vote_gui = player_gui:WaitForChild("ReactGameIntermission", 30)
     if not (vote_gui and vote_gui.Enabled and vote_gui:WaitForChild("Frame", 5)) then return end
 
-    cast_modifier_vote(list)
+    local modifiers = (list and #list > 0) and list or _G.Modifiers
+    
+    cast_modifier_vote(modifiers)
 
     if marketplace_service:UserOwnsGamePassAsync(local_player.UserId, 10518590) then
         select_map_override(name, "vip")
         Logger:Log("Selected map: " .. name)
-        repeat task.wait(1) until player_gui:FindFirstChild("ReactUniversalHotbar") -- waits for the game to load
+        repeat task.wait(1) until player_gui:FindFirstChild("ReactUniversalHotbar")
         return true 
     elseif is_map_available(name) then
         select_map_override(name)
-        repeat task.wait(1) until player_gui:FindFirstChild("ReactUniversalHotbar") -- waits for the game to load again
+        repeat task.wait(1) until player_gui:FindFirstChild("ReactUniversalHotbar")
         return true
     else
-        Logger:Log("Map '" .. name .. "' not available, rejoining...") -- Logger
+        Logger:Log("Map '" .. name .. "' not available, rejoining...")
         teleport_service:Teleport(3260590327, local_player)
-        repeat task.wait(9999) until false -- waits until 2050 instead of wasting timescale tickets/phantom placing/upgrading/selling towers
+        repeat task.wait(9999) until false
     end
 end
 
@@ -2279,16 +3152,89 @@ local function start_auto_pickups()
             local hrp = get_root()
 
             if folder and hrp then
+                local char = hrp.Parent
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+                local function move_to_pos(target_pos)
+                    if not humanoid then
+                        return false
+                    end
+                    local function move_direct(pos)
+                        humanoid:MoveTo(pos)
+                        local start_t = os.clock()
+                        while os.clock() - start_t < 2 do
+                            if not _G.AutoPickups then
+                                return false
+                            end
+                            if (hrp.Position - pos).Magnitude < 4 then
+                                return true
+                            end
+                            task.wait(0.1)
+                        end
+                        return (hrp.Position - pos).Magnitude < 4
+                    end
+                    local path = pathfinding_service:CreatePath({
+                        AgentRadius = 2,
+                        AgentHeight = 6,
+                        AgentCanJump = true,
+                        AgentJumpHeight = 7,
+                        AgentMaxSlope = 45
+                    })
+                    local ok = pcall(function()
+                        path:ComputeAsync(hrp.Position, target_pos)
+                    end)
+                    if ok and path.Status == Enum.PathStatus.Success then
+                        local waypoints = path:GetWaypoints()
+                        local blocked_conn = nil
+                        blocked_conn = path.Blocked:Connect(function()
+                            if blocked_conn then
+                                blocked_conn:Disconnect()
+                            end
+                            if _G.AutoPickups then
+                                task.spawn(function()
+                                    move_to_pos(target_pos)
+                                end)
+                            end
+                        end)
+                        for _, wp in ipairs(waypoints) do
+                            if not _G.AutoPickups then
+                                if blocked_conn then
+                                    blocked_conn:Disconnect()
+                                end
+                                return false
+                            end
+                            if wp.Action == Enum.PathWaypointAction.Jump then
+                                humanoid.Jump = true
+                            end
+                            if not move_direct(wp.Position) then
+                                if blocked_conn then
+                                    blocked_conn:Disconnect()
+                                end
+                                return false
+                            end
+                        end
+                        if blocked_conn then
+                            blocked_conn:Disconnect()
+                        end
+                        return true
+                    end
+                    return move_direct(target_pos)
+                end
+
                 for _, item in ipairs(folder:GetChildren()) do
                     if not _G.AutoPickups then break end
 
                     if item:IsA("MeshPart") and (item.Name == "SnowCharm" or item.Name == "Lorebook") then
                         if not is_void_charm(item) then
-                            local old_pos = hrp.CFrame
-                            hrp.CFrame = item.CFrame * CFrame.new(0, 3, 0)
-                            task.wait(0.2)
-                            hrp.CFrame = old_pos
-                            task.wait(0.3)
+                            if _G.PickupMethod == "Instant" then
+                                hrp.CFrame = item.CFrame * CFrame.new(0, 3, 0)
+                                task.wait(0.2)
+                                task.wait(0.3)
+                            else
+                                local target_pos = item.Position + Vector3.new(0, 3, 0)
+                                move_to_pos(target_pos)
+                                task.wait(0.2)
+                                task.wait(0.3)
+                            end
                         end
                     end
                 end
@@ -2416,20 +3362,6 @@ local function start_anti_lag()
     end)
 end
 
-local function start_anti_afk()
-    task.spawn(function()
-        local lobby_timer = 0
-        while game_state == "LOBBY" do 
-            task.wait(1)
-            lobby_timer = lobby_timer + 1
-            if lobby_timer >= 600 then
-                teleport_service:Teleport(3260590327)
-                break 
-            end
-        end
-    end)
-end
-
 local function start_auto_chain()
     if auto_chain_running or not _G.AutoChain then return end
     auto_chain_running = true
@@ -2459,7 +3391,7 @@ local function start_auto_chain()
                 local replicator = current_commander:FindFirstChild("TowerReplicator")
                 local upgrade_level = replicator and replicator:GetAttribute("Upgrade") or 0
 
-                if upgrade_level >= 4 then
+                if upgrade_level >= 4 and _G.SupportCaravan then
                     remote_func:InvokeServer(
                         "Troops",
                         "Abilities",
@@ -2713,7 +3645,5 @@ end)
 if _G.ClaimRewards and not auto_claim_rewards then
     start_claim_rewards()
 end
-
-start_anti_afk()
 
 return TDS
