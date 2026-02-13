@@ -2108,7 +2108,7 @@ function TDS:Equip(tower_input)
     local tower_table = type(tower_input) == "string" and {tower_input} or tower_input
     
     if type(tower_table) ~= "table" then
-		log("Equip: Invalid input - expected string or table" .. tower_input)
+		Logger:Log("Equip: Invalid input - expected string or table" .. tower_input)
         return
     end
 	log("Equipping tower: " .. tower_input)
@@ -2128,12 +2128,12 @@ function TDS:Equip(tower_input)
         
         if success then
             if result == true or (type(result) == "table" and result.Success) or (typeof(result) == "Instance" and result:IsA("Model")) then
-				log("Successfully equipped:" .. tower_input)
+				Logger:Log("Successfully equipped:" .. tower_input)
             else
-				log("Failed to equip: " .. tower_input)
+				Logger:Log("Failed to equip: " .. tower_input)
             end
         else
-			log("Error equipping " .. tower_input)
+			Logger:Log("Error equipping " .. tower_input)
         end
         
         task.wait(0.5)
