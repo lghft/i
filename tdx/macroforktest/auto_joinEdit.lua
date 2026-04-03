@@ -14,7 +14,7 @@ for i = 1, 30 do
 	end
 	task.wait(0.5)
 end
-
+local isVIP = true
 local mapAliases = {
 	["nm"] = "NightmareWithMapVoting", ["NM"] = "NightmareWithMapVoting", ["Nightmare"] = "NightmareWithMapVoting",
 	["Inter"] = "Intermediate",
