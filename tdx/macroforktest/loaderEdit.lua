@@ -85,12 +85,13 @@ if getgenv().TDX_Config["mapvoting"] ~= nil then getgenv().TDX_Config["Voter"] =
 if getgenv().TDX_Config["loadout"] ~= nil then getgenv().TDX_Config["Loadout"] = true end
 
 local base = "https://raw.githubusercontent.com/mmr1337/loader.lua/main/"
+local base2 = "https://raw.githubusercontent.com/lghft/i/refs/heads/main/tdx/macroforktest/"
 local links = {
     ["x1.5 Speed"]      = base .. "speed.lua",
     ["Auto Skill"]       = base .. "auto_skill.lua",
     ["Run Macro"]        = base .. "run_macro.lua",
     ["Record Macro"]     = base .. "record.lua",
-    ["Join Map"]         = base .. "auto_join.lua",
+    ["Join Map"]         = base2 .. "auto_joinEdit.lua",
     ["Auto Difficulty"]  = base .. "difficulty.lua",
     ["Return Lobby"]     = base .. "return_lobby.lua",
     ["Heal"]             = base .. "heal.lua",
