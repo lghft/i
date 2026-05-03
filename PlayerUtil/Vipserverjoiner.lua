@@ -1,3 +1,4 @@
+--might need to leave the game for it to work???
 local code = "66632761641938203785126344046015"
 
 if code ~= nil then
