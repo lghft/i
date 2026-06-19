@@ -100,34 +100,22 @@ task.spawn(function()
     end)
 end)
 
-local GameState = "UNKNOWN"
-
--- Identify game state inside a separate thread so it NEVER blocks the main script
-task.spawn(function()
+local function IdentifyGameState()
     local players = game:GetService("Players")
     local TempPlayer = players.LocalPlayer or players.PlayerAdded:Wait()
     local TempGui = TempPlayer:WaitForChild("PlayerGui")
 
     while true do
         if TempGui:FindFirstChild("ReactLobbyHud") then
-            GameState = "LOBBY"
-            break
+            return "LOBBY"
         elseif TempGui:FindFirstChild("ReactUniversalHotbar") then
-            GameState = "GAME"
-            break
+            return "GAME"
         end
-        task.wait(0.5) -- Slightly faster check interval
+        task.wait(1)
     end
-    
-    -- Start state-dependent functions AFTER the state has been identified
-    if GameState == "LOBBY" then
-        StartAntiAfk()
-    elseif GameState == "GAME" then
-        if Globals.AutoReady then 
-            StartAutoReady() 
-        end
-    end
-end)
+end
+
+local GameState = IdentifyGameState()
 
 local function StartAntiAfk()
     task.spawn(function()
